@@ -22,7 +22,7 @@ import {
   useAppStoreMetaLoadable,
   useCollectibleXnftLoadable,
   useCreateTensorAction,
-  useOpenPlugin,
+  // useOpenPlugin,
   useTensorMintData,
 } from "@coral-xyz/recoil";
 import type { ProviderId } from "@coral-xyz/recoil/src/apollo/graphql";
@@ -414,14 +414,15 @@ function CollectibleApplication({
 
   // Attempt to fetch the html document meta tag values for the discovered xNFT
   const { contents: appStoreMetaContents, state: appStoreMetaState } =
-    useAppStoreMetaLoadable(xnft ?? "");
-  const appStoreData =
+    useAppStoreMetaLoadable(xnft ? String(xnft) : "");
+  const appStoreData: any =
     (appStoreMetaState === "hasValue" && appStoreMetaContents) || null;
 
-  const openPlugin = useOpenPlugin();
+  // const openPlugin = useOpenPlugin();
 
   const handleClick = () => {
-    openPlugin(`${xnft}/${mint}`);
+    // openPlugin(`${xnft}/${mint}`);
+    console.log("openPlugin not available");
   };
 
   return xnft && appStoreData ? (
@@ -441,10 +442,10 @@ function CollectibleApplication({
         <ProxyImage
           style={{ borderRadius: 8, height: 64, width: 64 }}
           size={64}
-          src={appStoreData.image || UNKNOWN_NFT_ICON_SRC}
+          src={(appStoreData as any).image || UNKNOWN_NFT_ICON_SRC}
         />
         <YStack flex={1} overflow="hidden" maxWidth={170}>
-          <StyledText>{appStoreData.name ?? "Unknown"}</StyledText>
+          <StyledText>{(appStoreData as any).name ?? "Unknown"}</StyledText>
           <StyledText
             color="$baseTextMedEmphasis"
             ellipsizeMode="tail"
@@ -455,7 +456,7 @@ function CollectibleApplication({
             textOverflow="ellipsis"
             whiteSpace="nowrap"
           >
-            {appStoreData.description ?? ""}
+            {(appStoreData as any).description ?? ""}
           </StyledText>
         </YStack>
         <Button

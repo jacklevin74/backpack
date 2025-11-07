@@ -18,10 +18,11 @@ import {
   PLUGIN_NOTIFICATION_PUBLIC_KEY_UPDATED,
   PLUGIN_NOTIFICATION_UNMOUNT,
   PLUGIN_NOTIFICATION_UPDATE_METADATA,
-  SOLANA_RPC_METHOD_OPEN_XNFT,
 } from "@coral-xyz/common";
-import { DEFAULT_SOLANA_CLUSTER } from "@coral-xyz/secure-background/legacyCommon";
-import { DEFAULT_X1_CLUSTER } from "@coral-xyz/secure-background/legacyCommon";
+import {
+  DEFAULT_SOLANA_CLUSTER,
+  DEFAULT_X1_CLUSTER,
+} from "@coral-xyz/secure-background/legacyCommon";
 import {
   NotificationContentScriptBroadcastListener,
   safeClientResponse,
@@ -75,7 +76,7 @@ export class ProviderSolanaInjection
 
   #isBackpack: boolean;
   #isConnected: boolean;
-  #isXnft: boolean;
+  #isPlugin: boolean;
   #publicKey?: PublicKey;
 
   #secureSolanaClient: SolanaClient;
@@ -109,7 +110,8 @@ export class ProviderSolanaInjection
 
     // Use appropriate default RPC URL based on blockchain
     // This will be updated to the user's selected URL when connect() is called
-    const rpcUrl = blockchain === Blockchain.X1 ? DEFAULT_X1_CLUSTER : defaultRpcUrl;
+    const rpcUrl =
+      blockchain === Blockchain.X1 ? DEFAULT_X1_CLUSTER : defaultRpcUrl;
     console.log(
       `[ProviderSolanaInjection.constructor] ext:0.10.59 Creating SolanaClient for ${blockchain} with initial RPC URL: ${rpcUrl}`
     );
@@ -136,7 +138,7 @@ export class ProviderSolanaInjection
       await this.connect({
         onlyIfTrusted: true,
         reconnect: true,
-        blockchain: this.#blockchain
+        blockchain: this.#blockchain,
       });
       const newPublicKey = this.#publicKey?.toBase58();
       if (oldPublicKey !== newPublicKey) {
@@ -201,7 +203,7 @@ export class ProviderSolanaInjection
     const publicKey = publicKeys[Blockchain.SOLANA];
     const connectionUrl = connectionUrls[Blockchain.SOLANA];
 
-    this.#isXnft = true;
+    this.#isPlugin = true;
     this.#connect(publicKey, connectionUrl);
     this.emit("connect", event.data.detail);
   }
@@ -324,22 +326,12 @@ export class ProviderSolanaInjection
   }
 
   async disconnect() {
-    if (this.#isXnft) {
-      console.warn("xnft can't be disconnected");
+    if (this.#isPlugin) {
+      console.warn("plugin can't be disconnected");
       return;
     }
     const detail = await this.#secureSolanaClient.wallet.disconnect();
     this.#handleNotificationDisconnected({ data: { detail } });
-  }
-
-  async openXnft(xnftAddress: string | PublicKey) {
-    if (this.#isXnft) {
-      throw new Error("xnft context: use window.xnft.openPlugin instead");
-    }
-    await this.#requestManager.request({
-      method: SOLANA_RPC_METHOD_OPEN_XNFT,
-      params: [xnftAddress.toString()],
-    });
   }
 
   async _backpackGetAccounts() {
@@ -569,8 +561,8 @@ export class ProviderSolanaInjection
     return this.#isConnected;
   }
 
-  public get isXnft() {
-    return this.#isXnft;
+  public get isPlugin() {
+    return this.#isPlugin;
   }
 
   public get publicKey() {

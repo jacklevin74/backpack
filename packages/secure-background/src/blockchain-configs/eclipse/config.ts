@@ -12,8 +12,7 @@ export const eclipseBlockchainConfig: BlockchainConfig<Blockchain.ECLIPSE> = {
   caip2Reference: "TBD_ECLISPE_GENESIS_HASH",
 
   defaultRpcUrl: SolanaCluster.MAINNET,
-  blowfishUrl:
-    "http://localhost:4000/solana/v0/mainnet/scan/transactions",
+  blowfishUrl: "http://localhost:4000/solana/v0/mainnet/scan/transactions",
   isTestnet: false,
 
   Enabled: false,
@@ -58,7 +57,7 @@ export const eclipseBlockchainConfig: BlockchainConfig<Blockchain.ECLIPSE> = {
   },
   // todo
   logoUri:
-    "https://s3.us-east-1.amazonaws.com/app-assets.xnfts.dev/images/useBlockchainLogo/solana.png",
+    "https://s3.us-east-1.amazonaws.com/app-assets/images/useBlockchainLogo/solana.png",
   localLogoUri: "./eclipse.png",
   bip44CoinType,
   requiresChainId: false,

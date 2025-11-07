@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { type Blockchain, XNFT_GG_LINK } from "@coral-xyz/common";
+import { type Blockchain /*, XNFT_GG_LINK */ } from "@coral-xyz/common";
 import {
   type ProviderId,
   TransactionHistory,
@@ -95,7 +95,7 @@ function _NoRecentActivityLabel({
         icon={(props: any) => <Bolt {...props} />}
         title={t("no_recent_activity.title")}
         subtitle={t("no_recent_activity.subtitle")}
-        onClick={() => window.open(XNFT_GG_LINK)}
+        onClick={() => {} /* window.open(XNFT_GG_LINK) */}
         buttonText={hideButton ? undefined : t("browse_xnft")}
         contentStyle={{
           color: minimize ? theme.baseTextMedEmphasis.val : "inherit",

@@ -12,8 +12,7 @@ export const ethereumBlockchainConfig: BlockchainConfig<Blockchain.ETHEREUM> = {
   caip2Reference: "1",
 
   defaultRpcUrl: EthereumConnectionUrl.MAINNET,
-  blowfishUrl:
-    "http://localhost:4000/ethereum/v0/mainnet/scan/transactions",
+  blowfishUrl: "http://localhost:4000/ethereum/v0/mainnet/scan/transactions",
   isTestnet: false,
 
   Enabled: true,
@@ -73,7 +72,7 @@ export const ethereumBlockchainConfig: BlockchainConfig<Blockchain.ETHEREUM> = {
     return true;
   },
   logoUri:
-    "https://s3.us-east-1.amazonaws.com/app-assets.xnfts.dev/images/useBlockchainLogo/ethereum.png",
+    "https://s3.us-east-1.amazonaws.com/app-assets/images/useBlockchainLogo/ethereum.png",
   bip44CoinType: 60,
   localLogoUri: "./ethereum.png",
   requiresChainId: true,

@@ -1,4 +1,4 @@
-import { XNFT_GG_LINK } from "@coral-xyz/common";
+// import { XNFT_GG_LINK } from "@coral-xyz/common";
 import { useTranslation } from "@coral-xyz/i18n";
 import {
   EmptyState,
@@ -7,7 +7,7 @@ import {
   PushDetail,
 } from "@coral-xyz/react-common";
 import {
-  filteredPlugins,
+  // filteredPlugins,
   useActiveSolanaWallet,
   useSolanaConnectionUrl,
 } from "@coral-xyz/recoil";
@@ -23,9 +23,11 @@ export function XnftSettings() {
   const activeSolanaWallet = useActiveSolanaWallet();
   const connectionUrl = useSolanaConnectionUrl();
   const publicKey = activeSolanaWallet?.publicKey;
-  const { contents, state } = useRecoilValueLoadable(
-    filteredPlugins({ publicKey, connectionUrl })
-  );
+  // const { contents, state } = useRecoilValueLoadable(
+  //   filteredPlugins({ publicKey, connectionUrl })
+  // );
+  const contents = [];
+  const state = "hasValue";
   const { t } = useTranslation();
 
   if (state !== "hasValue" && state === "loading") {
@@ -81,7 +83,7 @@ export function XnftSettings() {
           marginBottom: "64px", // Tab height offset.
         }}
         buttonText={t("browse_xnft")}
-        onClick={() => window.open(XNFT_GG_LINK, "_blank")}
+        onClick={() => {} /* window.open(XNFT_GG_LINK, "_blank") */}
       />
     </YStack>
   ) : (

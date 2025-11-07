@@ -15,5 +15,4 @@ export * from "./useCreateNewWallet";
 export * from "./useFeatureGates";
 export * from "./useIsValidAddress";
 export * from "./useLoader";
-export * from "./useXnftPreferences";
 export * from "./wallet";

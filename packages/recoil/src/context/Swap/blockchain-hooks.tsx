@@ -43,7 +43,7 @@ import { useSolanaCtx } from "../../hooks";
 const { Zero } = ethers.constants;
 
 const DEFAULT_SLIPPAGE_PERCENT = 1;
-const JUPITER_BASE_URL = "https://jupiter.xnfts.dev/v6/";
+const JUPITER_BASE_URL = "http://localhost:4000/jupiter/v6/";
 
 //
 // Quote response from different data sources.

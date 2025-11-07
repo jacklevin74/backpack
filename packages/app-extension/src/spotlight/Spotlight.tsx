@@ -5,7 +5,7 @@ import {
   useActiveWallet,
   useBlockchainConnectionUrl,
   useBreakpoints,
-  useOpenPlugin,
+  // useOpenPlugin,
 } from "@coral-xyz/recoil";
 import { useTheme, YStack } from "@coral-xyz/tamagui";
 import Box from "@mui/material/Box";
@@ -107,7 +107,7 @@ function SpotlightInner({
   const connectionUrl = useBlockchainConnectionUrl(activeWallet.blockchain);
   const theme = useTheme();
   const { isXs } = useBreakpoints();
-  const openPlugin = useOpenPlugin();
+  // const openPlugin = useOpenPlugin();
   const isSearching = searchFilter.trim() !== "";
 
   return (

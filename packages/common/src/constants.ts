@@ -147,10 +147,6 @@ export const UI_RPC_METHOD_SET_FEATURE_GATES =
   "ui-rpc-method-set-feature-gates";
 export const UI_RPC_METHOD_GET_FEATURE_GATES =
   "ui-rpc-method-get-feature-gates";
-export const UI_RPC_METHOD_GET_XNFT_PREFERENCES =
-  "ui-rpc-method-get-xnft-preference";
-export const UI_RPC_METHOD_SET_XNFT_PREFERENCES =
-  "ui-rpc-method-set-xnft-preference";
 
 export const UI_RPC_METHOD_SETTINGS_DARK_MODE_READ =
   "ui-rpc-method-settings-dark-mode-read";
@@ -265,8 +261,6 @@ export const NOTIFICATION_KEYRING_STORE_REMOVED_USER =
   "notification-keyring-store-removed-user";
 export const NOTIFICATION_ACTIVE_BLOCKCHAIN_UPDATED =
   "notification-keyring-active-blockchain-updated";
-export const NOTIFICATION_XNFT_PREFERENCE_UPDATED =
-  "notification-xnft-preference-updated";
 // Ethereum specific notifications
 export const NOTIFICATION_ETHEREUM_CHAIN_ID_UPDATED =
   "notification-ethereum-chain-id-updated";
@@ -312,7 +306,6 @@ export const SOLANA_RPC_METHOD_SIGN_TX = "solana-sign-tx";
 export const SOLANA_RPC_METHOD_SIGN_ALL_TXS = "solana-sign-all-txs";
 export const SOLANA_RPC_METHOD_SIGN_MESSAGE = "solana-sign-message";
 export const SOLANA_RPC_METHOD_SIMULATE = "solana-simulate";
-export const SOLANA_RPC_METHOD_OPEN_XNFT = "solana-open-xnft";
 
 export const CONTENT_SCRIPT_KEEP_ALIVE = "keep-alive";
 
@@ -389,7 +382,6 @@ export const TAB_TOKENS = "tokens";
 export const TAB_SWAP = "swap";
 export const TAB_NFTS = "nfts";
 export const TAB_APPS = "apps";
-export const TAB_XNFT = "xnft";
 export const TAB_RECENT_ACTIVITY = "recent-activity";
 export const TAB_SET = new Set([
   TAB_BALANCES,
@@ -397,7 +389,6 @@ export const TAB_SET = new Set([
   TAB_SWAP,
   TAB_NFTS,
   TAB_APPS,
-  TAB_XNFT,
   TAB_RECENT_ACTIVITY,
 ]);
 export const TAB_BALANCES_SET = new Set([
@@ -410,7 +401,6 @@ export const NAV_COMPONENT_TOKEN = "tokens/token";
 export const NAV_COMPONENT_NFT_DETAIL = "nfts/detail";
 export const NAV_COMPONENT_NFT_COLLECTION = "nfts/collection";
 export const NAV_COMPONENT_NFT_EXPERIENCE = "nfts/experience";
-export const NAV_COMPONENT_XNFT = "xnft/*";
 
 export const BACKEND_EVENT = "backend-event";
 
@@ -435,7 +425,6 @@ export const TOKEN_ACCOUNT_RENT_EXEMPTION_LAMPORTS = 2039280 as const;
 
 export const DISCORD_INVITE_LINK = "https://discord.gg/RhKxgS8SaD";
 export const TWITTER_LINK = "https://twitter.com/backpack";
-export const XNFT_GG_LINK = "https://xnft.gg";
 export const BACKPACK_LINK = "https://backpack.app";
 export const BACKPACK_TERMS_OF_SERVICE =
   "https://support.backpack.exchange/en/categories/264513-backpack-wallet-terms";

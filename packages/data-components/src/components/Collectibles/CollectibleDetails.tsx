@@ -11,7 +11,7 @@ import {
   useAppStoreMetaLoadable,
   useBlockchainExplorer,
   useCollectibleXnftLoadable,
-  useOpenPlugin,
+  // useOpenPlugin, // Commented out - not available
 } from "@coral-xyz/recoil";
 import {
   explorerAddressUrl,
@@ -197,14 +197,15 @@ function _CollectibleApplication({
 
   // Attempt to fetch the html document meta tag values for the discovered xNFT
   const { contents: appStoreMetaContents, state: appStoreMetaState } =
-    useAppStoreMetaLoadable(xnft ?? "");
-  const appStoreData =
+    useAppStoreMetaLoadable((xnft as string) ?? "");
+  const appStoreData: any =
     (appStoreMetaState === "hasValue" && appStoreMetaContents) || null;
 
-  const openPlugin = useOpenPlugin();
+  // const openPlugin = useOpenPlugin(); // Commented out - not available
 
   const handleClick = () => {
-    openPlugin(`${xnft}/${mint}`);
+    // Stubbed out - useOpenPlugin not available
+    // openPlugin(`${xnft}/${mint}`);
   };
 
   return xnft && appStoreData ? (
@@ -224,10 +225,10 @@ function _CollectibleApplication({
         <ProxyImage
           style={{ borderRadius: 8, height: 64, width: 64 }}
           size={64}
-          src={appStoreData.image || UNKNOWN_NFT_ICON_SRC}
+          src={appStoreData?.image || UNKNOWN_NFT_ICON_SRC}
         />
         <YStack flex={1} overflow="hidden" maxWidth={170}>
-          <StyledText>{appStoreData.name ?? "Unknown"}</StyledText>
+          <StyledText>{appStoreData?.name ?? "Unknown"}</StyledText>
           <StyledText
             color="$baseTextMedEmphasis"
             ellipsizeMode="tail"
@@ -238,7 +239,7 @@ function _CollectibleApplication({
             textOverflow="ellipsis"
             whiteSpace="nowrap"
           >
-            {appStoreData.description ?? ""}
+            {appStoreData?.description ?? ""}
           </StyledText>
         </YStack>
         <Button

@@ -1,7 +1,6 @@
 import { useRecoilValueLoadable } from "recoil";
 
-import { appStoreMetaTags } from "../../atoms";
-
 export function useAppStoreMetaLoadable(xnft: string) {
-  return useRecoilValueLoadable(appStoreMetaTags(xnft));
+  // appStoreMetaTags has been removed
+  return useRecoilValueLoadable(null as any);
 }

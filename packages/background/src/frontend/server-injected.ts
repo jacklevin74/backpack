@@ -71,13 +71,11 @@ import {
   openPopupWindow,
   SOLANA_RPC_METHOD_CONNECT,
   SOLANA_RPC_METHOD_DISCONNECT,
-  SOLANA_RPC_METHOD_OPEN_XNFT,
   SOLANA_RPC_METHOD_SIGN_ALL_TXS,
   SOLANA_RPC_METHOD_SIGN_AND_SEND_TX,
   SOLANA_RPC_METHOD_SIGN_MESSAGE,
   SOLANA_RPC_METHOD_SIGN_TX,
   SOLANA_RPC_METHOD_SIMULATE,
-  TAB_XNFT,
   UiActionRequestManager,
   withContext,
   withContextPort,
@@ -210,8 +208,6 @@ async function handle<T = any>(
   switch (method) {
     case ETHEREUM_RPC_METHOD_SWITCH_CHAIN:
       return await handleEthereumSwitchChain(ctx, params[0]);
-    case SOLANA_RPC_METHOD_OPEN_XNFT:
-      return await handleSolanaOpenXnft(ctx, params[0]);
     default:
       throw new Error(`unexpected rpc method: ${method}`);
   }
@@ -219,23 +215,6 @@ async function handle<T = any>(
 
 // Locks for limiting requests to one per origin
 const locks = new Set();
-
-async function handleSolanaOpenXnft(
-  ctx: Context<Backend>,
-  xnftAddress: string
-): Promise<RpcResponse<string>> {
-  // Validate the xnftAddress.
-  try {
-    new PublicKey(xnftAddress);
-  } catch (err) {
-    throw new Error("invalid xnft address");
-  }
-
-  const url = `xnft/${xnftAddress}`;
-  await ctx.backend.navigationPush(url, TAB_XNFT);
-  await openPopupWindow(`popup.html`);
-  return ["success"];
-}
 
 async function handleEthereumSwitchChain(
   ctx: Context<Backend>,

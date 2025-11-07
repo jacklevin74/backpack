@@ -35,7 +35,6 @@ import type {
   MnemonicKeyringInit,
   Preferences,
   PrivateKeyKeyringInit,
-  XnftPreference,
 } from "@coral-xyz/common";
 import {
   BACKEND_EVENT,
@@ -48,7 +47,6 @@ import {
   NOTIFICATION_EXPLORER_UPDATED,
   NOTIFICATION_FEATURE_GATES_UPDATED,
   NOTIFICATION_NAVIGATION_URL_DID_CHANGE,
-  NOTIFICATION_XNFT_PREFERENCE_UPDATED,
   TAB_APPS,
   TAB_BALANCES,
   TAB_BALANCES_SET,
@@ -56,7 +54,6 @@ import {
   TAB_RECENT_ACTIVITY,
   TAB_SWAP,
   TAB_TOKENS,
-  TAB_XNFT,
 } from "@coral-xyz/common";
 import { NotificationsClient } from "@coral-xyz/secure-background/clients";
 import { defaultPreferences } from "@coral-xyz/secure-background/legacyCommon";
@@ -94,9 +91,6 @@ export class Backend {
   private events: EventEmitter;
   private notificationsClient: NotificationsClient;
 
-  // TODO: remove once beta is over.
-  private xnftWhitelist: Promise<Array<string>>;
-
   constructor(
     cfg: Config,
     events: EventEmitter,
@@ -107,21 +101,6 @@ export class Backend {
     this.keyringStore = keyringStore;
     this.events = events;
     this.notificationsClient = new NotificationsClient(notificationBroadcaster);
-
-    // TODO: remove once beta is over.
-    this.xnftWhitelist = new Promise(async (resolve, reject) => {
-      try {
-        const resp = await fetch(
-          "https://api.app-store.xnfts.dev/api/curation/whitelist",
-          { headers: { "X-Requested-With": "app.backpack.background" } }
-        );
-        const { whitelist } = await resp.json();
-        resolve(whitelist);
-      } catch (err) {
-        console.error(err);
-        reject(err);
-      }
-    });
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -656,31 +635,6 @@ export class Backend {
     return await legacyStore.getFeatureGates();
   }
 
-  async setXnftPreferences(
-    uuid: string,
-    xnftId: string,
-    preference: XnftPreference
-  ) {
-    const currentPreferences =
-      (await legacyStore.getXnftPreferencesForUser(uuid)) || {};
-    const updatedPreferences = {
-      ...currentPreferences,
-      [xnftId]: {
-        ...(currentPreferences[xnftId] || {}),
-        ...preference,
-      },
-    };
-    await legacyStore.setXnftPreferencesForUser(uuid, updatedPreferences);
-    this.events.emit(BACKEND_EVENT, {
-      name: NOTIFICATION_XNFT_PREFERENCE_UPDATED,
-      data: { updatedPreferences },
-    });
-  }
-
-  async getXnftPreferences(uuid) {
-    return await legacyStore.getXnftPreferencesForUser(uuid);
-  }
-
   ///////////////////////////////////////////////////////////////////////////////
   // Navigation.
   ///////////////////////////////////////////////////////////////////////////////
@@ -696,33 +650,6 @@ export class Backend {
     }
 
     const targetTab = tab ?? nav.activeTab ?? "balances";
-
-    // This is a temporary measure for the duration of the private beta in order
-    // to control the xNFTs that can be opened from within Backpack AND
-    // externally using the injected provider's `openXnft` function.
-    //
-    // The whitelist is controlled internally and exposed through the xNFT
-    // library's worker API to check the address of the xNFT attempting to be
-    // opened by the user.
-    if (targetTab === TAB_XNFT) {
-      const pk = url.split("/")[1];
-      const cachedWhitelist = await this.xnftWhitelist;
-
-      if (!cachedWhitelist.includes(pk)) {
-        // Secondary lazy check to ensure there wasn't a whitelist update in-between cache updates
-        const resp = await fetch(
-          `https://api.app-store.xnfts.dev/api/curation/whitelist/check?address=${pk}`,
-          { headers: { "X-Requested-With": "app.backpack.background" } }
-        );
-        const { whitelisted } = await resp.json();
-
-        if (!whitelisted) {
-          throw new Error("opening an xnft that is not whitelisted");
-        }
-      }
-    } else {
-      delete nav.data[TAB_XNFT];
-    }
 
     nav.data[targetTab] = nav.data[targetTab] ?? { id: targetTab, urls: [] };
 
@@ -790,8 +717,6 @@ export class Backend {
       throw new Error("nav not found");
     }
 
-    delete nav.data[TAB_XNFT];
-
     const urls = nav.data[nav.activeTab].urls;
     if (urls.length <= 1) {
       return SUCCESS_RESPONSE;
@@ -857,9 +782,6 @@ export class Backend {
       tab = nav.data[tab.ref];
     }
     let urls = tab.urls;
-    if (nav.data[TAB_XNFT]?.urls.length > 0) {
-      urls = nav.data[TAB_XNFT].urls;
-    }
     return urls[urls.length - 1];
   }
 
@@ -867,10 +789,6 @@ export class Backend {
     const currNav = await legacyStore.getNav();
     if (!currNav) {
       throw new Error("invariant violation");
-    }
-
-    if (activeTab !== TAB_XNFT) {
-      delete currNav.data[TAB_XNFT];
     }
 
     // Newly introduced messages tab needs to be added to the
@@ -922,10 +840,6 @@ export class Backend {
     const currNav = await legacyStore.getNav();
     if (!currNav) {
       throw new Error("invariant violation");
-    }
-
-    if (activeTab !== TAB_XNFT) {
-      delete currNav.data[TAB_XNFT];
     }
 
     // Update the active tab's nav stack.

@@ -35,7 +35,7 @@ import {
   SOLANA_RPC_METHOD_SIMULATE as PLUGIN_SOLANA_RPC_METHOD_SIMULATE_TX,
 } from "./constants";
 import { getLogger } from "./logging";
-import type { Event, RpcResponse, XnftMetadata, XnftPreference } from "./types";
+import type { Event, RpcResponse } from "./types";
 import { Blockchain } from "./types";
 import { externalResourceUri } from "./utils";
 
@@ -62,18 +62,18 @@ export class Plugin {
   // Host APIs.
   //
   private _requestTxApprovalFn?: (request: any) => void;
-  private _openPlugin?: (xnftAddress: string) => void;
+  private _openPlugin?: (pluginAddress: string) => void;
 
   readonly iframeRootUrl: string;
   readonly iconUrl: string;
   readonly splashUrls: { src: string; height: number; width: number }[];
   readonly title: string;
-  readonly xnftAddress: PublicKey;
-  readonly xnftInstallAddress: PublicKey;
+  readonly pluginAddress: PublicKey;
+  readonly pluginInstallAddress: PublicKey;
 
   constructor(
-    xnftAddress: PublicKey | string,
-    xnftInstallAddress: PublicKey | string,
+    pluginAddress: PublicKey | string,
+    pluginInstallAddress: PublicKey | string,
     url: string,
     iconUrl: string,
     splashUrls: { src: string; height: number; width: number }[],
@@ -89,11 +89,11 @@ export class Plugin {
     this.title = title;
     this.iconUrl = iconUrl;
     this.splashUrls = splashUrls;
-    this.xnftAddress = new PublicKey(xnftAddress);
-    this.xnftInstallAddress = new PublicKey(xnftInstallAddress);
+    this.pluginAddress = new PublicKey(pluginAddress);
+    this.pluginInstallAddress = new PublicKey(pluginInstallAddress);
 
-    const xnftAddressB32 = base32Encode(
-      base58.decode(this.xnftAddress.toBase58()),
+    const pluginAddressB32 = base32Encode(
+      base58.decode(this.pluginAddress.toBase58()),
       "RFC4648",
       { padding: false }
     );
@@ -111,7 +111,7 @@ export class Plugin {
       iframeRootUrl.startsWith(p)
     );
     if (!isWhitelisted) {
-      throw new Error("invalid xnft url");
+      throw new Error("invalid plugin url");
     }
 
     this.iframeRootUrl = iframeRootUrl;
@@ -140,15 +140,12 @@ export class Plugin {
   //
   // Loads the plugin javascript code inside the iframe.
   //
-  public createIframe(
-    preference: XnftPreference | null,
-    deepXnftPath?: string
-  ) {
+  public createIframe(preference: any | null, deepPluginPath?: string) {
     logger.debug("creating iframe element");
     const url = new URL(this.iframeRootUrl);
-    if (deepXnftPath) {
-      // url.searchParams.set("deepXnftPath", deepXnftPath);
-      url.hash = deepXnftPath;
+    if (deepPluginPath) {
+      // url.searchParams.set("deepPluginPath", deepPluginPath);
+      url.hash = deepPluginPath;
     }
     this.iframeRoot = document.createElement("iframe");
     this.iframeRoot.style.width = "100%";
@@ -164,7 +161,7 @@ export class Plugin {
     this.iframeRoot.onload = () => this.handleRootIframeOnLoad();
   }
 
-  // Onload handler for the top level iframe representing the xNFT.
+  // Onload handler for the top level iframe representing the plugin.
   private handleRootIframeOnLoad() {
     logger.debug("iframe on load");
 
@@ -181,24 +178,24 @@ export class Plugin {
 
   // Note: Each time this is called, the previous active iframe no longer
   //       has the ability to make rpc invocations. Furthermore, the state
-  //       will become stale, e.g., window.xnft.publicKey will be incorrect
+  //       will become stale, e.g., window.plugin.publicKey will be incorrect
   //       for the old active iframe since it will not receive the wallet
   //       changed notification.
   //
   //       In the future, we should properly cleanup the state for old iframes
   //       e.g., push down a disconnect event and/or provide the ability
-  //       for multiple iframes within a single xNFT to have an active
+  //       for multiple iframes within a single plugin to have an active
   //       connection to the host at once.
   //
   //       For now, we make the simplifying assumption that if this is called
-  //       it's meant for the iframe to fully hijack the xnft context.
+  //       it's meant for the iframe to fully hijack the plugin context.
   //
-  public setActiveIframe(iframe: HTMLIFrameElement, xnftUrl: string) {
+  public setActiveIframe(iframe: HTMLIFrameElement, pluginUrl: string) {
     this._iframeActive = iframe;
 
     this._rpcServer.setWindow(
       iframe.contentWindow,
-      xnftUrl,
+      pluginUrl,
       this._handleRpc.bind(this)
     );
     this.pushConnectNotification();
@@ -237,8 +234,8 @@ export class Plugin {
   // Rendering.
   //////////////////////////////////////////////////////////////////////////////
 
-  public mount(preference: XnftPreference | null, deepXnftPath: string) {
-    this.createIframe(preference, deepXnftPath);
+  public mount(preference: any | null, deepPluginPath: string) {
+    this.createIframe(preference, deepPluginPath);
     this.didFinishSetup!.then(() => {
       this.pushMountNotification();
     });
@@ -267,7 +264,7 @@ export class Plugin {
     this.iframeRoot?.contentWindow?.postMessage(event, "*");
   }
 
-  public pushAppUiMetadata(metadata: XnftMetadata) {
+  public pushAppUiMetadata(metadata: any) {
     const event = {
       type: CHANNEL_PLUGIN_NOTIFICATION,
       detail: {
@@ -540,8 +537,8 @@ export class Plugin {
     return ["success"];
   }
 
-  private async _handlePluginOpen(nftAddress: string): Promise<RpcResponse> {
-    this._openPlugin?.(nftAddress);
+  private async _handlePluginOpen(pluginAddr: string): Promise<RpcResponse> {
+    this._openPlugin?.(pluginAddr);
     return ["success"];
   }
 
@@ -559,7 +556,7 @@ export class Plugin {
       this._requestTxApprovalFn!({
         kind,
         data: transaction,
-        xnftAddress: this.xnftAddress.toString(),
+        pluginAddress: this.pluginAddress.toString(),
         pluginUrl: this.iframeRootUrl,
         publicKey,
         resolve,

@@ -226,5 +226,3 @@ export const allBlockchainConnectionUrls = atom<{
     },
   }),
 });
-
-export * from "./xnft-preferences";

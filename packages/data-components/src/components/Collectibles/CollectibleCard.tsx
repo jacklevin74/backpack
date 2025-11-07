@@ -6,7 +6,7 @@ import {
 import {
   madLadGold,
   useCollectibleXnftLoadable,
-  useOpenPlugin,
+  // useOpenPlugin, // Commented out - not available
 } from "@coral-xyz/recoil";
 import {
   Image,
@@ -57,7 +57,7 @@ const useStyles = temporarilyMakeStylesForBrowserExtension(() => ({
 }));
 
 export function CollectibleCard({ collectibles }: CollectibleCardProps) {
-  const openApp = useOpenPlugin();
+  // const openApp = useOpenPlugin(); // Commented out - not available
   const classes = useStyles();
   const { onCardClick, showItemCount } = useCollectiblesContext();
   const { contents, state } = useCollectibleXnftLoadable({
@@ -121,11 +121,12 @@ export function CollectibleCard({ collectibles }: CollectibleCardProps) {
   const openPlugin = useCallback(
     (e: GestureResponderEvent) => {
       e.stopPropagation();
-      const mint = collectibles.data[0].address;
-      const str = `${xnft}/${mint}`;
-      openApp(str);
+      // Stubbed out - useOpenPlugin not available
+      // const mint = collectibles.data[0].address;
+      // const str = `${xnft}/${mint}`;
+      // openApp(str);
     },
-    [collectibles, openApp, xnft]
+    [collectibles, xnft]
   );
 
   return (

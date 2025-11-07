@@ -21,7 +21,7 @@ import {
   useSolanaCtx,
   useSolanaExplorer,
   useUser,
-  xnftPreference as xnftPreferenceAtom,
+  // xnftPreference as xnftPreferenceAtom,
 } from "@coral-xyz/recoil";
 import { explorerUrl } from "@coral-xyz/secure-background/legacyCommon";
 import {
@@ -43,9 +43,10 @@ const logger = getLogger("xnft-detail");
 export const XnftDetail: React.FC<{ xnft: any }> = ({ xnft }) => {
   const theme = useTheme();
   const [openConfirm, setOpenConfirm] = useState(false);
-  const xnftPreference = useRecoilValue(
-    xnftPreferenceAtom(xnft.install.account.xnft.toString())
-  );
+  // const xnftPreference = useRecoilValue(
+  //   xnftPreferenceAtom(xnft.install.account.xnft.toString())
+  // );
+  const xnftPreference = { disabled: false, mediaPermissions: false }; // Stubbed
   const background = useBackgroundClient();
   const { uuid } = useUser();
 
@@ -65,7 +66,10 @@ export const XnftDetail: React.FC<{ xnft: any }> = ({ xnft }) => {
   const menuItems = {
     Display: {
       detail: (
-        <SwitchToggle enabled={!xnftPreference?.disabled} onChange={() => {}} />
+        <SwitchToggle
+          enabled={false /* !xnftPreference?.disabled */}
+          onChange={() => {}}
+        />
       ),
       onClick: () => {},
       style: {
@@ -77,9 +81,10 @@ export const XnftDetail: React.FC<{ xnft: any }> = ({ xnft }) => {
       label: "Cam/Mic/Display access",
       detail: (
         <SwitchToggle
-          enabled={!!xnftPreference?.mediaPermissions}
+          enabled={false /* !!xnftPreference?.mediaPermissions */}
           onChange={async () => {
-            const updatedMediaPermissions = !xnftPreference?.mediaPermissions;
+            // const updatedMediaPermissions = !xnftPreference?.mediaPermissions;
+            const updatedMediaPermissions = false;
             await background.request({
               method: UI_RPC_METHOD_SET_XNFT_PREFERENCES,
               params: [
@@ -235,19 +240,22 @@ const UninstallConfirmationCard = ({ xnft }: { xnft: any }) => {
     // Send the tx.
     //
     let txSig = "";
-    try {
-      txSig = await Solana.uninstallXnft(ctx, {
-        assetId: xnft.id ?? "",
-        install: xnft.install.publicKey,
-        mint: xnft.xnftAccount.masterMint,
-        iconUrl: xnft.iconUrl,
-      });
-    } catch (err) {
-      logger.error("unable to send transaction", err);
-      setCardType("error");
-      return;
-    }
-    setTxSignature(txSig);
+    // try {
+    //   txSig = await Solana.uninstallXnft(ctx, {
+    //     assetId: xnft.id ?? "",
+    //     install: xnft.install.publicKey,
+    //     mint: xnft.xnftAccount.masterMint,
+    //     iconUrl: xnft.iconUrl,
+    //   });
+    // } catch (err) {
+    //   logger.error("unable to send transaction", err);
+    //   setCardType("error");
+    //   return;
+    // }
+    // setTxSignature(txSig);
+    logger.error("uninstallXnft not available");
+    setCardType("error");
+    return;
 
     //
     // Confirm tx.

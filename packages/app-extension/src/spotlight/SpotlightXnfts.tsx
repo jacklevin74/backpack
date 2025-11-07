@@ -1,7 +1,7 @@
 import { useTranslation } from "@coral-xyz/i18n";
 import { UserIcon } from "@coral-xyz/react-common";
-import { useOpenPlugin } from "@coral-xyz/recoil";
 
+// import { useOpenPlugin } from "@coral-xyz/recoil";
 import { GroupIdentifier } from "./GroupIdentifier";
 import { SpotlightCell } from "./SpotlightCell";
 
@@ -39,14 +39,14 @@ function SpotlightXnft({
   selected: boolean;
   setOpen: any;
 }) {
-  const openPlugin = useOpenPlugin();
+  // const openPlugin = useOpenPlugin();
 
   return (
     <SpotlightCell
       selected={selected}
       onClick={() => {
         setOpen(false);
-        openPlugin(xnft.publicKey);
+        // openPlugin(xnft.publicKey);
       }}
     >
       <UserIcon size={55} image={xnft.image} />

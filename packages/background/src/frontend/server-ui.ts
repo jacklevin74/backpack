@@ -37,7 +37,6 @@ import type {
   Preferences,
   RpcRequest,
   RpcResponse,
-  XnftPreference,
 } from "@coral-xyz/common";
 import {
   BACKEND_EVENT,
@@ -56,7 +55,6 @@ import {
   UI_RPC_METHOD_ETHEREUM_CHAIN_ID_UPDATE,
   UI_RPC_METHOD_EXPLORER_UPDATE,
   UI_RPC_METHOD_GET_FEATURE_GATES,
-  UI_RPC_METHOD_GET_XNFT_PREFERENCES,
   UI_RPC_METHOD_HIDDEN_TOKENS_UPDATE,
   UI_RPC_METHOD_KEY_IS_COLD_UPDATE,
   UI_RPC_METHOD_KEYNAME_UPDATE,
@@ -78,7 +76,6 @@ import {
   UI_RPC_METHOD_PASSWORD_UPDATE,
   UI_RPC_METHOD_PREFERENCES_READ,
   UI_RPC_METHOD_SET_FEATURE_GATES,
-  UI_RPC_METHOD_SET_XNFT_PREFERENCES,
   UI_RPC_METHOD_SETTINGS_AGGREGATE_WALLETS_UPDATE,
   UI_RPC_METHOD_SETTINGS_DARK_MODE_READ,
   UI_RPC_METHOD_SETTINGS_DARK_MODE_UPDATE,
@@ -180,15 +177,6 @@ async function handle<T = any>(
       return await handleSetFeatureGates(ctx, params[0]);
     case UI_RPC_METHOD_GET_FEATURE_GATES:
       return await handleGetFeatureGates(ctx);
-    case UI_RPC_METHOD_GET_XNFT_PREFERENCES:
-      return await handleGetXnftPreferences(ctx, params[0]);
-    case UI_RPC_METHOD_SET_XNFT_PREFERENCES:
-      return await handleSetXnftPreferences(
-        ctx,
-        params[0],
-        params[1],
-        params[2]
-      );
     case UI_RPC_METHOD_KEY_IS_COLD_UPDATE:
       return await handleKeyIsColdUpdate(ctx, params[0], params[1], params[2]);
     case UI_RPC_METHOD_HIDDEN_TOKENS_UPDATE:
@@ -558,21 +546,6 @@ async function handleSetFeatureGates(
 
 async function handleGetFeatureGates(ctx: Context<Backend>) {
   const resp = await ctx.backend.getFeatureGates();
-  return [resp];
-}
-
-async function handleGetXnftPreferences(ctx: Context<Backend>, uuid: string) {
-  const resp = await ctx.backend.getXnftPreferences(uuid);
-  return [resp];
-}
-
-async function handleSetXnftPreferences(
-  ctx: Context<Backend>,
-  uuid: string,
-  xnftId: string,
-  preference: XnftPreference
-) {
-  const resp = await ctx.backend.setXnftPreferences(uuid, xnftId, preference);
   return [resp];
 }
 

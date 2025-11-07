@@ -77,7 +77,6 @@ import {
   TOKEN_AUTH_RULES_ID,
   tokenRecordAddress,
 } from "./programs/token";
-import { xnftClient } from "./programs/xnft";
 import { SolanaProvider } from "./provider";
 
 export * from "./programs";
@@ -829,37 +828,6 @@ export class Solana {
   //     }
   //   );
   // }
-
-  public static async uninstallXnft(
-    ctx: SolanaContext,
-    req: DeleteInstallRequest
-  ): Promise<string> {
-    const { blockhash } = ctx;
-    const client = xnftClient(ctx.tokenInterface.provider);
-    const { install } = req;
-    const receiver = ctx.walletPublicKey;
-    const authority = ctx.walletPublicKey;
-    const tx = await client.methods
-      .deleteInstall()
-      .accounts({
-        install,
-        receiver,
-        authority,
-      })
-      .transaction();
-    tx.feePayer = ctx.walletPublicKey;
-    tx.recentBlockhash =
-      blockhash ??
-      (await ctx.connection.getLatestBlockhash(ctx.commitment)).blockhash;
-    const signedTx = await SolanaProvider.signTransaction(ctx, tx, {
-      type: "ANY",
-    });
-    const rawTx = signedTx.serialize();
-    return await ctx.connection.sendRawTransaction(rawTx, {
-      skipPreflight: false,
-      preflightCommitment: ctx.commitment,
-    });
-  }
 }
 
 //

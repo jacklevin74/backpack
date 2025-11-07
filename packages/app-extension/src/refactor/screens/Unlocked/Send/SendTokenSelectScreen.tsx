@@ -57,7 +57,7 @@ function Container({ navigation }: SendTokenSelectScreenProps) {
           }
         }
 
-        const url = `http://localhost:4000/wallet/${publicKey}?providerId=${providerId}`;
+        const url = `http://162.250.126.66:4000/wallet/${publicKey}?providerId=${providerId}`;
         console.log("🌐 [SendTokenSelect] Fetching from:", url);
 
         const response = await fetch(url);

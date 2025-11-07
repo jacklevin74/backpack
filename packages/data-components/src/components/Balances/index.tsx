@@ -101,7 +101,7 @@ function _TokenBalances({
           }
         }
 
-        const url = `http://localhost:4000/wallet/${address}?providerId=${finalProviderId}`;
+        const url = `http://162.250.126.66:4000/wallet/${address}?providerId=${finalProviderId}`;
         console.log("🌐 [TokenBalances] Fetching from:", url);
 
         const response = await fetch(url);

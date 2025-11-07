@@ -12,7 +12,7 @@ export const ethereumBlockchainConfig: BlockchainConfig<Blockchain.ETHEREUM> = {
   caip2Reference: "1",
 
   defaultRpcUrl: EthereumConnectionUrl.MAINNET,
-  blowfishUrl: "http://localhost:4000/ethereum/v0/mainnet/scan/transactions",
+  blowfishUrl: "http://162.250.126.66:4000/ethereum/v0/mainnet/scan/transactions",
   isTestnet: false,
 
   Enabled: false,

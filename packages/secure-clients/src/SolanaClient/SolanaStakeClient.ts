@@ -163,7 +163,7 @@ const Stake = {
     }
   ): Promise<string> {
     const { walletPublicKey, connection, commitment, blockhash } = ctx;
-    // TODO: Get stake account balance from localhost:4000 API
+    // TODO: Get stake account balance from http://162.250.126.66:4000 API
     // For now, use a placeholder value that will be replaced
     const tx = StakeProgram.withdraw({
       stakePubkey: req.stakeAccount,

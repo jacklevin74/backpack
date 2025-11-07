@@ -60,7 +60,7 @@ function Container({ navigation }: StakeScreenProps<Routes.NewStakeScreen>) {
       return amount + 1;
     },
   });
-  // TODO: Get balance from localhost:4000 API instead of RPC
+  // TODO: Get balance from http://162.250.126.66:4000 API instead of RPC
   const accountLamportsNumber = null;
   const validators = useValidatorsQuery();
   const isMounted = useIsMounted();

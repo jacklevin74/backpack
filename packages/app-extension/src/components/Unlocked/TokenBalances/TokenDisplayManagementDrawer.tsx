@@ -89,7 +89,7 @@ export function HiddenTokensList({
           }
         }
 
-        const url = `http://localhost:4000/wallet/${address}?providerId=${providerId}`;
+        const url = `http://162.250.126.66:4000/wallet/${address}?providerId=${providerId}`;
         const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);

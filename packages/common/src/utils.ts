@@ -40,7 +40,7 @@ export function externalResourceUri(
     return uri.replace("ar://", "https://arweave.net/");
   }
   if (options.cached) {
-    return `http://localhost:4000/1min/${uri}`;
+    return `http://162.250.126.66:4000/1min/${uri}`;
   }
   return `${uri}`;
 }

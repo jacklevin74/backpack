@@ -14,24 +14,24 @@ export const brandPixelOcean = "#28dbd1";
 export const brandPixelCoral = "#fe6f5c";
 export const brandPixelLemon = "#feed5c";
 
-// Purple
-export const lightAccentPurple = "#9b34ef";
-export const darkAccentPurple = "#e17aff";
+// Purple - Phantom-inspired accent colors
+export const lightAccentPurple = "#4E44CE"; // Phantom Purple Heart
+export const darkAccentPurple = "#8B7FFF"; // Lighter variant for dark mode
 
-// Blue
-export const blue50 = "rgb(237, 248, 255)";
-export const blue100 = "rgb(214, 237, 255)";
-export const blue200 = "rgb(181, 226, 255)";
-export const blue300 = "rgb(131, 209, 255)";
-export const blue400 = "rgb(119, 182, 255)";
-export const blue500 = "rgb(76, 148, 255)";
-export const blue600 = "rgb(6, 115, 255)";
-export const blue700 = "rgb(0, 87, 235)";
-export const blue800 = "rgb(13, 65, 155)";
-export const blue900 = "rgb(13, 41, 93)";
-export const blue950 = "rgb(13, 21, 37)";
+// Blue - Phantom-inspired purple-blue gradient
+export const blue50 = "rgb(240, 240, 255)";
+export const blue100 = "rgb(224, 224, 255)";
+export const blue200 = "rgb(199, 199, 255)";
+export const blue300 = "rgb(165, 165, 255)";
+export const blue400 = "rgb(139, 127, 255)"; // Purple-blue blend
+export const blue500 = "rgb(107, 93, 255)"; // Lighter Phantom purple
+export const blue600 = "rgb(78, 68, 206)"; // Phantom Purple Heart
+export const blue700 = "rgb(62, 55, 175)"; // Darker Phantom purple
+export const blue800 = "rgb(49, 44, 140)";
+export const blue900 = "rgb(36, 32, 105)";
+export const blue950 = "rgb(23, 20, 70)";
 
-// Neutral Colors
+// Neutral Colors - Updated for better dark mode contrast (Hyperliquid-inspired)
 export const base50 = "rgba(244, 244, 246, 1)"; // formerly #f8f8f9
 export const base100 = "rgba(238, 239, 241, 1)"; // formerly #f0f0f2
 export const base200 = "rgba(227, 228, 232, 1)"; // formerly #dfe0e5
@@ -40,9 +40,9 @@ export const base400 = "rgba(150, 159, 175, 1)"; // formerly #8f929e
 export const base500 = "rgba(117, 121, 138, 1)"; // formerly #787c89
 export const base600 = "rgba(93, 96, 111, 1)"; // formerly #555c6b
 export const base700 = "rgba(56, 58, 69, 1)"; // formerly #4e5768
-export const base800 = "rgba(32, 33, 39, 1)"; // formerly #212938
-export const base900 = "rgba(20, 21, 27, 1)"; // formerly #030a19
-export const base950 = "rgba(14, 15, 20, 1)";
+export const base800 = "rgba(36, 36, 36, 1)"; // Updated to #242424 for better contrast
+export const base900 = "rgba(27, 27, 27, 1)"; // Updated to #1b1b1b for subtle layering
+export const base950 = "rgba(18, 18, 18, 1)"; // Updated to #121212 for deepest background
 
 // Success Colors
 export const green50 = "rgba(239, 251, 245, 1)";
@@ -167,9 +167,9 @@ export const darkBaseBackgroundL0 = base950; // dark container background
 export const darkBaseBackgroundL1 = base800; // dark content background
 export const darkBaseBackgroundL2 = base900;
 
-// Dark Mode Text
-export const darkBaseTextHighEmphasis = base50;
-export const darkBaseTextMedEmphasis = base400;
+// Dark Mode Text - Using 87% white opacity for high emphasis (Material Design standard)
+export const darkBaseTextHighEmphasis = "rgba(255, 255, 255, 0.87)";
+export const darkBaseTextMedEmphasis = "rgba(255, 255, 255, 0.60)";
 
 // Dark Mode Icons
 export const darkBaseIcon = base500; // meets 3:1 color contrast on base800 for WCAG AA

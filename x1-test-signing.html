@@ -163,10 +163,19 @@
         statusEl.className = 'status info';
         statusEl.textContent = '🔄 Connecting to Backpack...';
 
+        // Wait for Backpack to be injected (max 3 seconds)
+        let attempts = 0;
+        while (!window.backpack && attempts < 30) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          attempts++;
+        }
+
         // Check if Backpack is installed
         if (!window.backpack) {
-          throw new Error('Backpack wallet not found! Please install the Backpack extension.');
+          throw new Error('Backpack wallet not found! Please install and load the Backpack extension, then refresh this page.');
         }
+
+        console.log('Backpack found:', window.backpack);
 
         // Connect to Backpack
         const response = await window.backpack.connect();
@@ -345,9 +354,19 @@
 
     // Auto-connect if wallet is already connected
     window.addEventListener('load', async () => {
-      if (window.backpack && window.backpack.isConnected) {
-        await connectWallet();
-      }
+      // Debug: Check what's available
+      console.log('Page loaded. Checking for wallet...');
+      console.log('window.backpack:', window.backpack);
+      console.log('window.solana:', window.solana);
+      console.log('window.ethereum:', window.ethereum);
+
+      // Wait a bit for injection
+      setTimeout(() => {
+        console.log('After delay - window.backpack:', window.backpack);
+        if (window.backpack && window.backpack.isConnected) {
+          connectWallet();
+        }
+      }, 500);
     });
   </script>
 </body>

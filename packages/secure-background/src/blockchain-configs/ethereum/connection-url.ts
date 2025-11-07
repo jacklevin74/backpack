@@ -1,12 +1,12 @@
 export const EthereumConnectionUrl = {
-  MAINNET: "https://ethereum-rpc.publicnode.com",
+  MAINNET: "http://localhost:4000/ethereum-rpc-proxy",
   GOERLI:
     "https://eth-goerli.g.alchemy.com/v2/6QnM1O0pB17Qo47Cw9qMipDGWX7xAVWc",
   SEPOLIA:
     "https://eth-sepolia.g.alchemy.com/v2/6QnM1O0pB17Qo47Cw9qMipDGWX7xAVWc",
   DEFAULT:
     process.env.DEFAULT_ETHEREUM_CONNECTION_URL ||
-    "https://ethereum-rpc.publicnode.com",
+    "http://localhost:4000/ethereum-rpc-proxy",
 };
 
 export const EthereumChainIds = {

@@ -23,7 +23,11 @@ export const SolanaWallet: FC = (props) => {
 
   // You can also provide a custom RPC endpoint.
   const endpoint = useMemo(() => {
-    return clusterApiUrl(network);
+    if (network === "mainnet-beta") {
+      return "http://localhost:4000/rpc-proxy/";
+    } else {
+      return clusterApiUrl(network);
+    }
   }, [network]);
 
   // @solana/wallet-adapter-wallets includes all the adapters but supports tree shaking and lazy loading --

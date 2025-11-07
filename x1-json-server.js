@@ -85,8 +85,9 @@ async function getX1Balance(address, rpcUrl) {
 }
 
 // Get wallet data with real balance from X1 RPC
-async function getWalletData(address, network = 'mainnet') {
-  const rpcUrl = network === 'testnet' ? X1_TESTNET_RPC_URL : X1_MAINNET_RPC_URL;
+async function getWalletData(address, network = "mainnet") {
+  const rpcUrl =
+    network === "testnet" ? X1_TESTNET_RPC_URL : X1_MAINNET_RPC_URL;
   console.log(`  Using ${network} RPC: ${rpcUrl}`);
 
   try {
@@ -100,7 +101,7 @@ async function getWalletData(address, network = 'mainnet') {
           mint: "XNT111111111111111111111111111111111111111",
           decimals: 9,
           balance: balance,
-          logo: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
+          logo: "https://x1.xyz/_next/image?url=%2Fx1-logo.png&w=96&q=75&dpl=dpl_CgqrxgM4ijNMynKBvmQG3HnYr6yY",
           name: "X1 Native Token",
           symbol: "XNT",
           price: XNT_PRICE,
@@ -118,7 +119,7 @@ async function getWalletData(address, network = 'mainnet') {
           mint: "XNT111111111111111111111111111111111111111",
           decimals: 9,
           balance: 0,
-          logo: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
+          logo: "https://x1.xyz/_next/image?url=%2Fx1-logo.png&w=96&q=75&dpl=dpl_CgqrxgM4ijNMynKBvmQG3HnYr6yY",
           name: "X1 Native Token",
           symbol: "XNT",
           price: XNT_PRICE,
@@ -202,21 +203,76 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Serve test page at /test
-  if (pathname === '/test' || pathname === '/test/') {
-    console.log(`🧪 Serving X1 test page`);
-    const fs = require('fs');
-    const path = require('path');
-    const testPagePath = path.join(__dirname, 'x1-test-signing.html');
+  // Handle Ethereum RPC proxy endpoint
+  if (pathname === "/ethereum-rpc-proxy" && req.method === "POST") {
+    let body = "";
 
-    fs.readFile(testPagePath, 'utf8', (err, content) => {
+    req.on("data", (chunk) => {
+      body += chunk.toString();
+    });
+
+    req.on("end", () => {
+      try {
+        const rpcRequest = JSON.parse(body);
+        console.log(`⚡ Ethereum RPC: ${rpcRequest.method}`);
+
+        // Proxy to public Ethereum RPC
+        const ETHEREUM_RPC = "https://eth.llamarpc.com";
+        const postData = JSON.stringify(rpcRequest);
+
+        const options = {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": Buffer.byteLength(postData),
+          },
+        };
+
+        const proxyReq = https.request(ETHEREUM_RPC, options, (proxyRes) => {
+          let data = "";
+
+          proxyRes.on("data", (chunk) => {
+            data += chunk;
+          });
+
+          proxyRes.on("end", () => {
+            res.writeHead(proxyRes.statusCode);
+            res.end(data);
+          });
+        });
+
+        proxyReq.on("error", (error) => {
+          console.error(`Ethereum RPC error: ${error.message}`);
+          res.writeHead(500);
+          res.end(JSON.stringify({ error: "RPC proxy error" }));
+        });
+
+        proxyReq.write(postData);
+        proxyReq.end();
+      } catch (error) {
+        console.error(`Ethereum RPC parse error: ${error.message}`);
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: "Invalid RPC request" }));
+      }
+    });
+    return;
+  }
+
+  // Serve test page at /test
+  if (pathname === "/test" || pathname === "/test/") {
+    console.log(`🧪 Serving X1 test page`);
+    const fs = require("fs");
+    const path = require("path");
+    const testPagePath = path.join(__dirname, "x1-test-signing.html");
+
+    fs.readFile(testPagePath, "utf8", (err, content) => {
       if (err) {
         res.writeHead(500);
-        res.end('Error loading test page');
+        res.end("Error loading test page");
         return;
       }
 
-      res.setHeader('Content-Type', 'text/html');
+      res.setHeader("Content-Type", "text/html");
       res.writeHead(200);
       res.end(content);
     });
@@ -227,21 +283,26 @@ const server = http.createServer((req, res) => {
   const walletMatch = pathname.match(/^\/wallet\/([a-zA-Z0-9]+)$/);
 
   // Check if this is an X1 request (either "X1", "X1-testnet", or "X1-mainnet")
-  const providerId = query.providerId || '';
-  const isX1Request = providerId === "X1" || providerId === "X1-testnet" || providerId === "X1-mainnet";
+  const providerId = query.providerId || "";
+  const isX1Request =
+    providerId === "X1" ||
+    providerId === "X1-testnet" ||
+    providerId === "X1-mainnet";
 
   if (walletMatch && isX1Request) {
     const address = walletMatch[1];
     // Determine network from providerId suffix or network query param
-    let network = 'mainnet';
-    if (providerId === 'X1-testnet') {
-      network = 'testnet';
-    } else if (providerId === 'X1-mainnet') {
-      network = 'mainnet';
+    let network = "mainnet";
+    if (providerId === "X1-testnet") {
+      network = "testnet";
+    } else if (providerId === "X1-mainnet") {
+      network = "mainnet";
     } else if (query.network) {
       network = query.network;
     }
-    console.log(`✅ X1 wallet request for address: ${address} on ${network} (providerId: ${providerId})`);
+    console.log(
+      `✅ X1 wallet request for address: ${address} on ${network} (providerId: ${providerId})`
+    );
 
     // Async call to get wallet data
     getWalletData(address, network)
@@ -261,14 +322,16 @@ const server = http.createServer((req, res) => {
   }
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log("");
   console.log("=".repeat(80));
   console.log("🚀 X1 JSON Server Started");
   console.log("=".repeat(80));
-  console.log(`📡 Listening on: http://localhost:${PORT}`);
+  console.log(
+    `📡 Listening on: http://0.0.0.0:${PORT} (accessible from 162.250.126.66:${PORT})`
+  );
   console.log(`📋 Endpoint: GET /wallet/:address?providerId=X1`);
-  console.log(`🧪 Test Page: http://localhost:${PORT}/test`);
+  console.log(`🧪 Test Page: http://162.250.126.66:${PORT}/test`);
   console.log("");
   console.log("Example:");
   console.log(

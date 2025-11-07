@@ -103,9 +103,7 @@ export class Plugin {
 
     const iframeRootUrl =
       !isDevnetHACKY && (url.startsWith("ar://") || url.startsWith("ipfs://"))
-        ? //  || this.xnftAddress.toBase58() ===
-          //   "CkqWjTWzRMAtYN3CSs8Gp4K9H891htmaN1ysNXqcULc8"
-          `https://${xnftAddressB32}.gateway.xnftdata.com`
+        ? externalResourceUri(url)
         : externalResourceUri(url);
 
     const whitelistedProtocols = ["ar://", "ipfs://", "https://", "http://"];

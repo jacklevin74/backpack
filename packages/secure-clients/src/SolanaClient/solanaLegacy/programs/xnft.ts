@@ -132,7 +132,7 @@ export async function fetchXnft(xnft: PublicKey | string): Promise<{
   metadata: any;
 } | null> {
   const xnftMetadata: any | null = await fetch(
-    `https://swr.xnftdata.com/nft-data/xnft/${new PublicKey(xnft).toBase58()}`
+    `http://localhost:4000/nft-data/xnft/${new PublicKey(xnft).toBase58()}`
   )
     .then((r) => r.json())
     .catch((e) => {

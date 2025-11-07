@@ -1,8 +1,7 @@
 /* eslint-disable react/jsx-no-useless-fragment */
 /* eslint-disable react-hooks/exhaustive-deps */
 import { type ComponentPropsWithoutRef, useMemo, useState } from "react";
-import type { Blockchain } from "@coral-xyz/common";
-import { formatTitleCase, formatWalletAddress } from "@coral-xyz/common";
+import { Blockchain, formatTitleCase, formatWalletAddress } from "@coral-xyz/common";
 import { useTranslation } from "@coral-xyz/i18n";
 import {
   HardwareIcon,
@@ -350,9 +349,9 @@ function AllWalletsList({
 }) {
   const activeWallet = useActiveWallet();
   const enabledBlockchains = useRecoilValue(enabledBlockchainsAtom);
-  const [blockchainFilter, setBlockchainFilter] = useState(
-    activeWallet.blockchain
-  );
+  // Always show X1 wallets only
+  const blockchainFilter = Blockchain.X1;
+
   const wallets = useAllWallets()
     .filter(
       (w) =>
@@ -379,10 +378,7 @@ function AllWalletsList({
 
   return (
     <YStack flex={1} space="$3">
-      <BlockchainFilter
-        filter={blockchainFilter}
-        setFilter={setBlockchainFilter}
-      />
+      <X1LogoHeader />
       <YStack>
         <_WalletListStack activeWallet={activeWallet} wallets={sortedWallets} />
         <AddButton onClick={onClickAdd} />
@@ -420,6 +416,22 @@ export function AddButton({
         {label ?? t("add")}
       </Text>
     </div>
+  );
+}
+
+function X1LogoHeader() {
+  const blockchainLogo = getBlockchainLogo(Blockchain.X1);
+  return (
+    <XStack display="flex" paddingHorizontal="$4" paddingVertical="$2" justifyContent="center">
+      <img
+        src={blockchainLogo}
+        style={{
+          maxWidth: "32px",
+          maxHeight: "32px",
+          opacity: 0.5
+        }}
+      />
+    </XStack>
   );
 }
 

@@ -54,13 +54,9 @@ const logger = getLogger("provider-injection");
 
 // Wrapper class for X1 that defaults to X1 blockchain
 class ProviderX1Injection extends ProviderSolanaInjection {
-  async connect(options?: {
-    onlyIfTrusted?: boolean;
-    reconnect?: boolean;
-    blockchain?: Blockchain;
-  }) {
-    // Always use X1 blockchain
-    return super.connect({ ...options, blockchain: Blockchain.X1 });
+  constructor(secureClientSender: TransportSender) {
+    // Pass X1 blockchain to parent constructor
+    super(secureClientSender, Blockchain.X1);
   }
 }
 
@@ -84,11 +80,11 @@ function main() {
 }
 
 function initSolana(secureClientSender: TransportSender) {
-  const solana = new ProviderSolanaInjection(secureClientSender);
+  const solana = new ProviderSolanaInjection(secureClientSender); // Now defaults to X1
   const x1 = new ProviderX1Injection(secureClientSender);
 
   try {
-    // Just set solana as backpack for now (backward compatibility)
+    // Set window.backpack - now defaults to X1 blockchain
     Object.defineProperty(window, "backpack", { value: solana });
   } catch (e) {
     console.warn(

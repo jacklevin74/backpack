@@ -9,6 +9,7 @@ import {
   useAnchorContext,
   useEthereumCtx,
   useIsValidAddress,
+  useBlockchainConnectionUrl,
 } from "@coral-xyz/recoil";
 import {
   BpDangerButton,
@@ -61,6 +62,7 @@ function _Send({
   },
 }: SendAmountSelectScreenProps) {
   const { blockchain, publicKey } = useActiveWallet();
+  const connectionUrl = useBlockchainConnectionUrl(blockchain);
   const [token, setToken] = useState<TokenTableBalance | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -73,7 +75,18 @@ function _Send({
     const fetchToken = async () => {
       try {
         setLoading(true);
-        const url = `http://localhost:4000/wallet/${publicKey}?providerId=${blockchain.toUpperCase()}`;
+
+        // Determine the correct providerId for X1 blockchain
+        let providerId = blockchain.toUpperCase();
+        if (blockchain === Blockchain.X1 && connectionUrl) {
+          if (connectionUrl.includes('testnet')) {
+            providerId = 'X1-testnet';
+          } else {
+            providerId = 'X1-mainnet';
+          }
+        }
+
+        const url = `http://localhost:4000/wallet/${publicKey}?providerId=${providerId}`;
         console.log("🌐 [SendAmountSelect] Fetching from:", url);
 
         const response = await fetch(url);
@@ -135,7 +148,7 @@ function _Send({
     if (publicKey) {
       fetchToken();
     }
-  }, [publicKey, blockchain, assetId]);
+  }, [publicKey, blockchain, assetId, connectionUrl]);
 
   if (loading || !token) {
     console.log(
@@ -325,6 +338,12 @@ function SendV2({
 }) {
   const classes = useStyles();
   const theme = useTheme();
+  const { blockchain } = useActiveWallet();
+
+  // Use X1 blockchain logo when on X1 network
+  const tokenLogo = blockchain === Blockchain.X1
+    ? "./x1.png"
+    : (token.tokenListEntry?.logo ?? UNKNOWN_ICON_SRC);
 
   return (
     <>
@@ -377,7 +396,7 @@ function SendV2({
             style={{ display: "flex", justifyContent: "center", marginTop: 20 }}
           >
             <img
-              src={token.tokenListEntry?.logo ?? UNKNOWN_ICON_SRC}
+              src={tokenLogo}
               style={{
                 height: 35,
                 width: 35,

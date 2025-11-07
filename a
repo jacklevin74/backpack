@@ -1,0 +1,48 @@
+fetch("https://rpc.mainnet.x1.xyz/", {
+  "headers": {
+    "accept": "*/*",
+    "accept-language": "en-US,en;q=0.9",
+    "content-type": "application/json",
+    "priority": "u=1, i",
+    "sec-ch-ua": "\"Chromium\";v=\"142\", \"Google Chrome\";v=\"142\", \"Not_A Brand\";v=\"99\"",
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": "\"Linux\"",
+    "sec-fetch-dest": "empty",
+    "sec-fetch-mode": "cors",
+    "sec-fetch-site": "cross-site",
+    "sec-fetch-storage-access": "active",
+    "solana-client": "js/0.0.0-development"
+  },
+  "body": "{\"method\":\"getTransaction\",\"jsonrpc\":\"2.0\",\"params\":[\"22Mm6CT3axKjvLow3rzgjmNVCAE2XKd4HozjfsA9A9LGekgSKtVKy6gajEr3SHdWmADMhMwoaFZVK5nS1cwLKsa2\",{\"encoding\":\"jsonParsed\",\"commitment\":\"confirmed\",\"maxSupportedTransactionVersion\":0}],\"id\":\"388ddb7e-b986-4356-90f1-8f0c0999d3d7\"}",
+  "method": "POST",
+  "mode": "cors",
+  "credentials": "omit"
+});
+
+
+contentScript.js:2 backpack: content-script: starting content script
+contentScript.js:2 backpack: content-script: provider injected
+contentScript.js:2 backpack: content-script: creating content channel
+contentScript.js:2 backpack: content-script: content channel created
+injected.js:1 backpack: provider-injection: starting injected script
+injected.js:1 [Backpack] window.x1 provider set successfully
+injected.js:1 backpack: secure-background FromContentScriptTransportSender: Request {name: 'SECURE_EVM_SHOULD_BE_METAMASK', request: {…}, origin: {…}, id: '9e3539b1-a9a5-4d52-aa5f-510870830961'}
+injected.js:1 backpack: provider-injection: provider ready
+injected.js:1 backpack: secure-background FromContentScriptTransportSender: Response 9e3539b1-a9a5-4d52-aa5f-510870830961 {name: 'SECURE_EVM_SHOULD_BE_METAMASK', origin: {…}, id: '9e3539b1-a9a5-4d52-aa5f-510870830961', response: {…}}
+test:361 Page loaded. Checking for wallet...
+test:362 window.backpack: e {}
+test:363 window.solana: undefined
+test:364 window.ethereum: Proxy(Yz) {_events: i, _eventsCount: 0, backpackRecognized: false, enable: ƒ, send: ƒ, …}
+favicon.ico:1  GET http://localhost:4000/favicon.ico 404 (Not Found)
+test:368 After delay - window.backpack: e {}
+test:178 Backpack found: e {}
+injected.js:1 [ProviderSolanaInjection.connect] Called with options: undefined
+injected.js:1 [ProviderSolanaInjection.connect] Using blockchain: solana
+injected.js:1 [BackpackSolanaWallet.connect] Called with blockchain: solana
+injected.js:1 backpack: secure-background FromContentScriptTransportSender: Request {name: 'SECURE_SVM_CONNECT', request: {…}, origin: {…}, id: 'd4d1d666-69af-48ce-8e52-5bb206ac8aa6'}
+injected.js:1 backpack: secure-background FromContentScriptTransportSender: Response d4d1d666-69af-48ce-8e52-5bb206ac8aa6 {name: 'SECURE_SVM_CONNECT', id: 'd4d1d666-69af-48ce-8e52-5bb206ac8aa6', origin: {…}, error: {…}}
+test:214 Connection error: {message: 'No solana public key found', stack: 'Error: No solana public key found\n    at mp.handle…lolgejnkfiggbcikbjbniidi/background.js:2:3074132)', name: 'Error'}message: "No solana public key found"name: "Error"stack: "Error: No solana public key found\n    at mp.handleConnect (chrome-extension://jhlbmmmflolgejnkfiggbcikbjbniidi/background.js:2:3074132)"[[Prototype]]: Objectconstructor: ƒ Object()hasOwnProperty: ƒ hasOwnProperty()isPrototypeOf: ƒ isPrototypeOf()propertyIsEnumerable: ƒ propertyIsEnumerable()toLocaleString: ƒ toLocaleString()toString: ƒ toString()valueOf: ƒ valueOf()__defineGetter__: ƒ __defineGetter__()__defineSetter__: ƒ __defineSetter__()__lookupGetter__: ƒ __lookupGetter__()__lookupSetter__: ƒ __lookupSetter__()__proto__: (...)get __proto__: ƒ __proto__()set __proto__: ƒ __proto__()
+connectWallet @ test:214
+await in connectWallet
+onclick @ test:104
+ZZ

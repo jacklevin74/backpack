@@ -9,6 +9,7 @@ import {
   enabledBlockchainConfigsAtom,
   getBlockchainLogo,
   secureUserAtom,
+  useActiveWallet,
   useBackgroundClient,
   useIsAggregateWallets,
   userClientAtom,
@@ -54,6 +55,7 @@ export function Preferences() {
   const userClient = useRecoilValue(userClientAtom);
   const isAggregateWallets = useIsAggregateWallets();
   const enabledBlockchainConfigs = useRecoilValue(enabledBlockchainConfigsAtom);
+  const { blockchain } = useActiveWallet();
   const { t } = useTranslation();
 
   const onDeveloperModeSwitch = async (developerMode: boolean) => {
@@ -74,6 +76,24 @@ export function Preferences() {
     },
     [t("trusted_sites")]: {
       onClick: () => navigation.push(Routes.PreferencesTrustedSitesScreen),
+    },
+    "RPC Connection": {
+      onClick: () =>
+        navigation.push(Routes.PreferencesBlockchainRpcConnectionScreen, {
+          blockchain,
+        }),
+    },
+    "Confirmation Commitment": {
+      onClick: () =>
+        navigation.push(Routes.PreferencesBlockchainCommitmentScreen, {
+          blockchain,
+        }),
+    },
+    "Explorer": {
+      onClick: () =>
+        navigation.push(Routes.PreferencesBlockchainExplorerScreen, {
+          blockchain,
+        }),
     },
     [t("language")]: {
       onClick: () => navigation.push(Routes.PreferencesLanguageScreen),
@@ -126,41 +146,9 @@ export function Preferences() {
   };
   */
 
-  const blockchainMenuItems: any = Object.fromEntries(
-    new Map(
-      Object.entries(enabledBlockchainConfigs).map(([blockchain, config]) => {
-        return [
-          config.Name,
-          {
-            onClick: () =>
-              navigation.push(Routes.PreferencesBlockchainScreen, {
-                blockchain,
-              }),
-            icon: () => {
-              const blockchainLogo = getBlockchainLogo(
-                blockchain as Blockchain
-              );
-              return (
-                <img
-                  src={blockchainLogo}
-                  style={{
-                    width: "12px",
-                    height: "12px",
-                    marginRight: "8px",
-                  }}
-                />
-              );
-            },
-          },
-        ];
-      })
-    )
-  );
-
   return (
     <div>
       <SettingsList menuItems={menuItems} />
-      <SettingsList menuItems={blockchainMenuItems as any} />
     </div>
   );
 }

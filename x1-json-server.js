@@ -29,11 +29,12 @@ const https = require("https");
 const url = require("url");
 
 const PORT = 4000;
-const X1_RPC_URL = "https://rpc.mainnet.x1.xyz";
+const X1_MAINNET_RPC_URL = "https://rpc.mainnet.x1.xyz";
+const X1_TESTNET_RPC_URL = "https://rpc.testnet.x1.xyz";
 const XNT_PRICE = 1.0; // $1 per XNT
 
 // Fetch real balance from X1 RPC
-async function getX1Balance(address) {
+async function getX1Balance(address, rpcUrl) {
   return new Promise((resolve, reject) => {
     const postData = JSON.stringify({
       jsonrpc: "2.0",
@@ -50,7 +51,7 @@ async function getX1Balance(address) {
       },
     };
 
-    const req = https.request(X1_RPC_URL, options, (res) => {
+    const req = https.request(rpcUrl, options, (res) => {
       let data = "";
 
       res.on("data", (chunk) => {
@@ -84,9 +85,12 @@ async function getX1Balance(address) {
 }
 
 // Get wallet data with real balance from X1 RPC
-async function getWalletData(address) {
+async function getWalletData(address, network = 'mainnet') {
+  const rpcUrl = network === 'testnet' ? X1_TESTNET_RPC_URL : X1_MAINNET_RPC_URL;
+  console.log(`  Using ${network} RPC: ${rpcUrl}`);
+
   try {
-    const balance = await getX1Balance(address);
+    const balance = await getX1Balance(address, rpcUrl);
     console.log(`  Balance from X1 RPC: ${balance} XNT`);
 
     return {
@@ -222,12 +226,25 @@ const server = http.createServer((req, res) => {
   // Match /wallet/:address pattern
   const walletMatch = pathname.match(/^\/wallet\/([a-zA-Z0-9]+)$/);
 
-  if (walletMatch && query.providerId === "X1") {
+  // Check if this is an X1 request (either "X1", "X1-testnet", or "X1-mainnet")
+  const providerId = query.providerId || '';
+  const isX1Request = providerId === "X1" || providerId === "X1-testnet" || providerId === "X1-mainnet";
+
+  if (walletMatch && isX1Request) {
     const address = walletMatch[1];
-    console.log(`✅ X1 wallet request for address: ${address}`);
+    // Determine network from providerId suffix or network query param
+    let network = 'mainnet';
+    if (providerId === 'X1-testnet') {
+      network = 'testnet';
+    } else if (providerId === 'X1-mainnet') {
+      network = 'mainnet';
+    } else if (query.network) {
+      network = query.network;
+    }
+    console.log(`✅ X1 wallet request for address: ${address} on ${network} (providerId: ${providerId})`);
 
     // Async call to get wallet data
-    getWalletData(address)
+    getWalletData(address, network)
       .then((data) => {
         res.writeHead(200);
         res.end(JSON.stringify(data, null, 2));

@@ -18,15 +18,7 @@ export function Unlocked() {
       <Bootstrap />
       <WithApollo>
         <ReactQueryClientProvider client={reactQueryClient}>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              height: "100%",
-            }}
-          >
-            <Router />
-          </div>
+          <Router />
         </ReactQueryClientProvider>
       </WithApollo>
     </Suspense>

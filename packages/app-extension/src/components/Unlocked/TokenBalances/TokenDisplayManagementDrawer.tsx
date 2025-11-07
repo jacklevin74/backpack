@@ -15,7 +15,7 @@ import {
 } from "@coral-xyz/common";
 import type { ProviderId } from "@coral-xyz/data-components";
 import { useTranslation } from "@coral-xyz/i18n";
-import { hiddenTokenAddresses, useBackgroundClient } from "@coral-xyz/recoil";
+import { hiddenTokenAddresses, useBackgroundClient, useBlockchainConnectionUrl } from "@coral-xyz/recoil";
 import {
   ListItemCore,
   ListItemIconCore,
@@ -73,12 +73,23 @@ export function HiddenTokensList({
   blockchain: Blockchain;
 }) {
   const hiddenTokens = useRecoilValue(hiddenTokenAddresses(blockchain));
+  const connectionUrl = useBlockchainConnectionUrl(blockchain);
   const [tokens, setTokens] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchTokens = async () => {
       try {
-        const url = `http://localhost:4000/wallet/${address}?providerId=${blockchain.toUpperCase()}`;
+        // Determine the correct providerId for X1 blockchain
+        let providerId = blockchain.toUpperCase();
+        if (blockchain === 'x1' && connectionUrl) {
+          if (connectionUrl.includes('testnet')) {
+            providerId = 'X1-testnet';
+          } else {
+            providerId = 'X1-mainnet';
+          }
+        }
+
+        const url = `http://localhost:4000/wallet/${address}?providerId=${providerId}`;
         const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -92,7 +103,7 @@ export function HiddenTokensList({
     };
 
     fetchTokens();
-  }, [address, blockchain]);
+  }, [address, blockchain, connectionUrl]);
 
   const ownedTokens = useMemo<_TokenListEntryFragmentType[]>(
     () =>

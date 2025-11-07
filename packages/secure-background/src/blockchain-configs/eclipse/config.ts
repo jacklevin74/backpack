@@ -13,7 +13,7 @@ export const eclipseBlockchainConfig: BlockchainConfig<Blockchain.ECLIPSE> = {
 
   defaultRpcUrl: SolanaCluster.MAINNET,
   blowfishUrl:
-    "https://blowfish.xnftdata.com/solana/v0/mainnet/scan/transactions",
+    "http://localhost:4000/solana/v0/mainnet/scan/transactions",
   isTestnet: false,
 
   Enabled: false,

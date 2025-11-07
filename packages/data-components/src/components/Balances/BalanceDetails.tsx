@@ -9,6 +9,7 @@ import {
 import { useTranslation } from "@coral-xyz/i18n";
 import {
   useActiveWallet,
+  useBlockchainConnectionUrlNullable,
   useBlockchainExplorerNullable,
 } from "@coral-xyz/recoil";
 import {
@@ -111,7 +112,18 @@ export function BalanceDetails({
 }: BalanceDetailsProps) {
   const { t } = useTranslation();
   const activeWallet = useActiveWallet();
-  const providerId = activeWallet.blockchain.toUpperCase() as ProviderId;
+  const connectionUrl = useBlockchainConnectionUrlNullable(activeWallet.blockchain);
+
+  // Determine providerId - for X1, append -testnet or -mainnet based on connection URL
+  let providerId = activeWallet.blockchain.toUpperCase() as ProviderId;
+  if (activeWallet.blockchain === Blockchain.X1 && connectionUrl) {
+    if (connectionUrl.includes('testnet')) {
+      providerId = 'X1-testnet' as ProviderId;
+    } else {
+      providerId = 'X1-mainnet' as ProviderId;
+    }
+  }
+
   const { data } = useSuspenseQuery(GET_TOKENS_FOR_WALLET_DETAILS, {
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",

@@ -472,6 +472,8 @@ export class SolanaClient extends BlockchainClientBase<Blockchain.SOLANA> {
   }
 
   public confirmTransaction(tx: string): Promise<true> {
+    // Use 'confirmed' for all - 'processed' is not a valid Finality level
+    // X1 is fast enough with 'confirmed'
     return this.wallet.confirmTransaction(tx, "confirmed").then(() => true);
   }
 }

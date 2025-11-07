@@ -1,5 +1,5 @@
 import type { Blockchain } from "@coral-xyz/common";
-import { hiddenTokenAddresses } from "@coral-xyz/recoil";
+import { hiddenTokenAddresses, useBlockchainConnectionUrl } from "@coral-xyz/recoil";
 import { YStack } from "@coral-xyz/tamagui";
 import {
   type ReactElement,
@@ -82,12 +82,26 @@ function _TokenBalances({
     hiddenTokenAddresses(providerId.toLowerCase() as Blockchain)
   );
 
+  // Get connection URL to detect testnet for X1
+  const blockchain = providerId.toLowerCase() as Blockchain;
+  const connectionUrl = useBlockchainConnectionUrl(blockchain);
+
   const [rawBalances, setRawBalances] = useState<ResponseTokenBalance[]>([]);
 
   useEffect(() => {
     const fetchBalances = async () => {
       try {
-        const url = `http://localhost:4000/wallet/${address}?providerId=${providerId}`;
+        // Determine the correct providerId for X1 blockchain
+        let finalProviderId = providerId;
+        if (blockchain === 'x1' && connectionUrl) {
+          if (connectionUrl.includes('testnet')) {
+            finalProviderId = 'X1-testnet' as ProviderId;
+          } else {
+            finalProviderId = 'X1-mainnet' as ProviderId;
+          }
+        }
+
+        const url = `http://localhost:4000/wallet/${address}?providerId=${finalProviderId}`;
         console.log("🌐 [TokenBalances] Fetching from:", url);
 
         const response = await fetch(url);
@@ -142,7 +156,7 @@ function _TokenBalances({
       return () => clearInterval(interval);
     }
     return undefined;
-  }, [address, providerId, pollingIntervalSeconds]);
+  }, [address, providerId, pollingIntervalSeconds, blockchain, connectionUrl]);
 
   /**
    * Memoized value of the individual wallet token balances that

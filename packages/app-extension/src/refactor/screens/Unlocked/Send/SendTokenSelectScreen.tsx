@@ -1,7 +1,8 @@
 import { useEffect,useMemo, useState } from "react";
+import { Blockchain } from "@coral-xyz/common";
 import { useTranslation } from "@coral-xyz/i18n";
 import { EmptyState, WarningIcon } from "@coral-xyz/react-common";
-import { useActiveWallet } from "@coral-xyz/recoil";
+import { useActiveWallet, useBlockchainConnectionUrl } from "@coral-xyz/recoil";
 import {
   ETH_NATIVE_MINT,
   SOL_NATIVE_MINT,
@@ -31,6 +32,7 @@ export function SendTokenSelectScreen(props: SendTokenSelectScreenProps) {
 
 function Container({ navigation }: SendTokenSelectScreenProps) {
   const { blockchain, publicKey } = useActiveWallet();
+  const connectionUrl = useBlockchainConnectionUrl(blockchain);
   const { t } = useTranslation();
   const [tokens, setTokens] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,7 +47,17 @@ function Container({ navigation }: SendTokenSelectScreenProps) {
         setLoading(true);
         setError(null);
 
-        const url = `http://localhost:4000/wallet/${publicKey}?providerId=${blockchain.toUpperCase()}`;
+        // Determine the correct providerId for X1 blockchain
+        let providerId = blockchain.toUpperCase();
+        if (blockchain === Blockchain.X1 && connectionUrl) {
+          if (connectionUrl.includes('testnet')) {
+            providerId = 'X1-testnet';
+          } else {
+            providerId = 'X1-mainnet';
+          }
+        }
+
+        const url = `http://localhost:4000/wallet/${publicKey}?providerId=${providerId}`;
         console.log("🌐 [SendTokenSelect] Fetching from:", url);
 
         const response = await fetch(url);
@@ -106,7 +118,7 @@ function Container({ navigation }: SendTokenSelectScreenProps) {
     if (publicKey) {
       fetchTokens();
     }
-  }, [publicKey, blockchain]);
+  }, [publicKey, blockchain, connectionUrl]);
 
   if (loading) {
     console.log("🔍 [SendTokenSelect] Showing loading state");

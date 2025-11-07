@@ -57,9 +57,14 @@ function Container({ navigation, route }: SendConfirmationScreenProps) {
   // Handle the asynchronous confirmation of the transaction signature
   useAsyncEffect(async () => {
     try {
-      await client.confirmTransaction(signature);
-      await wait(2);
-      setIsConfirmed(true);
+      // For X1, skip waiting for confirmation - show success immediately
+      if (blockchain === Blockchain.X1) {
+        setIsConfirmed(true);
+      } else {
+        await client.confirmTransaction(signature);
+        await wait(2);
+        setIsConfirmed(true);
+      }
     } catch (e) {
       const error = e as Error;
       setErrorMessage(error?.message ?? t("failed"));

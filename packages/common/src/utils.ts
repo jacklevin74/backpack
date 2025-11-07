@@ -40,7 +40,7 @@ export function externalResourceUri(
     return uri.replace("ar://", "https://arweave.net/");
   }
   if (options.cached) {
-    return `https://swr.xnftdata.com/1min/${uri}`;
+    return `http://localhost:4000/1min/${uri}`;
   }
   return `${uri}`;
 }
@@ -50,14 +50,7 @@ export function proxyImageUrl(
   size = 400,
   unbounded?: boolean
 ): string {
-  if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
-    if (url.includes("swr.xnftdata.com/avatars/")) {
-      url += `?size=${size}`;
-    }
-    return `https://imageresizer.xnftdata.com/fit=contain,${
-      unbounded ? `width=${size},` : `width=${size},height=${size},`
-    }quality=85/${url}`;
-  }
+  // Image proxy removed - return URL as-is
   return url;
 }
 

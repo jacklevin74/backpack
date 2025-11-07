@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>X1 Transaction Signing Test</title>
+  <title>X1 Transaction Signing Test v2-DEBUG</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -148,6 +148,32 @@
 
   <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js"></script>
   <script>
+    // Simple base58 encoder
+    const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+    function base58Encode(buffer) {
+      const digits = [0];
+      for (let i = 0; i < buffer.length; i++) {
+        let carry = buffer[i];
+        for (let j = 0; j < digits.length; j++) {
+          carry += digits[j] << 8;
+          digits[j] = carry % 58;
+          carry = (carry / 58) | 0;
+        }
+        while (carry > 0) {
+          digits.push(carry % 58);
+          carry = (carry / 58) | 0;
+        }
+      }
+      let string = '';
+      for (let i = 0; buffer[i] === 0 && i < buffer.length - 1; i++) {
+        string += BASE58_ALPHABET[0];
+      }
+      for (let i = digits.length - 1; i >= 0; i--) {
+        string += BASE58_ALPHABET[digits[i]];
+      }
+      return string;
+    }
+
     let wallet = null;
     let connection = null;
     const X1_RPC_URL = 'https://rpc.mainnet.x1.xyz';
@@ -163,23 +189,23 @@
         statusEl.className = 'status info';
         statusEl.textContent = '🔄 Connecting to Backpack...';
 
-        // Wait for Backpack to be injected (max 3 seconds)
+        // Wait for X1 provider to be injected (max 3 seconds)
         let attempts = 0;
-        while (!window.backpack && attempts < 30) {
+        while (!window.x1 && attempts < 30) {
           await new Promise(resolve => setTimeout(resolve, 100));
           attempts++;
         }
 
-        // Check if Backpack is installed
-        if (!window.backpack) {
-          throw new Error('Backpack wallet not found! Please install and load the Backpack extension, then refresh this page.');
+        // Check if X1 wallet is available
+        if (!window.x1) {
+          throw new Error('X1 wallet not found! Please install and load the Backpack extension with X1 support, then refresh this page.');
         }
 
-        console.log('Backpack found:', window.backpack);
+        console.log('X1 wallet found:', window.x1);
 
-        // Connect to Backpack (Solana now points to X1 RPC)
-        const response = await window.backpack.connect();
-        wallet = window.backpack;
+        // Connect to X1 wallet
+        const response = await window.x1.connect();
+        wallet = window.x1;
 
         const publicKey = response.publicKey.toString();
 
@@ -188,7 +214,7 @@
         const balanceXNT = (balanceLamports / 1e9).toFixed(4);
 
         statusEl.className = 'status success';
-        statusEl.textContent = '✅ Connected to Backpack';
+        statusEl.textContent = '✅ Connected to X1 Wallet';
 
         infoEl.innerHTML = `
           <div style="background: #0a0a0a; padding: 15px; border-radius: 6px; border: 1px solid #333;">
@@ -319,7 +345,18 @@
         const encodedMessage = new TextEncoder().encode(message);
         const signedMessage = await wallet.signMessage(encodedMessage);
 
-        const signatureBase58 = solanaWeb3.base58.encode(signedMessage.signature);
+        // Debug: Log what we received
+        console.log('[signMessage v2] Received signedMessage:', signedMessage);
+        console.log('[signMessage v2] Type:', typeof signedMessage);
+        console.log('[signMessage v2] Is array?', Array.isArray(signedMessage));
+        console.log('[signMessage v2] Has signature prop?', signedMessage?.signature);
+
+        // Handle both formats: {signature: Uint8Array} or just Uint8Array
+        const signature = signedMessage.signature || signedMessage;
+        console.log('[signMessage v2] Using signature:', signature);
+
+        // Convert Uint8Array to base58 string
+        const signatureBase58 = base58Encode(signature);
 
         statusEl.innerHTML = `
           <div class="status success">

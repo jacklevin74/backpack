@@ -13,7 +13,7 @@ export const ethereumBlockchainConfig: BlockchainConfig<Blockchain.ETHEREUM> = {
 
   defaultRpcUrl: EthereumConnectionUrl.MAINNET,
   blowfishUrl:
-    "https://blowfish.xnftdata.com/ethereum/v0/mainnet/scan/transactions",
+    "http://localhost:4000/ethereum/v0/mainnet/scan/transactions",
   isTestnet: false,
 
   Enabled: true,

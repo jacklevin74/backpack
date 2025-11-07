@@ -11,6 +11,7 @@ import type {
 } from "@coral-xyz/secure-clients/types";
 import { selector, selectorFamily } from "recoil";
 
+import { blockchainConnectionUrl } from "../preferences";
 import { secureBackgroundSenderAtom } from "./transportAtoms";
 import { secureUserAtom, secureUserAtomNullable } from "./userClientAtoms";
 
@@ -56,12 +57,21 @@ export const blockchainClientAtom = selectorFamily<
     ({ get }) => {
       const secureBackgroundSender = get(secureBackgroundSenderAtom);
       const user = get(secureUserAtomNullable);
+      // Include connection URL as dependency to invalidate cache when RPC changes
+      const connectionUrl = get(blockchainConnectionUrl(blockchain));
+      console.log(
+        `[blockchainClientAtom] Creating client for ${blockchain} with URL: ${connectionUrl}`
+      );
       return createBlockchainClient(
         blockchain,
         secureBackgroundSender,
         user ?? undefined
       );
     },
+  // Disable caching to ensure fresh client on every access
+  cachePolicy_UNSTABLE: {
+    eviction: 'most-recent',
+  },
   // this prevents recoil from freezing the object in dev mode
   // required to keep the transport working.
   dangerouslyAllowMutability: true,

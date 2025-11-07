@@ -34,7 +34,19 @@ echo ""
 
 # Step 2: Build packages
 echo -e "${YELLOW}Step 2: Building packages...${NC}"
-yarn build --force
+echo -e "${BLUE}Using Bun for faster builds...${NC}"
+
+# Check if bun is installed
+if ! command -v bun &> /dev/null; then
+    echo -e "${RED}Bun not found. Install with: curl -fsSL https://bun.sh/install | bash${NC}"
+    echo -e "${YELLOW}Falling back to yarn...${NC}"
+    yarn build --force
+else
+    BUNS_VERSION=$(bun --version)
+    echo -e "  Bun version: ${BUNS_VERSION}"
+    bun run build --force
+fi
+
 echo -e "${GREEN}✓ Build complete${NC}"
 echo ""
 

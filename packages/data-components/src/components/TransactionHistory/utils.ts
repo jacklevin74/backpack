@@ -1,10 +1,7 @@
-import { useQuery } from "@apollo/client";
 import { formatDate, UNKNOWN_ICON_SRC } from "@coral-xyz/common";
-import { useActiveWallet } from "@coral-xyz/recoil";
 import { useMemo } from "react";
 
 import type { GetTransactionsQuery, ProviderId } from "../../apollo/graphql";
-import { GET_TOKEN_BALANCES_QUERY } from "../Balances";
 
 export type ResponseTransaction = NonNullable<
   NonNullable<GetTransactionsQuery["wallet"]>["transactions"]
@@ -52,23 +49,6 @@ export function useTokenLogo({
   name?: string;
   symbol?: string;
 }): string {
-  const wallet = useActiveWallet();
-  const { data } = useQuery(GET_TOKEN_BALANCES_QUERY, {
-    returnPartialData: true,
-    fetchPolicy: "cache-only",
-    variables: {
-      address: wallet.publicKey,
-      providerId: wallet.blockchain.toUpperCase() as ProviderId,
-    },
-  });
-
-  const item = useMemo(() => {
-    const edges = data?.wallet?.balances?.tokens?.edges ?? [];
-    return edges.find((e) => {
-      if (name) return e.node.tokenListEntry?.name === name;
-      return e.node.tokenListEntry?.symbol === symbol;
-    });
-  }, [data, name, symbol]);
-
-  return item?.node?.tokenListEntry?.logo ?? UNKNOWN_ICON_SRC;
+  // Token logo lookup disabled - return default icon
+  return UNKNOWN_ICON_SRC;
 }

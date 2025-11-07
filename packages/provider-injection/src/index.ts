@@ -1,13 +1,13 @@
 Object.defineProperty(globalThis, "_backpack_injected_provider", {
   value: true,
-  writable: false
+  writable: false,
 });
 
 import {
-  MOBILE_APP_TRANSPORT_SENDER_EVENTS,
   FromContentScriptTransportSender,
+  MOBILE_APP_TRANSPORT_SENDER_EVENTS,
   ToMobileAppTransportSender,
-} from "@coral-xyz/secure-clients";
+ UserClient } from "@coral-xyz/secure-clients";
 
 // This is a bit of a hack, it's speicifically at the top of this file
 // to ensure it's loaded before other code
@@ -29,6 +29,7 @@ if (globalThis.ReactNativeWebView && !globalThis.isHiddenWebView) {
 }
 
 import {
+  Blockchain,
   CHANNEL_PLUGIN_RPC_REQUEST,
   CHANNEL_PLUGIN_RPC_RESPONSE,
   getLogger,
@@ -39,6 +40,7 @@ import {
   ProviderRootXnftInjection,
   ProviderSolanaInjection,
 } from "@coral-xyz/provider-core";
+import type { TransportSender } from "@coral-xyz/secure-clients/types";
 import { initialize } from "@coral-xyz/wallet-standard";
 import { v4 as uuidV4 } from "uuid";
 
@@ -47,10 +49,20 @@ import type {
   EIP6963RequestProviderEvent,
   WindowEthereum,
 } from "./types";
-import { TransportSender } from "@coral-xyz/secure-clients/types";
-import { UserClient } from "@coral-xyz/secure-clients";
 
 const logger = getLogger("provider-injection");
+
+// Wrapper class for X1 that defaults to X1 blockchain
+class ProviderX1Injection extends ProviderSolanaInjection {
+  async connect(options?: {
+    onlyIfTrusted?: boolean;
+    reconnect?: boolean;
+    blockchain?: Blockchain;
+  }) {
+    // Always use X1 blockchain
+    return super.connect({ ...options, blockchain: Blockchain.X1 });
+  }
+}
 
 // Entry.
 function main() {
@@ -73,13 +85,23 @@ function main() {
 
 function initSolana(secureClientSender: TransportSender) {
   const solana = new ProviderSolanaInjection(secureClientSender);
+  const x1 = new ProviderX1Injection(secureClientSender);
 
   try {
+    // Just set solana as backpack for now (backward compatibility)
     Object.defineProperty(window, "backpack", { value: solana });
   } catch (e) {
     console.warn(
       "Backpack couldn't override `window.backpack`. Disable other Solana wallets to use Backpack."
     );
+  }
+
+  // Add x1 as a separate property on window
+  try {
+    Object.defineProperty(window, "x1", { value: x1 });
+    console.log("[Backpack] window.x1 provider set successfully");
+  } catch (e) {
+    console.error("Backpack couldn't set `window.x1`.", e);
   }
 
   try {
@@ -124,11 +146,11 @@ function initEthereum(secureClientSender: TransportSender) {
           ...new Set([
             ...(window.ethereum
               ? // Coinbase wallet uses a providers array on window.ethereum, so
-              // include those if already registered
-              Array.isArray(window.ethereum.providers)
+                // include those if already registered
+                Array.isArray(window.ethereum.providers)
                 ? [...window.ethereum.providers, window.ethereum]
                 : // Else just window.ethereum if it is registered
-                [window.ethereum]
+                  [window.ethereum]
               : []),
             backpackEthereum,
           ]),
@@ -186,13 +208,9 @@ function initEthereum(secureClientSender: TransportSender) {
               if (
                 window.location.href.endsWith(".app.uniswap.org") ||
                 window.location.href === "app.uniswap.org" ||
-                (
-                  (
-                    window.location.href === "kwenta.io" ||
-                    window.location.href.endsWith(".kwenta.io")
-                  )
-                  && prop === "providers"
-                )
+                ((window.location.href === "kwenta.io" ||
+                  window.location.href.endsWith(".kwenta.io")) &&
+                  prop === "providers")
               ) {
                 return null;
               }

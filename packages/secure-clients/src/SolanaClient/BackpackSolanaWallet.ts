@@ -1,11 +1,8 @@
 import { Blockchain } from "@coral-xyz/common";
 import type { SVMClient } from "@coral-xyz/secure-background/clients";
 import type { SecureEvent } from "@coral-xyz/secure-background/types";
-import type {
-  SolanaSignInInput} from "@solana/wallet-standard-features";
-import {
-  SolanaSignInOutput,
-} from "@solana/wallet-standard-features";
+import type { SolanaSignInInput } from "@solana/wallet-standard-features";
+import { SolanaSignInOutput } from "@solana/wallet-standard-features";
 import type {
   Commitment,
   ConfirmOptions,
@@ -57,6 +54,10 @@ export class BackpackSolanaWallet {
     publicKey: string;
     connectionUrl: string;
   }> {
+    console.log(
+      "[BackpackSolanaWallet.connect] Called with blockchain:",
+      blockchain
+    );
     const connected = await this.secureSvmClient.connect({
       blockchain,
       silent,
@@ -65,6 +66,13 @@ export class BackpackSolanaWallet {
     if (!connected.response) {
       throw connected.error;
     }
+
+    // Update the blockchain for subsequent operations
+    this.blockchain = blockchain;
+    console.log(
+      "[BackpackSolanaWallet.connect] Updated this.blockchain to:",
+      this.blockchain
+    );
 
     return connected.response;
   }
@@ -210,10 +218,18 @@ export class BackpackSolanaWallet {
     },
     uiOptions?: SecureEvent<"SECURE_SVM_SIGN_TX">["uiOptions"]
   ): Promise<T> {
+    console.log(
+      "[BackpackSolanaWallet.signTransaction] this.blockchain =",
+      this.blockchain
+    );
     const publicKey = request.publicKey;
     const preparedTx = await this.prepareTransaction(request);
     const txStr = encode(preparedTx.serialize({ requireAllSignatures: false }));
 
+    console.log(
+      "[BackpackSolanaWallet.signTransaction] Calling secureSvmClient.signTransaction with blockchain:",
+      this.blockchain
+    );
     const signature = await this.secureSvmClient.signTransaction(
       {
         publicKey: publicKey.toBase58(),

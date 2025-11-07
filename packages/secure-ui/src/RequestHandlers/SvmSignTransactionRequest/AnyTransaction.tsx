@@ -1,9 +1,7 @@
-import type { QueuedUiRequest } from "../../_atoms/requestAtoms";
-
-import { useState } from "react";
-
 import { Blockchain } from "@coral-xyz/common";
+import { DEFAULT_SOLANA_CLUSTER } from "@coral-xyz/secure-background/legacyCommon";
 import { SolanaClient } from "@coral-xyz/secure-clients";
+import { useState } from "react";
 import {
   useRecoilStateLoadable,
   useRecoilValue,
@@ -13,6 +11,7 @@ import {
 import { TransactionSettings } from "./TransactionSettings";
 import { useFetchSolanaBlowfishEvaluation } from "./useFetchSolanaBlowfishEvaluation";
 import { RequireUserUnlocked } from "../../RequireUserUnlocked/RequireUserUnlocked";
+import type { QueuedUiRequest } from "../../_atoms/requestAtoms";
 import { solanaMutatedTransactionAtom } from "../../_atoms/solanaMutatedTransactionAtom";
 import { solanaPublicKeyHasGas } from "../../_atoms/solanaTransactionAtom";
 import { solanaTransactionMutLockedNftsAtom } from "../../_atoms/solanaTransactionMutLockedNftsAtom";
@@ -58,7 +57,7 @@ export function AnyTransaction({
   const hasGas = hasGasLoadable.valueMaybe() ?? true;
   const mutableLockedNfts = mutableLockedNftsLoadable.valueMaybe() ?? [];
 
-  // For X1, use a dummy URL that won't be called; we skip evaluation in the render logic
+  // Pass connection URL to detect X1 and skip Blowfish evaluation
   const blowfishEvaluation = useFetchSolanaBlowfishEvaluation(
     SolanaClient.config.blowfishUrl,
     [currentRequest.request.tx],
@@ -69,7 +68,8 @@ export function AnyTransaction({
         setBlowfishError(true);
         console.error(error);
       }
-    }
+    },
+    DEFAULT_SOLANA_CLUSTER
   );
 
   const [transactionOverridesLoadable, setTransactionOverrides] =
@@ -136,15 +136,15 @@ export function AnyTransaction({
           blowfishEvaluation.error ||
           !blowfishEvaluation.normalizedEvaluation) &&
         showSimulationFailed ? (
-          <BlockingWarning
-            title="Simulation failed"
-            warning={{
+        <BlockingWarning
+          title="Simulation failed"
+          warning={{
             severity: "WARNING",
             kind: "error",
             message: "Please try again.",
           }}
-            onIgnore={() => setShowSimulationFailed(false)}
-            onDeny={onDeny}
+          onIgnore={() => setShowSimulationFailed(false)}
+          onDeny={onDeny}
         />
       ) : (
         <BlowfishTransactionDetails
@@ -158,10 +158,10 @@ export function AnyTransaction({
           prepend={
             isTxMutable && transactionOverrides
               ? [
-                <TransactionSettings
-                  key="TransactionSettings"
-                  overrides={transactionOverrides}
-                  setOverrides={setTransactionOverrides}
+                  <TransactionSettings
+                    key="TransactionSettings"
+                    overrides={transactionOverrides}
+                    setOverrides={setTransactionOverrides}
                   />,
                 ]
               : undefined

@@ -1,6 +1,5 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { gql, useApolloClient } from "@apollo/client";
 import { Blockchain, UNKNOWN_ICON_SRC } from "@coral-xyz/common";
 import { useTranslation } from "@coral-xyz/i18n";
 import { PrimaryButton } from "@coral-xyz/react-common";
@@ -61,37 +60,91 @@ function _Send({
     params: { assetId, to },
   },
 }: SendAmountSelectScreenProps) {
-  const apollo = useApolloClient();
-  const data = apollo.readFragment<TokenTableBalance>({
-    id: `TokenBalance:${assetId}`,
-    fragment: gql`
-      fragment SelectorTokenBalanceFragment on TokenBalance {
-        id
-        address
-        amount
-        decimals
-        displayAmount
-        marketData {
-          id
-          percentChange
-          value
-          valueChange
+  const { blockchain, publicKey } = useActiveWallet();
+  const [token, setToken] = useState<TokenTableBalance | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  console.log("🔍 [SendAmountSelect] Component mounted");
+  console.log("🔍 [SendAmountSelect] assetId:", assetId);
+  console.log("🔍 [SendAmountSelect] blockchain:", blockchain);
+  console.log("🔍 [SendAmountSelect] publicKey:", publicKey);
+
+  useEffect(() => {
+    const fetchToken = async () => {
+      try {
+        setLoading(true);
+        const url = `http://localhost:4000/wallet/${publicKey}?providerId=${blockchain.toUpperCase()}`;
+        console.log("🌐 [SendAmountSelect] Fetching from:", url);
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-        token
-        tokenListEntry {
-          id
-          address
-          logo
-          name
-          symbol
+
+        const data = await response.json();
+        console.log("✅ [SendAmountSelect] JSON Response:", data);
+
+        // Transform and find the specific token by assetId
+        const transformedTokens = data.tokens.map((token: any) => ({
+          id: token.mint,
+          address: token.mint,
+          amount: Math.floor(
+            token.balance * Math.pow(10, token.decimals)
+          ).toString(),
+          decimals: token.decimals,
+          displayAmount: token.balance.toString(),
+          token: token.mint,
+          tokenListEntry: {
+            id: token.symbol.toLowerCase(),
+            address: token.mint,
+            decimals: token.decimals,
+            logo: token.logo,
+            name: token.name,
+            symbol: token.symbol,
+          },
+          marketData: {
+            id: `${token.symbol.toLowerCase()}-market`,
+            price: token.price,
+            value: token.valueUSD,
+            percentChange: 0,
+            valueChange: 0,
+          },
+        }));
+
+        // Find the token matching the assetId
+        const selectedToken = transformedTokens.find(
+          (t: any) => t.id === assetId
+        );
+        console.log("🎯 [SendAmountSelect] Selected token:", selectedToken);
+
+        if (selectedToken) {
+          setToken(selectedToken);
+        } else {
+          console.error(
+            "❌ [SendAmountSelect] Token not found for assetId:",
+            assetId
+          );
         }
+      } catch (error) {
+        console.error("❌ [SendAmountSelect] Fetch error:", error);
+      } finally {
+        setLoading(false);
       }
-    `,
-  });
+    };
 
-  if (!data) return null;
+    if (publicKey) {
+      fetchToken();
+    }
+  }, [publicKey, blockchain, assetId]);
 
-  return <_SendInner navigation={navigation} token={data} to={to} />;
+  if (loading || !token) {
+    console.log(
+      "🔍 [SendAmountSelect] Loading or no token, showing loading state"
+    );
+    return <LoadingContainer />;
+  }
+
+  return <_SendInner navigation={navigation} token={token} to={to} />;
 }
 
 function _SendInner({

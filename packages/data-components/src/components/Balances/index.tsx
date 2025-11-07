@@ -1,7 +1,14 @@
 import type { Blockchain } from "@coral-xyz/common";
 import { hiddenTokenAddresses } from "@coral-xyz/recoil";
 import { YStack } from "@coral-xyz/tamagui";
-import { type ReactElement, type ReactNode, Suspense, useMemo } from "react";
+import {
+  type ReactElement,
+  type ReactNode,
+  Suspense,
+  useMemo,
+  useState,
+  useEffect,
+} from "react";
 import { useRecoilValue } from "recoil";
 
 import {
@@ -11,9 +18,7 @@ import {
 } from "./BalanceSummary";
 import { BalancesTable } from "./BalancesTable";
 import type { ResponseBalanceSummary, ResponseTokenBalance } from "./utils";
-import { gql } from "../../apollo";
 import type { ProviderId } from "../../apollo/graphql";
-import { usePolledSuspenseQuery } from "../../hooks";
 import type { DataComponentScreenProps } from "../common";
 
 export {
@@ -25,50 +30,6 @@ export { BalancesTable } from "./BalancesTable";
 export type { ResponseBalanceSummary, ResponseTokenBalance };
 
 const DEFAULT_POLLING_INTERVAL_SECONDS = 60;
-
-export const GET_TOKEN_BALANCES_QUERY = gql(`
-  query GetTokenBalances($address: String!, $providerId: ProviderID!) {
-    wallet(address: $address, providerId: $providerId) {
-      id
-      balances {
-        id
-        aggregate {
-          id
-          percentChange
-          value
-          valueChange
-        }
-        tokens {
-          edges {
-            node {
-              id
-              address
-              amount
-              decimals
-              displayAmount
-              marketData {
-                id
-                percentChange
-                price
-                value
-                valueChange
-              }
-              token
-              tokenListEntry {
-                id
-                address
-                decimals
-                logo
-                name
-                symbol
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-`);
 
 export type TokenBalancesProps = DataComponentScreenProps & {
   address: string;
@@ -121,22 +82,71 @@ function _TokenBalances({
     hiddenTokenAddresses(providerId.toLowerCase() as Blockchain)
   );
 
-  const { data } = usePolledSuspenseQuery(
-    pollingIntervalSeconds ?? DEFAULT_POLLING_INTERVAL_SECONDS,
-    GET_TOKEN_BALANCES_QUERY,
-    {
-      fetchPolicy,
-      errorPolicy: "all",
-      variables: {
-        address,
-        providerId,
-      },
+  const [rawBalances, setRawBalances] = useState<ResponseTokenBalance[]>([]);
+
+  useEffect(() => {
+    const fetchBalances = async () => {
+      try {
+        const url = `http://localhost:4000/wallet/${address}?providerId=${providerId}`;
+        console.log("🌐 [TokenBalances] Fetching from:", url);
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("✅ [TokenBalances] JSON Response:", data);
+
+        // Transform JSON server response to token format
+        const transformedTokens = data.tokens.map((token: any) => ({
+          id: token.mint,
+          address: token.mint,
+          amount: Math.floor(
+            token.balance * Math.pow(10, token.decimals)
+          ).toString(),
+          decimals: token.decimals,
+          displayAmount: token.balance.toString(),
+          token: token.mint,
+          tokenListEntry: {
+            id: token.symbol.toLowerCase(),
+            address: token.mint,
+            decimals: token.decimals,
+            logo: token.logo,
+            name: token.name,
+            symbol: token.symbol,
+          },
+          marketData: {
+            id: `${token.symbol.toLowerCase()}-market`,
+            price: token.price,
+            value: token.valueUSD,
+            percentChange: 0,
+            valueChange: 0,
+          },
+        }));
+
+        setRawBalances(transformedTokens);
+      } catch (error) {
+        console.error("❌ [TokenBalances] Fetch error:", error);
+        setRawBalances([]);
+      }
+    };
+
+    fetchBalances();
+
+    // Poll for updates
+    const pollInterval =
+      pollingIntervalSeconds ?? DEFAULT_POLLING_INTERVAL_SECONDS;
+    if (typeof pollInterval === "number") {
+      const interval = setInterval(fetchBalances, pollInterval * 1000);
+      return () => clearInterval(interval);
     }
-  );
+    return undefined;
+  }, [address, providerId, pollingIntervalSeconds]);
 
   /**
    * Memoized value of the individual wallet token balances that
-   * returned from the GraphQL query for the page. Also calculates the
+   * returned from the REST API. Also calculates the
    * monetary value and value change to be omitted from the total balance
    * aggregation based on the user's hidden token settings.
    */
@@ -144,9 +154,7 @@ function _TokenBalances({
     balances: ResponseTokenBalance[];
     omissions: { value: number; valueChange: number };
   }>(() => {
-    let balances =
-      // @ts-ignore - Mock GraphQL data
-      data?.wallet?.balances?.tokens?.edges.map((e) => e.node) ?? [];
+    let balances = rawBalances;
 
     // Override XNT token price to $1.00 for X1 blockchain
     const isX1Provider = providerId.toLowerCase() === "x1";
@@ -193,28 +201,29 @@ function _TokenBalances({
     }
 
     return { balances, omissions };
-  }, [data, hidden, providerId]);
+  }, [rawBalances, hidden, providerId]);
 
   /**
    * Memoized value of the inner balance summary aggregate
-   * returned from the GraphQL query for the page.
+   * calculated from the token balances.
    */
-  // @ts-ignore
   const aggregate: ResponseBalanceSummary = useMemo(() => {
-    // @ts-ignore - Mock GraphQL data
-    const aggregate = data?.wallet?.balances?.aggregate
-      ? // @ts-ignore - Mock GraphQL data
-        { ...data.wallet.balances.aggregate }
-      : {
-          id: "",
-          percentChange: 0,
-          value: 0,
-          valueChange: 0,
-        };
-    aggregate.value -= omissions.value;
-    aggregate.valueChange -= omissions.valueChange;
-    return aggregate;
-  }, [data, omissions]);
+    const totalValue = balances.reduce(
+      (sum, b) => sum + (b.marketData?.value ?? 0),
+      0
+    );
+    const totalValueChange = balances.reduce(
+      (sum, b) => sum + (b.marketData?.valueChange ?? 0),
+      0
+    );
+
+    return {
+      id: "",
+      percentChange: totalValue > 0 ? (totalValueChange / totalValue) * 100 : 0,
+      value: totalValue,
+      valueChange: totalValueChange,
+    };
+  }, [balances]);
 
   return (
     <YStack alignItems="center" gap={20} marginVertical={16}>

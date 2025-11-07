@@ -149,30 +149,50 @@ export const cacheOnErrorApolloLinkHandler: RequestHandler = (
 export const x1InterceptorLink = new ApolloLink((operation, forward) => {
   const { variables } = operation;
 
+  console.log("🔍 [X1Interceptor] Checking operation:", {
+    operationName: operation.operationName,
+    variables,
+    providerId: variables?.providerId,
+  });
+
   // Check if this is an X1 query by looking at the providerId variable
   const isX1Query = variables?.providerId === "X1";
 
   if (!isX1Query) {
+    console.log("⏭️ [X1Interceptor] Not X1 query, passing through to backend");
     // Not an X1 query, pass through to regular GraphQL endpoint
     return forward(operation);
   }
 
-  console.log("🔵 X1 Query Intercepted:", operation.operationName);
+  console.log(
+    "🔵 [X1Interceptor] X1 Query Intercepted:",
+    operation.operationName
+  );
 
   // Handle X1 queries by fetching from JSON server
   return new Observable((observer) => {
     const address = variables?.address;
 
     if (!address) {
+      console.error("❌ [X1Interceptor] Missing address in X1 query");
       observer.error(new Error("X1 query missing address"));
       return;
     }
 
+    const url = `${X1_JSON_SERVER_URL}/wallet/${address}?providerId=X1`;
+    console.log("🌐 [X1Interceptor] Fetching from JSON server:", url);
+
     // Fetch balance from JSON server
-    fetch(`${X1_JSON_SERVER_URL}/wallet/${address}?providerId=X1`)
-      .then((res) => res.json())
+    fetch(url)
+      .then((res) => {
+        console.log(
+          "📡 [X1Interceptor] JSON server response status:",
+          res.status
+        );
+        return res.json();
+      })
       .then((data) => {
-        console.log("✅ X1 JSON Server Response:", data);
+        console.log("✅ [X1Interceptor] JSON Server Response:", data);
 
         // Calculate lamports from balance
         const lamports = Math.floor(data.balance * 1e9);
@@ -220,11 +240,20 @@ export const x1InterceptorLink = new ApolloLink((operation, forward) => {
           },
         };
 
+        console.log(
+          "📦 [X1Interceptor] Transformed GraphQL data:",
+          graphqlData
+        );
+        console.log(
+          "📦 [X1Interceptor] Token edges count:",
+          graphqlData.wallet.balances.tokens.edges.length
+        );
+
         observer.next({ data: graphqlData });
         observer.complete();
       })
       .catch((error) => {
-        console.error("❌ X1 JSON Server Error:", error);
+        console.error("❌ [X1Interceptor] JSON Server Error:", error);
         observer.error(error);
       });
   });

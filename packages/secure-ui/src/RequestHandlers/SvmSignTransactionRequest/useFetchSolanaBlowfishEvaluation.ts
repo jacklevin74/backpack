@@ -19,7 +19,8 @@ export const useFetchSolanaBlowfishEvaluation = (
   transactions: string[],
   dappUrl: string,
   userAccount: string | undefined,
-  onError: (error: Error) => void
+  onError: (error: Error) => void,
+  connectionUrl?: string
 ): SolanaTxnsScanResult => {
   const origin = getOrigin(dappUrl) || "";
 
@@ -27,6 +28,22 @@ export const useFetchSolanaBlowfishEvaluation = (
     evaluation?: SolanaScanTransactionsResponse;
     error?: any;
   }> => {
+    // Skip Blowfish for X1 blockchain (not supported)
+    const isX1 = connectionUrl?.includes("rpc.mainnet.x1.xyz");
+    if (isX1) {
+      return {
+        evaluation: {
+          aggregated: {
+            action: "NONE" as const,
+            warnings: [],
+            error: null,
+            expectedStateChanges: {},
+          },
+          perTransaction: [],
+        } as SolanaScanTransactionsResponse,
+      };
+    }
+
     try {
       // Abort request if takes too long
       const controller = new AbortController();
@@ -80,7 +97,7 @@ export const useFetchSolanaBlowfishEvaluation = (
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify({ transactions, origin, userAccount })]);
+  }, [JSON.stringify({ transactions, origin, userAccount, connectionUrl })]);
 
   const txnsEvaluationQuery = useRefreshingQuery(queryFn, 5000);
   const txnsScanResult = useMemo(() => {

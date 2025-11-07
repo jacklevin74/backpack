@@ -111,16 +111,22 @@ export class SVMService {
       approved = approvedOrigin.approved;
     }
 
-    const connectionUrl = user.preferences.blockchains.solana.connectionUrl;
+    const blockchainKey = event.request.blockchain.toLowerCase();
+    const connectionUrl =
+      user.preferences.blockchains[blockchainKey]?.connectionUrl;
 
     if (!approved) {
       return event.error(new Error("Origin not approved."));
     }
     if (!publicKey) {
-      return event.error(new Error("No Solana public key Found"));
+      return event.error(
+        new Error(`No ${event.request.blockchain} public key found`)
+      );
     }
     if (!connectionUrl) {
-      return event.error(new Error("No Solana connection url Found"));
+      return event.error(
+        new Error(`No ${event.request.blockchain} connection URL found`)
+      );
     }
 
     return event.respond({

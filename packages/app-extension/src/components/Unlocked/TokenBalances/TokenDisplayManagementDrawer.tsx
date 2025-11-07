@@ -2,21 +2,18 @@ import {
   type Dispatch,
   type SetStateAction,
   useCallback,
+  useEffect,
   useMemo,
+  useState,
 } from "react";
 import { FlatList, type ListRenderItem } from "react-native";
-import { useQuery } from "@apollo/client";
 import {
   type Blockchain,
   formatWalletAddress,
   UI_RPC_METHOD_HIDDEN_TOKENS_UPDATE,
   UNKNOWN_ICON_SRC,
 } from "@coral-xyz/common";
-import {
-  GET_TOKEN_BALANCES_QUERY,
-  type ProviderId,
-  type ResponseTokenBalance,
-} from "@coral-xyz/data-components";
+import type { ProviderId } from "@coral-xyz/data-components";
 import { useTranslation } from "@coral-xyz/i18n";
 import { hiddenTokenAddresses, useBackgroundClient } from "@coral-xyz/recoil";
 import {
@@ -29,9 +26,14 @@ import {
 } from "@coral-xyz/tamagui";
 import { useRecoilValue } from "recoil";
 
-type _TokenListEntryFragmentType = NonNullable<
-  ResponseTokenBalance["tokenListEntry"]
->;
+type _TokenListEntryFragmentType = {
+  id: string;
+  address: string;
+  decimals: number;
+  logo?: string;
+  name?: string;
+  symbol?: string;
+};
 
 export function TokenDisplayManagement({
   address,
@@ -71,24 +73,33 @@ export function HiddenTokensList({
   blockchain: Blockchain;
 }) {
   const hiddenTokens = useRecoilValue(hiddenTokenAddresses(blockchain));
-  const { data } = useQuery(GET_TOKEN_BALANCES_QUERY, {
-    fetchPolicy: "cache-only",
-    variables: {
-      address,
-      providerId: blockchain.toUpperCase() as ProviderId,
-    },
-  });
+  const [tokens, setTokens] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchTokens = async () => {
+      try {
+        const url = `http://localhost:4000/wallet/${address}?providerId=${blockchain.toUpperCase()}`;
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setTokens(data.tokens || []);
+      } catch (error) {
+        console.error("❌ [HiddenTokensList] Fetch error:", error);
+        setTokens([]);
+      }
+    };
+
+    fetchTokens();
+  }, [address, blockchain]);
 
   const ownedTokens = useMemo<_TokenListEntryFragmentType[]>(
     () =>
-      // @ts-ignore - Mock GraphQL data
-      (data?.wallet?.balances?.tokens.edges ?? []).reduce<
-        _TokenListEntryFragmentType[]
-      >((acc: any, curr: any) => {
-        if (curr.node.tokenListEntry) acc.push(curr.node.tokenListEntry);
-        return acc;
-      }, []),
-    [data]
+      tokens
+        .filter((token) => token.tokenListEntry)
+        .map((token) => token.tokenListEntry),
+    [tokens]
   );
 
   const renderItem = useCallback<ListRenderItem<_TokenListEntryFragmentType>>(

@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { gql, useApolloClient, useFragment } from "@apollo/client";
+import { gql, useFragment } from "@apollo/client";
 import { Blockchain, UNKNOWN_ICON_SRC, wait } from "@coral-xyz/common";
-import {
-  GET_TOKEN_BALANCES_QUERY,
-  type ProviderId,
-} from "@coral-xyz/data-components";
 import { useTranslation } from "@coral-xyz/i18n";
 import { blockchainClientAtom, useActiveWallet } from "@coral-xyz/recoil";
 import { ListItemIconCore, YStack } from "@coral-xyz/tamagui";
@@ -45,7 +41,6 @@ function Container({ navigation, route }: SendConfirmationScreenProps) {
 
   const { t } = useTranslation();
   const { blockchain, publicKey } = useActiveWallet();
-  const apollo = useApolloClient();
   const client = useRecoilValue(blockchainClientAtom(blockchain));
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | undefined>(
@@ -60,28 +55,16 @@ function Container({ navigation, route }: SendConfirmationScreenProps) {
   }, [isConfirmed, navigation, t]);
 
   // Handle the asynchronous confirmation of the transaction signature
-  // and refresh the cache data with the updated query response after success
   useAsyncEffect(async () => {
     try {
       await client.confirmTransaction(signature);
       await wait(2);
-
-      await apollo.query({
-        query: GET_TOKEN_BALANCES_QUERY,
-        fetchPolicy: "network-only",
-        variables: {
-          address: publicKey,
-          providerId: blockchain.toUpperCase() as ProviderId,
-        },
-      });
-
       setIsConfirmed(true);
     } catch (e) {
       const error = e as Error;
       setErrorMessage(error?.message ?? t("failed"));
     }
   }, [
-    apollo,
     blockchain,
     client,
     publicKey,

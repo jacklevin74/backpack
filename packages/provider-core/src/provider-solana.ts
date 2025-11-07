@@ -263,12 +263,25 @@ export class ProviderSolanaInjection
     this.emit("activeWalletDidChange", event.data.detail);
   }
 
-  async connect(options?: { onlyIfTrusted?: boolean; reconnect?: boolean }) {
+  async connect(options?: {
+    onlyIfTrusted?: boolean;
+    reconnect?: boolean;
+    blockchain?: Blockchain;
+  }) {
+    console.log(
+      "[ProviderSolanaInjection.connect] Called with options:",
+      options
+    );
     if (this.#publicKey && !options?.reconnect) {
       return { publicKey: this.#publicKey };
     }
+    const blockchainToUse = options?.blockchain || Blockchain.SOLANA;
+    console.log(
+      "[ProviderSolanaInjection.connect] Using blockchain:",
+      blockchainToUse
+    );
     const result = await this.#secureSolanaClient.wallet.connect({
-      blockchain: Blockchain.X1,
+      blockchain: blockchainToUse,
       silent: options?.onlyIfTrusted,
     });
     this.#connect(result.publicKey, result.connectionUrl);

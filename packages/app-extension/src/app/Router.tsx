@@ -69,7 +69,7 @@ function TestnetBanner() {
       height="16px"
     >
       <AlertTriangleIcon color="rgb(255, 152, 0)" size={12} />
-      <StyledText fontSize="10px" fontWeight="600" color="rgb(255, 152, 0)">
+      <StyledText fontSize={10} fontWeight="600" color="rgb(255, 152, 0)">
         X1 TESTNET
       </StyledText>
     </XStack>

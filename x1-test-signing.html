@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>X1 Transaction Signing Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #0f0f0f;
+      color: #e0e0e0;
+    }
+    h1 {
+      color: #00d4ff;
+      border-bottom: 2px solid #00d4ff;
+      padding-bottom: 10px;
+    }
+    .section {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    button {
+      background: #00d4ff;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 5px;
+      transition: all 0.2s;
+    }
+    button:hover {
+      background: #00b8e6;
+      transform: translateY(-1px);
+    }
+    button:disabled {
+      background: #444;
+      color: #888;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .status {
+      padding: 12px;
+      border-radius: 6px;
+      margin: 10px 0;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 14px;
+    }
+    .status.success { background: #1a4d2e; color: #4ade80; border: 1px solid #4ade80; }
+    .status.error { background: #4d1a1a; color: #f87171; border: 1px solid #f87171; }
+    .status.info { background: #1a2d4d; color: #60a5fa; border: 1px solid #60a5fa; }
+    .status.warning { background: #4d3a1a; color: #fbbf24; border: 1px solid #fbbf24; }
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background: #2a2a2a;
+      color: #e0e0e0;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 13px;
+      box-sizing: border-box;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      color: #00d4ff;
+      font-weight: 600;
+    }
+    pre {
+      background: #0a0a0a;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      border: 1px solid #333;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .connected {
+      color: #4ade80;
+      font-weight: bold;
+    }
+    .disconnected {
+      color: #f87171;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔐 X1 Transaction Signing Test</h1>
+
+  <div class="section">
+    <h2>Wallet Connection</h2>
+    <div id="walletStatus" class="status info">Not connected</div>
+    <button id="connectBtn" onclick="connectWallet()">Connect Wallet</button>
+    <div id="walletInfo" style="margin-top: 15px;"></div>
+  </div>
+
+  <div class="section">
+    <h2>Simple Transfer Test</h2>
+    <label for="recipient">Recipient Address:</label>
+    <input
+      type="text"
+      id="recipient"
+      placeholder="Enter X1 address"
+      value="5paZC1vV94AF513DJn5yXj2TTnTEqm4RuPkWgKYujAi5"
+    />
+
+    <label for="amount">Amount (XNT):</label>
+    <input
+      type="number"
+      id="amount"
+      placeholder="0.001"
+      value="0.001"
+      step="0.001"
+    />
+
+    <button id="sendBtn" onclick="sendTransaction()" disabled>Send Transaction</button>
+    <div id="txStatus"></div>
+  </div>
+
+  <div class="section">
+    <h2>Sign Message Test</h2>
+    <label for="message">Message to Sign:</label>
+    <textarea
+      id="message"
+      rows="3"
+      placeholder="Enter message to sign"
+    >Hello from X1 blockchain!</textarea>
+
+    <button id="signBtn" onclick="signMessage()" disabled>Sign Message</button>
+    <div id="signStatus"></div>
+  </div>
+
+  <div class="section">
+    <h2>Transaction History</h2>
+    <div id="txHistory" style="font-family: 'Monaco', 'Courier New', monospace; font-size: 12px;"></div>
+  </div>
+
+  <script src="https://unpkg.com/@solana/web3.js@1.87.6/lib/index.iife.min.js"></script>
+  <script>
+    let wallet = null;
+    let connection = null;
+    const X1_RPC_URL = 'https://rpc.mainnet.x1.xyz';
+
+    // Initialize connection
+    connection = new solanaWeb3.Connection(X1_RPC_URL, 'confirmed');
+
+    async function connectWallet() {
+      const statusEl = document.getElementById('walletStatus');
+      const infoEl = document.getElementById('walletInfo');
+
+      try {
+        statusEl.className = 'status info';
+        statusEl.textContent = '🔄 Connecting to Backpack...';
+
+        // Check if Backpack is installed
+        if (!window.backpack) {
+          throw new Error('Backpack wallet not found! Please install the Backpack extension.');
+        }
+
+        // Connect to Backpack
+        const response = await window.backpack.connect();
+        wallet = window.backpack;
+
+        const publicKey = response.publicKey.toString();
+
+        // Get balance
+        const balanceLamports = await connection.getBalance(new solanaWeb3.PublicKey(publicKey));
+        const balanceXNT = (balanceLamports / 1e9).toFixed(4);
+
+        statusEl.className = 'status success';
+        statusEl.textContent = '✅ Connected to Backpack';
+
+        infoEl.innerHTML = `
+          <div style="background: #0a0a0a; padding: 15px; border-radius: 6px; border: 1px solid #333;">
+            <div style="margin-bottom: 10px;">
+              <strong style="color: #00d4ff;">Public Key:</strong><br/>
+              <code style="color: #4ade80; word-break: break-all;">${publicKey}</code>
+            </div>
+            <div>
+              <strong style="color: #00d4ff;">Balance:</strong>
+              <span style="color: #fbbf24; font-size: 18px; font-weight: bold;">${balanceXNT} XNT</span>
+            </div>
+          </div>
+        `;
+
+        // Enable buttons
+        document.getElementById('sendBtn').disabled = false;
+        document.getElementById('signBtn').disabled = false;
+
+        addToHistory('success', 'Wallet Connected', `Address: ${publicKey.slice(0, 8)}...${publicKey.slice(-8)}`);
+      } catch (error) {
+        statusEl.className = 'status error';
+        statusEl.textContent = `❌ Error: ${error.message}`;
+        console.error('Connection error:', error);
+        addToHistory('error', 'Connection Failed', error.message);
+      }
+    }
+
+    async function sendTransaction() {
+      const statusEl = document.getElementById('txStatus');
+      const recipient = document.getElementById('recipient').value.trim();
+      const amount = parseFloat(document.getElementById('amount').value);
+
+      if (!wallet) {
+        statusEl.innerHTML = '<div class="status error">❌ Please connect wallet first</div>';
+        return;
+      }
+
+      if (!recipient || !amount) {
+        statusEl.innerHTML = '<div class="status error">❌ Please enter recipient and amount</div>';
+        return;
+      }
+
+      try {
+        statusEl.innerHTML = '<div class="status info">🔄 Building transaction...</div>';
+
+        const fromPubkey = wallet.publicKey;
+        const toPubkey = new solanaWeb3.PublicKey(recipient);
+        const lamports = Math.floor(amount * 1e9);
+
+        // Get recent blockhash
+        const { blockhash } = await connection.getLatestBlockhash();
+
+        // Create transaction
+        const transaction = new solanaWeb3.Transaction({
+          recentBlockhash: blockhash,
+          feePayer: fromPubkey,
+        });
+
+        transaction.add(
+          solanaWeb3.SystemProgram.transfer({
+            fromPubkey,
+            toPubkey,
+            lamports,
+          })
+        );
+
+        statusEl.innerHTML = '<div class="status info">🔄 Waiting for signature...</div>';
+
+        // Request signature from wallet
+        const signed = await wallet.signAndSendTransaction(transaction);
+
+        statusEl.innerHTML = `
+          <div class="status success">
+            ✅ Transaction sent!<br/>
+            <strong>Signature:</strong><br/>
+            <a href="https://explorer.x1.xyz/tx/${signed.signature}" target="_blank"
+               style="color: #00d4ff; word-break: break-all;">
+              ${signed.signature}
+            </a>
+          </div>
+        `;
+
+        addToHistory('success', 'Transaction Sent', `${amount} XNT to ${recipient.slice(0, 8)}...`);
+
+        // Refresh balance after 2 seconds
+        setTimeout(async () => {
+          const balance = await connection.getBalance(fromPubkey);
+          const balanceXNT = (balance / 1e9).toFixed(4);
+          document.querySelector('#walletInfo div').innerHTML = `
+            <div style="margin-bottom: 10px;">
+              <strong style="color: #00d4ff;">Public Key:</strong><br/>
+              <code style="color: #4ade80; word-break: break-all;">${fromPubkey.toString()}</code>
+            </div>
+            <div>
+              <strong style="color: #00d4ff;">Balance:</strong>
+              <span style="color: #fbbf24; font-size: 18px; font-weight: bold;">${balanceXNT} XNT</span>
+            </div>
+          `;
+        }, 2000);
+
+      } catch (error) {
+        statusEl.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+        console.error('Transaction error:', error);
+        addToHistory('error', 'Transaction Failed', error.message);
+      }
+    }
+
+    async function signMessage() {
+      const statusEl = document.getElementById('signStatus');
+      const message = document.getElementById('message').value;
+
+      if (!wallet) {
+        statusEl.innerHTML = '<div class="status error">❌ Please connect wallet first</div>';
+        return;
+      }
+
+      if (!message) {
+        statusEl.innerHTML = '<div class="status error">❌ Please enter a message</div>';
+        return;
+      }
+
+      try {
+        statusEl.innerHTML = '<div class="status info">🔄 Waiting for signature...</div>';
+
+        const encodedMessage = new TextEncoder().encode(message);
+        const signedMessage = await wallet.signMessage(encodedMessage);
+
+        const signatureBase58 = solanaWeb3.base58.encode(signedMessage.signature);
+
+        statusEl.innerHTML = `
+          <div class="status success">
+            ✅ Message signed!<br/>
+            <strong>Signature:</strong><br/>
+            <code style="word-break: break-all; font-size: 11px;">${signatureBase58}</code>
+          </div>
+        `;
+
+        addToHistory('success', 'Message Signed', message.slice(0, 50) + (message.length > 50 ? '...' : ''));
+      } catch (error) {
+        statusEl.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+        console.error('Signing error:', error);
+        addToHistory('error', 'Signing Failed', error.message);
+      }
+    }
+
+    function addToHistory(type, title, detail) {
+      const historyEl = document.getElementById('txHistory');
+      const time = new Date().toLocaleTimeString();
+      const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+      const color = type === 'success' ? '#4ade80' : type === 'error' ? '#f87171' : '#60a5fa';
+
+      const entry = `
+        <div style="border-bottom: 1px solid #333; padding: 10px 0;">
+          <div style="color: ${color};">
+            ${icon} <strong>${title}</strong> <span style="color: #888; font-size: 11px;">${time}</span>
+          </div>
+          <div style="color: #888; margin-top: 5px; font-size: 12px;">${detail}</div>
+        </div>
+      `;
+
+      historyEl.innerHTML = entry + historyEl.innerHTML;
+    }
+
+    // Auto-connect if wallet is already connected
+    window.addEventListener('load', async () => {
+      if (window.backpack && window.backpack.isConnected) {
+        await connectWallet();
+      }
+    });
+  </script>
+</body>
+</html>

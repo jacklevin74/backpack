@@ -198,6 +198,27 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Serve test page at /test
+  if (pathname === '/test' || pathname === '/test/') {
+    console.log(`🧪 Serving X1 test page`);
+    const fs = require('fs');
+    const path = require('path');
+    const testPagePath = path.join(__dirname, 'x1-test-signing.html');
+
+    fs.readFile(testPagePath, 'utf8', (err, content) => {
+      if (err) {
+        res.writeHead(500);
+        res.end('Error loading test page');
+        return;
+      }
+
+      res.setHeader('Content-Type', 'text/html');
+      res.writeHead(200);
+      res.end(content);
+    });
+    return;
+  }
+
   // Match /wallet/:address pattern
   const walletMatch = pathname.match(/^\/wallet\/([a-zA-Z0-9]+)$/);
 
@@ -230,6 +251,7 @@ server.listen(PORT, () => {
   console.log("=".repeat(80));
   console.log(`📡 Listening on: http://localhost:${PORT}`);
   console.log(`📋 Endpoint: GET /wallet/:address?providerId=X1`);
+  console.log(`🧪 Test Page: http://localhost:${PORT}/test`);
   console.log("");
   console.log("Example:");
   console.log(

@@ -2,6 +2,7 @@ import type { QueuedUiRequest } from "../../_atoms/requestAtoms";
 
 import { useState } from "react";
 
+import { Blockchain } from "@coral-xyz/common";
 import { SolanaClient } from "@coral-xyz/secure-clients";
 import {
   useRecoilStateLoadable,
@@ -39,6 +40,9 @@ export function AnyTransaction({
   const [blowfishError, setBlowfishError] = useState(false);
   const [showSimulationFailed, setShowSimulationFailed] = useState(true);
 
+  // Skip Blowfish evaluation for X1 blockchain (not supported)
+  const isX1Transaction = currentRequest.request.blockchain === Blockchain.X1;
+
   const isTxMutable = useRecoilValue(
     solanaTxIsMutableAtom(currentRequest.request)
   );
@@ -53,14 +57,18 @@ export function AnyTransaction({
   );
   const hasGas = hasGasLoadable.valueMaybe() ?? true;
   const mutableLockedNfts = mutableLockedNftsLoadable.valueMaybe() ?? [];
+
+  // For X1, use a dummy URL that won't be called; we skip evaluation in the render logic
   const blowfishEvaluation = useFetchSolanaBlowfishEvaluation(
     SolanaClient.config.blowfishUrl,
     [currentRequest.request.tx],
     currentRequest.event.origin.address,
     currentRequest.request.publicKey,
     (error) => {
-      setBlowfishError(true);
-      console.error(error);
+      if (!isX1Transaction) {
+        setBlowfishError(true);
+        console.error(error);
+      }
     }
   );
 
@@ -122,7 +130,8 @@ export function AnyTransaction({
     >
       {blowfishEvaluation.isLoading ? (
         <Loading />
-      ) : (blowfishError ||
+      ) : !isX1Transaction &&
+        (blowfishError ||
           blowfishEvaluation.error ||
           !blowfishEvaluation.normalizedEvaluation) &&
         showSimulationFailed ? (

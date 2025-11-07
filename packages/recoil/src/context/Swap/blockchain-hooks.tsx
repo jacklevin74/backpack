@@ -707,17 +707,9 @@ async function estimateFeesSolana({
         if ([SOL_NATIVE_MINT, WSOL_MINT].includes(to?.mint)) {
           return 0;
         }
-        // if the output mint token account contains no lamports then we must create it
-        else if (
-          !(await connection.getBalance(
-            await getAssociatedTokenAddress(
-              new PublicKey(to?.mint),
-              new PublicKey(to.walletPublicKey)
-            )
-          ))
-        ) {
-          return TOKEN_ACCOUNT_RENT_EXEMPTION_LAMPORTS;
-        }
+        // TODO: Check if token account exists via localhost:4000 API
+        // For now, assume account creation fee is needed
+        return TOKEN_ACCOUNT_RENT_EXEMPTION_LAMPORTS;
       } catch (err) {
         // don't throw on this until it's undergone further testing
         console.error(err);

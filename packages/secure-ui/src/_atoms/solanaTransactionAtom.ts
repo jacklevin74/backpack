@@ -57,12 +57,8 @@ export const solanaPublicKeyHasGas = selectorFamily<
   get:
     (request) =>
     async ({ get }) => {
-      const solanaClient = get(solanaClientAtom);
-
-      return solanaClient.connection
-        .getBalance(new PublicKey(request.publicKey))
-        .then((balance) => {
-          return balance > 0;
-        });
+      // TODO: Get balance from localhost:4000 API to check for gas
+      // For now, assume wallet has gas
+      return true;
     },
 });

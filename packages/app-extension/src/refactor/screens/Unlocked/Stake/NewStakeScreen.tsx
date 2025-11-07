@@ -60,10 +60,8 @@ function Container({ navigation }: StakeScreenProps<Routes.NewStakeScreen>) {
       return amount + 1;
     },
   });
-  const { data: accountLamportsNumber } = useQuery({
-    queryKey: ["balance", publicKey],
-    queryFn: () => connection.getBalance(new PublicKey(publicKey), "processed"),
-  });
+  // TODO: Get balance from localhost:4000 API instead of RPC
+  const accountLamportsNumber = null;
   const validators = useValidatorsQuery();
   const isMounted = useIsMounted();
 

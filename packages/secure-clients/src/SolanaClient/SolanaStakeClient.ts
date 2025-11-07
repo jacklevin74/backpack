@@ -163,11 +163,13 @@ const Stake = {
     }
   ): Promise<string> {
     const { walletPublicKey, connection, commitment, blockhash } = ctx;
+    // TODO: Get stake account balance from localhost:4000 API
+    // For now, use a placeholder value that will be replaced
     const tx = StakeProgram.withdraw({
       stakePubkey: req.stakeAccount,
       authorizedPubkey: walletPublicKey,
       toPubkey: walletPublicKey,
-      lamports: await connection.getBalance(req.stakeAccount),
+      lamports: 0, // TODO: Replace with actual balance from API
     });
     tx.feePayer =
       typeof walletPublicKey === "string"

@@ -1,6 +1,4 @@
-import { useMemo, useState } from "react";
-import { Platform, Pressable } from "react-native";
-
+import { Blockchain } from "@coral-xyz/common";
 import { useTranslation } from "@coral-xyz/i18n";
 import { secureUserAtom } from "@coral-xyz/recoil";
 import {
@@ -13,6 +11,8 @@ import {
 } from "@coral-xyz/tamagui";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { formatUnits } from "ethers6";
+import { useMemo, useState } from "react";
+import { Platform, Pressable } from "react-native";
 import { useRecoilValue } from "recoil";
 
 import { solanaTxIsMutableAtom } from "../../_atoms/solanaTxIsMutableAtom";
@@ -23,11 +23,13 @@ export type TransactionSettingsProps = {
   setOverrides: (
     val: TransactionOverrides | ((prev: TransactionOverrides) => void)
   ) => void;
+  blockchain: Blockchain;
 };
 
 export function TransactionSettings({
   overrides,
   setOverrides,
+  blockchain,
 }: TransactionSettingsProps) {
   const { t } = useTranslation();
   const user = useRecoilValue(secureUserAtom);
@@ -40,6 +42,9 @@ export function TransactionSettings({
       ? 0
       : (unitLimit * price) / LAMPORTS_PER_SOL / 1_000_000;
   }, [overrides]);
+
+  // Determine the native token symbol based on blockchain
+  const nativeSymbol = blockchain === Blockchain.X1 ? "XNT" : "SOL";
 
   if (!user.preferences.developerMode) {
     return null;
@@ -209,7 +214,7 @@ export function TransactionSettings({
           </StyledText>
         </YStack>
         <StyledText color="$baseTextMedEmphasis" fontSize="$xs">
-          {maxPriorityFeeSol.toFixed(9)} SOL
+          {maxPriorityFeeSol.toFixed(9)} {nativeSymbol}
         </StyledText>
       </XStack>
     </YStack>

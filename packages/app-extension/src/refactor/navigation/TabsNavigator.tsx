@@ -58,13 +58,14 @@ export function TabsNavigator({
         options={{ title: t("tokens") }}
         component={TokensScreen}
       />
-      <Tabs.Screen
+      {/* Collectibles tab hidden cosmetically */}
+      {/* <Tabs.Screen
         name={Routes.CollectiblesScreen}
         options={{
           title: t("collectibles"),
         }}
         component={CollectiblesScreen}
-      />
+      /> */}
       <Tabs.Screen
         name={Routes.ActivityScreen}
         options={{ title: t("activity") }}
@@ -93,8 +94,8 @@ function TopTabBar({ state, descriptors, navigation, position: _ }: any) {
           options.tabBarLabel !== undefined
             ? options.tabBarLabel
             : options.title !== undefined
-            ? options.title
-            : route.name;
+              ? options.title
+              : route.name;
 
         const isFocused = state.index === index;
 

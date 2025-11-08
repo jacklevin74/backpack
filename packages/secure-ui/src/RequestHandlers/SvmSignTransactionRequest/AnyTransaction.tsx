@@ -162,6 +162,9 @@ export function AnyTransaction({
                     key="TransactionSettings"
                     overrides={transactionOverrides}
                     setOverrides={setTransactionOverrides}
+                    blockchain={
+                      currentRequest.request.blockchain ?? Blockchain.SOLANA
+                    }
                   />,
                 ]
               : undefined

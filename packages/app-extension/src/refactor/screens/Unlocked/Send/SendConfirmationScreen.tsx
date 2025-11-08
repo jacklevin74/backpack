@@ -109,29 +109,45 @@ function Container({ navigation, route }: SendConfirmationScreenProps) {
   const subtitle = errorMessage || t("send_pending", { symbol });
 
   return (
-    <YStack ai="center" f={1} gap={40} p={16}>
-      <YStack ai="center" gap={18}>
-        <ConfirmationTokenAmountHeader
-          amount={amount}
-          symbol={symbol}
-          icon={
-            <ListItemIconCore
-              radius="$circular"
-              size={40}
-              image={data?.tokenListEntry?.logo || UNKNOWN_ICON_SRC}
-            />
-          }
+    <YStack ai="center" f={1} jc="center" p={24}>
+      <YStack
+        ai="center"
+        backgroundColor="$baseBackgroundL1"
+        borderRadius={24}
+        gap={32}
+        p={32}
+        width="100%"
+        style={{
+          boxShadow: "0 8px 32px rgba(0, 255, 255, 0.1)",
+          border: "1px solid rgba(0, 255, 255, 0.2)",
+        }}
+      >
+        <ConfirmationIcon confirmed={isConfirmed} hasError={!!errorMessage} />
+
+        <YStack ai="center" gap={12}>
+          <ConfirmationTokenAmountHeader
+            amount={amount}
+            symbol={symbol}
+            icon={
+              <ListItemIconCore
+                radius="$circular"
+                size={48}
+                image={data?.tokenListEntry?.logo || UNKNOWN_ICON_SRC}
+              />
+            }
+          />
+        </YStack>
+
+        <ConfirmationSubtitle confirmed={isConfirmed} content={subtitle} />
+
+        <ConfirmationButtons
+          blockchain={blockchain}
+          confirmed={isConfirmed}
+          confirmedLabel={t("view_balances")}
+          onConfirmedPress={handlePressPrimary}
+          signature={signature}
         />
       </YStack>
-      <ConfirmationIcon confirmed={isConfirmed} hasError={!!errorMessage} />
-      <ConfirmationSubtitle confirmed={isConfirmed} content={subtitle} />
-      <ConfirmationButtons
-        blockchain={blockchain}
-        confirmed={isConfirmed}
-        confirmedLabel={t("view_balances")}
-        onConfirmedPress={handlePressPrimary}
-        signature={signature}
-      />
     </YStack>
   );
 }

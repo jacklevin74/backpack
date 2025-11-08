@@ -29,11 +29,53 @@ export function ConfirmationIcon({
 }) {
   const theme = useTheme();
   if (confirmed) {
-    return <CheckCircleIcon size={50} color={theme.greenIcon.val} />;
+    return (
+      <YStack
+        ai="center"
+        jc="center"
+        width={80}
+        height={80}
+        borderRadius={40}
+        backgroundColor="rgba(0, 255, 100, 0.1)"
+        style={{
+          boxShadow: "0 0 20px rgba(0, 255, 100, 0.3)",
+        }}
+      >
+        <CheckCircleIcon size={60} color="#00ff64" />
+      </YStack>
+    );
   } else if (hasError) {
-    return <XCircleIcon size={50} color={theme.redIcon.val} />;
+    return (
+      <YStack
+        ai="center"
+        jc="center"
+        width={80}
+        height={80}
+        borderRadius={40}
+        backgroundColor="rgba(255, 80, 80, 0.1)"
+        style={{
+          boxShadow: "0 0 20px rgba(255, 80, 80, 0.3)",
+        }}
+      >
+        <XCircleIcon size={60} color={theme.redIcon.val} />
+      </YStack>
+    );
   }
-  return <Loading />;
+  return (
+    <YStack
+      ai="center"
+      jc="center"
+      width={80}
+      height={80}
+      borderRadius={40}
+      backgroundColor="rgba(0, 255, 255, 0.1)"
+      style={{
+        boxShadow: "0 0 20px rgba(0, 255, 255, 0.3)",
+      }}
+    >
+      <Loading />
+    </YStack>
+  );
 }
 
 export function ConfirmationSubtitle({
@@ -44,11 +86,30 @@ export function ConfirmationSubtitle({
   content: string;
 }) {
   return (
-    <XStack f={1} mt={12}>
+    <YStack ai="center" minHeight={60}>
       {!confirmed ? (
-        <StyledText textAlign="center">{content}</StyledText>
-      ) : null}
-    </XStack>
+        <StyledText
+          textAlign="center"
+          fontSize="$base"
+          color="$baseTextMedEmphasis"
+          lineHeight={24}
+        >
+          {content}
+        </StyledText>
+      ) : (
+        <StyledText
+          textAlign="center"
+          fontSize="$lg"
+          fontWeight="$semiBold"
+          color="#00ff64"
+          style={{
+            textShadow: "0 0 10px rgba(0, 255, 100, 0.5)",
+          }}
+        >
+          Transaction Confirmed ✓
+        </StyledText>
+      )}
+    </YStack>
   );
 }
 
@@ -62,19 +123,38 @@ export function ConfirmationTokenAmountHeader({
   symbol: string;
 }) {
   return (
-    <XStack ai="center" gap={8}>
-      {icon}
-      <StyledText fontSize="$3xl" fontWeight="$bold">
-        {amount}
-      </StyledText>
-      <StyledText
-        color="$baseTextMedEmphasis"
-        fontSize="$3xl"
-        fontWeight="$semiBold"
+    <YStack ai="center" gap={16}>
+      <YStack
+        ai="center"
+        jc="center"
+        style={{
+          filter: "drop-shadow(0 4px 12px rgba(0, 255, 255, 0.2))",
+        }}
       >
-        {symbol}
-      </StyledText>
-    </XStack>
+        {icon}
+      </YStack>
+      <XStack ai="baseline" gap={8}>
+        <StyledText
+          fontSize={36}
+          fontWeight="$bold"
+          style={{
+            background: "linear-gradient(135deg, #0ff, #00a8cc)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+          }}
+        >
+          {amount}
+        </StyledText>
+        <StyledText
+          color="$baseTextHighEmphasis"
+          fontSize="$2xl"
+          fontWeight="$semiBold"
+        >
+          {symbol}
+        </StyledText>
+      </XStack>
+    </YStack>
   );
 }
 
@@ -157,15 +237,26 @@ function _ConfirmationViewTransaction({
   return (
     <XStack
       ai="center"
+      backgroundColor="rgba(0, 255, 255, 0.1)"
+      borderRadius={12}
       cursor="pointer"
-      gap={2}
+      gap={6}
       onPress={onPress}
+      paddingHorizontal={16}
+      paddingVertical={12}
       pointerEvents="box-only"
+      hoverStyle={{
+        backgroundColor: "rgba(0, 255, 255, 0.15)",
+      }}
+      style={{
+        border: "1px solid rgba(0, 255, 255, 0.3)",
+        transition: "all 0.2s ease",
+      }}
     >
-      <StyledText color="$accentBlue" fontWeight="$semiBold">
+      <StyledText color="#0ff" fontWeight="$semiBold">
         {t("view_transaction")}
       </StyledText>
-      <ArrowUpRightIcon color="$accentBlue" strokeWidth={3} size={18} />
+      <ArrowUpRightIcon color="#0ff" strokeWidth={2.5} size={18} />
     </XStack>
   );
 }

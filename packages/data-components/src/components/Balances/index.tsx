@@ -32,7 +32,7 @@ export {
 export { BalancesTable } from "./BalancesTable";
 export type { ResponseBalanceSummary, ResponseTokenBalance };
 
-const DEFAULT_POLLING_INTERVAL_SECONDS = 60;
+const DEFAULT_POLLING_INTERVAL_SECONDS = 5;
 
 export type TokenBalancesProps = DataComponentScreenProps & {
   address: string;

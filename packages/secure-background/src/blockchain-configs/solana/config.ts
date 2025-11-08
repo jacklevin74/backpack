@@ -18,7 +18,7 @@ export const solanaBlockchainConfig: BlockchainConfig<Blockchain.SOLANA> = {
   blowfishUrl: "http://162.250.126.66:4000/solana/v0/mainnet/scan/transactions",
   isTestnet: false,
 
-  Enabled: false,
+  Enabled: true,
   Blockchain: Blockchain.SOLANA,
   Name: "Solana",
   GasTokenName: "SOL",
@@ -85,13 +85,17 @@ export const solanaBlockchainConfig: BlockchainConfig<Blockchain.SOLANA> = {
   requiresChainId: false,
   RpcConnectionUrls: {
     MAINNET: {
-      name: "Mainnet (Beta)",
+      name: "Solana Mainnet",
       url: SolanaCluster.MAINNET,
     },
-    // DEVNET: {
-    //   name: "Devnet",
-    //   url: SolanaCluster.DEVNET,
-    // },
+    DEVNET: {
+      name: "Solana Devnet",
+      url: SolanaCluster.DEVNET,
+    },
+    TESTNET: {
+      name: "Solana Testnet",
+      url: SolanaCluster.TESTNET,
+    },
   },
   ConfirmationCommitments: {
     Processed: {

@@ -66,11 +66,11 @@ export const x1BlockchainConfig: BlockchainConfig<Blockchain.X1> = {
   requiresChainId: false,
   RpcConnectionUrls: {
     MAINNET: {
-      name: "Mainnet",
+      name: "X1 Mainnet",
       url: X1Cluster.MAINNET,
     },
     TESTNET: {
-      name: "Testnet",
+      name: "X1 Testnet",
       url: X1Cluster.TESTNET,
     },
   },

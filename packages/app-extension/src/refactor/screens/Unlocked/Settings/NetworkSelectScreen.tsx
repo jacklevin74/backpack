@@ -45,33 +45,64 @@ function Checkmark() {
 function Container() {
   const activeWallet = useActiveWallet();
   const background = useBackgroundClient();
-  const currentUrl = useRecoilValue(
-    blockchainConnectionUrl(activeWallet.blockchain)
+
+  // Get connection URLs for both blockchains
+  const x1ConnectionUrl = useRecoilValue(
+    blockchainConnectionUrl(Blockchain.X1)
   );
-  const blockchainConfig = useRecoilValue(
-    blockchainConfigAtom(activeWallet.blockchain)
+  const solanaConnectionUrl = useRecoilValue(
+    blockchainConnectionUrl(Blockchain.SOLANA)
   );
 
-  // Only show for X1 blockchain
-  if (activeWallet.blockchain !== Blockchain.X1 || !blockchainConfig) {
+  // Get configs for both X1 and Solana
+  const x1Config = useRecoilValue(blockchainConfigAtom(Blockchain.X1));
+  const solanaConfig = useRecoilValue(blockchainConfigAtom(Blockchain.SOLANA));
+
+  // Only show for X1 and Solana blockchains
+  if (
+    activeWallet.blockchain !== Blockchain.X1 &&
+    activeWallet.blockchain !== Blockchain.SOLANA
+  ) {
     return null;
   }
 
-  const menuItems = Object.fromEntries(
-    new Map(
-      Object.entries(blockchainConfig.RpcConnectionUrls).map(
-        ([, { name, url, chainId }]) => [
-          name,
-          {
-            onClick: () => {
-              changeNetwork(background, activeWallet.blockchain, url, chainId);
-            },
-            detail: currentUrl === url ? <Checkmark /> : null,
+  const menuItems: Record<string, any> = {};
+
+  // Add X1 networks
+  if (x1Config) {
+    Object.entries(x1Config.RpcConnectionUrls).forEach(
+      ([, { name, url, chainId }]) => {
+        menuItems[name] = {
+          onClick: () => {
+            changeNetwork(background, Blockchain.X1, url, chainId);
           },
-        ]
-      )
-    )
-  );
+          detail:
+            x1ConnectionUrl === url &&
+            activeWallet.blockchain === Blockchain.X1 ? (
+              <Checkmark />
+            ) : null,
+        };
+      }
+    );
+  }
+
+  // Add Solana networks
+  if (solanaConfig) {
+    Object.entries(solanaConfig.RpcConnectionUrls).forEach(
+      ([, { name, url, chainId }]) => {
+        menuItems[name] = {
+          onClick: () => {
+            changeNetwork(background, Blockchain.SOLANA, url, chainId);
+          },
+          detail:
+            solanaConnectionUrl === url &&
+            activeWallet.blockchain === Blockchain.SOLANA ? (
+              <Checkmark />
+            ) : null,
+        };
+      }
+    );
+  }
 
   return <SettingsList menuItems={menuItems} />;
 }

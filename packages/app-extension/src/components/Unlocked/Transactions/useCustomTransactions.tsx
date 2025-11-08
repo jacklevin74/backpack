@@ -40,6 +40,7 @@ export function useCustomTransactions(address: string, blockchain: Blockchain) {
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const offsetRef = useRef(0);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const apiUrl = useRecoilValue(backendApiUrl);
   const connectionUrl = useRecoilValue(blockchainConnectionUrl(blockchain));
 
@@ -111,7 +112,46 @@ export function useCustomTransactions(address: string, blockchain: Blockchain) {
 
   useEffect(() => {
     fetchTransactions();
-  }, [fetchTransactions]);
+
+    // Aggressive polling - poll more frequently when there are no or few transactions
+    const startPolling = () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+
+      // Determine polling interval based on transaction count
+      const getPollingInterval = () => {
+        if (transactions.length === 0) {
+          // No transactions: poll every 3 seconds
+          return 3000;
+        } else if (transactions.length < 5) {
+          // Few transactions: poll every 5 seconds
+          return 5000;
+        } else {
+          // Many transactions: poll every 15 seconds
+          return 15000;
+        }
+      };
+
+      const interval = getPollingInterval();
+      console.log(
+        `🔄 [CustomTransactionHook] Starting polling every ${interval}ms (${transactions.length} transactions)`
+      );
+
+      pollIntervalRef.current = setInterval(() => {
+        console.log("🔄 [CustomTransactionHook] Auto-refreshing transactions");
+        fetchTransactions();
+      }, interval);
+    };
+
+    startPolling();
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
+  }, [fetchTransactions, transactions.length]);
 
   const loadMore = useCallback(() => {
     if (hasMore && !loading) {

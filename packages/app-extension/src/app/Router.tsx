@@ -44,35 +44,41 @@ function TestnetBanner() {
   const connectionUrl = useRecoilValue(blockchainConnectionUrl(blockchain));
   const developerMode = useRecoilValue(isDeveloperMode);
 
-  // Check if on X1 testnet
-  const isX1Testnet =
-    blockchain === Blockchain.X1 &&
-    connectionUrl === "https://rpc.testnet.x1.xyz";
+  // Determine network name based on blockchain and connection URL
+  const getNetworkName = () => {
+    if (blockchain === Blockchain.X1) {
+      if (connectionUrl === "https://rpc.testnet.x1.xyz") {
+        return developerMode ? "X1 TESTNET • DEVELOPER MODE" : "X1 TESTNET";
+      } else if (connectionUrl === "https://rpc.mainnet.x1.xyz") {
+        return developerMode ? "X1 MAINNET • DEVELOPER MODE" : "X1 MAINNET";
+      }
+    } else if (blockchain === Blockchain.SOLANA) {
+      if (connectionUrl === "https://api.mainnet-beta.solana.com") {
+        return "SOLANA MAINNET";
+      } else if (connectionUrl === "https://api.devnet.solana.com") {
+        return "SOLANA DEVNET";
+      } else if (connectionUrl === "https://api.testnet.solana.com") {
+        return "SOLANA TESTNET";
+      }
+    }
+    return null;
+  };
 
-  // Show banner if on testnet (always) OR if developer mode is on for mainnet
-  const showBanner =
-    isX1Testnet || (developerMode && blockchain === Blockchain.X1);
+  const networkName = getNetworkName();
 
   // Log network status for debugging
   console.log(
-    `[X1 Network ext:0.10.61] Blockchain: ${blockchain}, URL: ${connectionUrl}, IsTestnet: ${isX1Testnet}, DevMode: ${developerMode}`
+    `[Network Banner] Blockchain: ${blockchain}, URL: ${connectionUrl}, Network: ${networkName}, DevMode: ${developerMode}`
   );
 
-  if (!showBanner) {
+  if (!networkName) {
     return null;
   }
-
-  // Determine banner text
-  const bannerText = isX1Testnet
-    ? developerMode
-      ? "X1 TESTNET DEVELOPER MODE"
-      : "X1 TESTNET"
-    : "DEVELOPER MODE";
 
   return (
     <XStack
       width="100%"
-      backgroundColor="rgba(255, 152, 0, 0.15)"
+      backgroundColor="rgba(59, 130, 246, 0.15)"
       gap="4px"
       paddingVertical="2px"
       paddingHorizontal="$2"
@@ -81,9 +87,8 @@ function TestnetBanner() {
       zIndex={100}
       height="16px"
     >
-      <AlertTriangleIcon color="rgb(255, 152, 0)" size={12} />
-      <StyledText fontSize={10} fontWeight="600" color="rgb(255, 152, 0)">
-        {bannerText}
+      <StyledText fontSize={10} fontWeight="600" color="rgb(59, 130, 246)">
+        {networkName}
       </StyledText>
     </XStack>
   );

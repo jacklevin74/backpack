@@ -3,7 +3,8 @@ import { gql, useFragment } from "@apollo/client";
 import { Blockchain, UNKNOWN_ICON_SRC, wait } from "@coral-xyz/common";
 import { useTranslation } from "@coral-xyz/i18n";
 import { blockchainClientAtom, useActiveWallet } from "@coral-xyz/recoil";
-import { ListItemIconCore, YStack } from "@coral-xyz/tamagui";
+import { ListItemIconCore, YStack, XStack, StyledText } from "@coral-xyz/tamagui";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { useRecoilValue } from "recoil";
 import { useAsyncEffect } from "use-async-effect";
 
@@ -108,6 +109,11 @@ function Container({ navigation, route }: SendConfirmationScreenProps) {
   const symbol = data?.tokenListEntry?.symbol || "";
   const subtitle = errorMessage || t("send_pending", { symbol });
 
+  // Determine native token symbol for priority fee display
+  const nativeSymbol = blockchain === Blockchain.X1 ? "XNT" : "SOL";
+  // X1 has minimal priority fees, show a standard low value
+  const maxPriorityFee = blockchain === Blockchain.X1 ? "0.000001" : "0.000005";
+
   return (
     <YStack ai="center" f={1} jc="center" p={24}>
       <YStack
@@ -141,6 +147,20 @@ function Container({ navigation, route }: SendConfirmationScreenProps) {
         </YStack>
 
         <ConfirmationSubtitle confirmed={isConfirmed} content={subtitle} />
+
+        {/* Max Priority Fee Display */}
+        <XStack f={1} ai="center" jc="space-between" width="100%">
+          <StyledText
+            color="$baseTextMedEmphasis"
+            fontWeight="$bold"
+            fontSize="$xs"
+          >
+            {t("max_priority_fee")}
+          </StyledText>
+          <StyledText color="$baseTextMedEmphasis" fontSize="$xs">
+            {maxPriorityFee} {nativeSymbol}
+          </StyledText>
+        </XStack>
 
         <ConfirmationButtons
           blockchain={blockchain}

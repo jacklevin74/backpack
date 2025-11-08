@@ -33,6 +33,31 @@ const X1_MAINNET_RPC_URL = "https://rpc.mainnet.x1.xyz";
 const X1_TESTNET_RPC_URL = "https://rpc.testnet.x1.xyz";
 const XNT_PRICE = 1.0; // $1 per XNT
 
+// Balance cache to avoid hitting RPC too frequently
+// Cache expires after 2 seconds for real-time updates
+const balanceCache = new Map();
+const CACHE_TTL_MS = 2000; // 2 seconds
+
+function getCachedBalance(address, network) {
+  const cacheKey = `${address}-${network}`;
+  const cached = balanceCache.get(cacheKey);
+
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    console.log(`  ⚡ Using cached balance for ${address}`);
+    return cached.balance;
+  }
+
+  return null;
+}
+
+function setCachedBalance(address, network, balance) {
+  const cacheKey = `${address}-${network}`;
+  balanceCache.set(cacheKey, {
+    balance,
+    timestamp: Date.now()
+  });
+}
+
 // Fetch real balance from X1 RPC
 async function getX1Balance(address, rpcUrl) {
   return new Promise((resolve, reject) => {
@@ -91,8 +116,15 @@ async function getWalletData(address, network = "mainnet") {
   console.log(`  Using ${network} RPC: ${rpcUrl}`);
 
   try {
-    const balance = await getX1Balance(address, rpcUrl);
-    console.log(`  Balance from X1 RPC: ${balance} XNT`);
+    // Check cache first
+    let balance = getCachedBalance(address, network);
+
+    if (balance === null) {
+      // Not in cache or expired, fetch from RPC
+      balance = await getX1Balance(address, rpcUrl);
+      setCachedBalance(address, network, balance);
+      console.log(`  Balance from X1 RPC: ${balance} XNT`);
+    }
 
     return {
       balance: balance,

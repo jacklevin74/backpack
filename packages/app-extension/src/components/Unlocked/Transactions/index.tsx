@@ -1,49 +1,22 @@
 import type { CSSProperties } from "react";
 import { type Blockchain /*, XNFT_GG_LINK */ } from "@coral-xyz/common";
-import {
-  type ProviderId,
-  TransactionHistory,
-} from "@coral-xyz/data-components";
 import { useTranslation } from "@coral-xyz/i18n";
 import { EmptyState, Loading } from "@coral-xyz/react-common";
 import { useTheme, YStack } from "@coral-xyz/tamagui";
 import Bolt from "@mui/icons-material/BoltRounded";
 import { Skeleton } from "@mui/material";
-import { useNavigation } from "@react-navigation/native";
 
-import { Routes } from "../../../refactor/navigation/WalletsNavigator";
 import { SkeletonRow } from "../../common/TokenTable";
+
+import { ActivityPage } from "./ActivityPage";
 
 export function Transactions({
   ctx,
 }: {
   ctx: { publicKey: string; blockchain: Blockchain };
 }) {
-  const navigation = useNavigation<any>();
-
-  return (
-    <TransactionHistory
-      pagination
-      address={ctx.publicKey}
-      providerId={ctx.blockchain.toUpperCase() as ProviderId}
-      emptyStateComponent={<_NoRecentActivityLabel minimize={false} />}
-      fetchPolicy="cache-and-network"
-      limit={50}
-      loaderComponent={<TransactionsLoader />}
-      loadingMoreSkeletonComponent={
-        <Loading iconStyle={{ width: 35, height: 35 }} />
-      }
-      onItemClick={(transaction, explorer, details) => {
-        if (!details) {
-          window.open(explorer);
-        } else {
-          navigation.push(Routes.ActivityDetailScreen, {
-            transaction,
-          });
-        }
-      }}
-    />
-  );
+  // Use new activity page implementation for all blockchains
+  return <ActivityPage address={ctx.publicKey} blockchain={ctx.blockchain} />;
 }
 
 export function TransactionsLoader() {

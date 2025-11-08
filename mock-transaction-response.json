@@ -1,0 +1,92 @@
+{
+  "transactions": [
+    {
+      "hash": "5YNmS1R9nNSCDzb1a7yXSVznz1fFm2zmQxvT8VqU3kxJKrQE4kYGcwQa1pT7znEMT",
+      "type": "SEND",
+      "timestamp": "2025-11-07T14:23:45.000Z",
+      "amount": "2.5",
+      "tokenName": "X1 Token",
+      "tokenSymbol": "XNT",
+      "fee": "0.00005",
+      "feePayer": "8xQ2vM9p7R3nK5wT6YzU4jL2sN1fP9cV7bH4gD3eA2mX",
+      "description": "Transfer to wallet",
+      "error": null,
+      "source": "wallet",
+      "nfts": []
+    },
+    {
+      "hash": "3mKpL8T2vN9qR5yD6jF1xH4wZ7cU3sG9nM2bV8pQ4tY5eW7aB3xC1rN6kM9hJ2pL",
+      "type": "RECEIVE",
+      "timestamp": "2025-11-07T12:45:12.000Z",
+      "amount": "10.0",
+      "tokenName": "X1 Token",
+      "tokenSymbol": "XNT",
+      "fee": "0.00005",
+      "feePayer": "7vP4kL9nM2bR8yT5wQ3xJ6cH1fZ9sN4pD2gV8mU7eK3aY",
+      "description": "Received payment",
+      "error": null,
+      "source": "external",
+      "nfts": []
+    },
+    {
+      "hash": "9bT5nK2pR8yF4mL7wQ3jV6xH1cZ9sN4pD2gM8vU7eK3aY5tW9qL2nR6bJ4hP1xC",
+      "type": "SWAP",
+      "timestamp": "2025-11-06T18:30:22.000Z",
+      "amount": "5.0",
+      "tokenName": "X1 Token",
+      "tokenSymbol": "XNT",
+      "fee": "0.0001",
+      "feePayer": "8xQ2vM9p7R3nK5wT6YzU4jL2sN1fP9cV7bH4gD3eA2mX",
+      "description": "Swapped XNT for USDC",
+      "error": null,
+      "source": "dex",
+      "nfts": []
+    },
+    {
+      "hash": "4kR7nM2pT9yL5wQ8jV3xH6cZ1sN9pD4gF2vU8mK7eY3aW5tB9qR2nL6bJ8hP4xC",
+      "type": "STAKE",
+      "timestamp": "2025-11-05T09:15:33.000Z",
+      "amount": "100.0",
+      "tokenName": "X1 Token",
+      "tokenSymbol": "XNT",
+      "fee": "0.00005",
+      "feePayer": "8xQ2vM9p7R3nK5wT6YzU4jL2sN1fP9cV7bH4gD3eA2mX",
+      "description": "Staked to validator",
+      "error": null,
+      "source": "staking",
+      "nfts": []
+    },
+    {
+      "hash": "2vT9nR5pK8yM3wL7jQ4xF6cH1zN9sP2gD8vU5mY7eK3aW4tB9qL2nR6bJ3hP8xC",
+      "type": "NFT_MINT",
+      "timestamp": "2025-11-04T16:42:18.000Z",
+      "amount": "1",
+      "tokenName": "Cool NFT Collection",
+      "tokenSymbol": "CNFT",
+      "fee": "0.0002",
+      "feePayer": "8xQ2vM9p7R3nK5wT6YzU4jL2sN1fP9cV7bH4gD3eA2mX",
+      "description": "Minted NFT #1337",
+      "error": null,
+      "source": "marketplace",
+      "nfts": [
+        {
+          "mint": "NFT1337mint8xQ2vM9p7R3nK5wT6YzU4jL2sN1fP9cV7bH4gD3eA2mX",
+          "name": "Cool NFT #1337",
+          "image": "https://example.com/nft/1337.png"
+        }
+      ]
+    }
+  ],
+  "hasMore": false,
+  "totalCount": 5,
+  "requestParams": {
+    "address": "8xQ2vM9p7R3nK5wT6YzU4jL2sN1fP9cV7bH4gD3eA2mX",
+    "providerId": "X1-testnet",
+    "limit": 50,
+    "offset": 0
+  },
+  "meta": {
+    "timestamp": "2025-11-07T15:30:00.000Z",
+    "version": "1.0.0"
+  }
+}

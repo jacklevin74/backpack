@@ -3,25 +3,25 @@
 /**
  * X1 JSON Server for Backpack Wallet
  *
- * This server provides token balance and price data for X1 blockchain wallets.
- * It responds to requests from the Apollo GraphQL interceptor in packages/common/src/apollo/index.ts
+ * This server provides token balance, price data, and transaction activity for X1 blockchain wallets.
+ * It responds to requests from the Backpack wallet extension.
  *
- * Endpoint: GET /wallet/:address?providerId=X1
+ * Endpoints:
  *
- * Response format:
- * {
- *   balance: number,
- *   tokens: [{
- *     mint: string,
- *     decimals: number,
- *     balance: number,
- *     logo: string,
- *     name: string,
- *     symbol: string,
- *     price: number,
- *     valueUSD: number
- *   }]
- * }
+ * 1. GET /wallet/:address?providerId=X1
+ *    Returns wallet balance and token data
+ *    Response: { balance: number, tokens: [...] }
+ *
+ * 2. POST /transactions
+ *    Returns transaction activity for a wallet
+ *    Request: { address: string, providerId: string, limit: number, offset: number }
+ *    Response: { transactions: [...], hasMore: boolean, totalCount: number }
+ *
+ * 3. POST /v2/graphql
+ *    Handles GraphQL queries (priority fees, etc.)
+ *
+ * 4. GET /test
+ *    Test page for wallet integration
  */
 
 const http = require("http");
@@ -37,6 +37,74 @@ const XNT_PRICE = 1.0; // $1 per XNT
 // Cache expires after 2 seconds for real-time updates
 const balanceCache = new Map();
 const CACHE_TTL_MS = 2000; // 2 seconds
+
+// ============================================================================
+// Transaction Mock Data Functions
+// ============================================================================
+
+function createMockTransaction(index, offset = 0) {
+  const types = [
+    "SEND",
+    "RECEIVE",
+    "SWAP",
+    "STAKE",
+    "UNSTAKE",
+    "NFT_MINT",
+    "NFT_SALE",
+  ];
+  const now = new Date();
+  const hoursAgo = (index + offset) * 3;
+  const timestamp = new Date(now.getTime() - hoursAgo * 60 * 60 * 1000);
+
+  const type = types[index % types.length];
+  const isSend = type === "SEND";
+  const isNFT = type.startsWith("NFT_");
+
+  return {
+    hash: `${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`,
+    type: type,
+    timestamp: timestamp.toISOString(),
+    amount: isNFT ? "1" : (Math.random() * 100).toFixed(2),
+    tokenName: isNFT ? "Cool NFT Collection" : "X1 Token",
+    tokenSymbol: isNFT ? "CNFT" : "XNT",
+    fee: (Math.random() * 0.001).toFixed(6),
+    feePayer: "mock" + Math.random().toString(36).substring(2, 15),
+    description: getTransactionDescription(type, index),
+    error: null,
+    source: getTransactionSource(type),
+    nfts: isNFT
+      ? [
+          {
+            mint: "NFTmint" + Math.random().toString(36).substring(2, 15),
+            name: `Cool NFT #${1000 + index}`,
+            image: `https://example.com/nft/${1000 + index}.png`,
+          },
+        ]
+      : [],
+  };
+}
+
+function getTransactionDescription(type, index) {
+  const descriptions = {
+    SEND: ["Transfer to wallet", "Payment sent", "Sent to friend"],
+    RECEIVE: ["Received payment", "Incoming transfer", "Payment received"],
+    SWAP: ["Swapped XNT for USDC", "Token swap", "Exchanged tokens"],
+    STAKE: ["Staked to validator", "Staking rewards", "Validator stake"],
+    UNSTAKE: ["Unstaked tokens", "Withdrew stake", "Unstake from validator"],
+    NFT_MINT: ["Minted NFT", "NFT created", "New NFT minted"],
+    NFT_SALE: ["Sold NFT", "NFT sale", "NFT transferred"],
+  };
+
+  const options = descriptions[type] || ["Transaction"];
+  return options[index % options.length];
+}
+
+function getTransactionSource(type) {
+  if (type.startsWith("NFT_")) return "marketplace";
+  if (type === "SWAP") return "dex";
+  if (type === "STAKE" || type === "UNSTAKE") return "staking";
+  return "wallet";
+}
 
 function getCachedBalance(address, network) {
   const cacheKey = `${address}-${network}`;
@@ -54,7 +122,7 @@ function setCachedBalance(address, network, balance) {
   const cacheKey = `${address}-${network}`;
   balanceCache.set(cacheKey, {
     balance,
-    timestamp: Date.now()
+    timestamp: Date.now(),
   });
 }
 
@@ -169,7 +237,7 @@ const server = http.createServer((req, res) => {
 
   // CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Content-Type", "application/json");
 
@@ -215,6 +283,82 @@ const server = http.createServer((req, res) => {
         res.writeHead(400);
         res.end(
           JSON.stringify({ errors: [{ message: "Invalid GraphQL request" }] })
+        );
+      }
+    });
+    return;
+  }
+
+  // Handle /transactions endpoint for activity page
+  if (pathname === "/transactions" && req.method === "POST") {
+    let body = "";
+
+    req.on("data", (chunk) => {
+      body += chunk.toString();
+    });
+
+    req.on("end", () => {
+      try {
+        const requestData = JSON.parse(body);
+        const {
+          address,
+          providerId,
+          limit = 50,
+          offset = 0,
+          tokenMint,
+        } = requestData;
+
+        console.log(`\n📥 Transaction Activity Request:`);
+        console.log(`   Address: ${address}`);
+        console.log(`   Provider: ${providerId}`);
+        console.log(`   Limit: ${limit}, Offset: ${offset}`);
+        if (tokenMint) console.log(`   Token Mint: ${tokenMint}`);
+
+        // Generate mock transactions
+        const totalTransactions = 25; // Total mock transactions available
+        const transactions = [];
+        const actualLimit = Math.min(limit, 50);
+
+        for (
+          let i = 0;
+          i < actualLimit && offset + i < totalTransactions;
+          i++
+        ) {
+          transactions.push(createMockTransaction(i, offset));
+        }
+
+        const hasMore = offset + transactions.length < totalTransactions;
+
+        const response = {
+          transactions,
+          hasMore,
+          totalCount: totalTransactions,
+          requestParams: {
+            address,
+            providerId,
+            limit: actualLimit,
+            offset,
+          },
+          meta: {
+            timestamp: new Date().toISOString(),
+            version: "1.0.0",
+          },
+        };
+
+        console.log(
+          `✅ Returning ${transactions.length} transactions (hasMore: ${hasMore})\n`
+        );
+
+        res.writeHead(200);
+        res.end(JSON.stringify(response, null, 2));
+      } catch (error) {
+        console.error(`❌ Transaction request error: ${error.message}`);
+        res.writeHead(400);
+        res.end(
+          JSON.stringify({
+            error: "Bad Request",
+            message: error.message,
+          })
         );
       }
     });
@@ -362,13 +506,29 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log(
     `📡 Listening on: http://0.0.0.0:${PORT} (accessible from 162.250.126.66:${PORT})`
   );
-  console.log(`📋 Endpoint: GET /wallet/:address?providerId=X1`);
-  console.log(`🧪 Test Page: http://162.250.126.66:${PORT}/test`);
   console.log("");
-  console.log("Example:");
+  console.log("📋 Endpoints:");
+  console.log(
+    `   GET  /wallet/:address?providerId=X1     - Wallet balance & tokens`
+  );
+  console.log(
+    `   POST /transactions                      - Transaction activity`
+  );
+  console.log(`   POST /v2/graphql                        - GraphQL queries`);
+  console.log(`   GET  /test                              - Test page`);
+  console.log("");
+  console.log("Examples:");
   console.log(
     `  curl "http://localhost:${PORT}/wallet/5paZC1vV94AF513DJn5yXj2TTnTEqm4RuPkWgKYujAi5?providerId=X1"`
   );
+  console.log("");
+  console.log(`  curl -X POST http://localhost:${PORT}/transactions \\`);
+  console.log(`    -H "Content-Type: application/json" \\`);
+  console.log(
+    `    -d '{"address":"5paZC1vV94AF513DJn5yXj2TTnTEqm4RuPkWgKYujAi5","providerId":"X1-testnet","limit":10,"offset":0}'`
+  );
+  console.log("");
+  console.log(`🧪 Test Page: http://162.250.126.66:${PORT}/test`);
   console.log("");
   console.log("Press Ctrl+C to stop");
   console.log("=".repeat(80));

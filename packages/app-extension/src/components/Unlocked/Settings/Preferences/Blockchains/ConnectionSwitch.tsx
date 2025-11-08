@@ -82,9 +82,19 @@ export const changeNetwork = async (
   background: ChannelAppUiClient,
   blockchain: Blockchain,
   url: string,
-  chainId?: string
+  chainId?: string,
+  activeWallet?: { publicKey: string; blockchain: Blockchain },
+  userClient?: any
 ) => {
   try {
+    // If switching to a different blockchain, update the active wallet's blockchain first
+    if (activeWallet && userClient && activeWallet.blockchain !== blockchain) {
+      await userClient.setActiveWallet({
+        publicKey: activeWallet.publicKey,
+        blockchain: blockchain,
+      });
+    }
+
     // ph101pp todo
     await background.request({
       method: UI_RPC_METHOD_CONNECTION_URL_UPDATE,

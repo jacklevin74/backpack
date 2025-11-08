@@ -4,6 +4,7 @@ import {
   blockchainConnectionUrl,
   useActiveWallet,
   useBackgroundClient,
+  userClientAtom,
 } from "@coral-xyz/recoil";
 import { useTheme } from "@coral-xyz/tamagui";
 import { Check } from "@mui/icons-material";
@@ -45,6 +46,7 @@ function Checkmark() {
 function Container() {
   const activeWallet = useActiveWallet();
   const background = useBackgroundClient();
+  const userClient = useRecoilValue(userClientAtom);
 
   // Get connection URLs for both blockchains
   const x1ConnectionUrl = useRecoilValue(
@@ -74,7 +76,14 @@ function Container() {
       ([, { name, url, chainId }]) => {
         menuItems[name] = {
           onClick: () => {
-            changeNetwork(background, Blockchain.X1, url, chainId);
+            changeNetwork(
+              background,
+              Blockchain.X1,
+              url,
+              chainId,
+              activeWallet,
+              userClient
+            );
           },
           detail:
             x1ConnectionUrl === url &&
@@ -92,7 +101,14 @@ function Container() {
       ([, { name, url, chainId }]) => {
         menuItems[name] = {
           onClick: () => {
-            changeNetwork(background, Blockchain.SOLANA, url, chainId);
+            changeNetwork(
+              background,
+              Blockchain.SOLANA,
+              url,
+              chainId,
+              activeWallet,
+              userClient
+            );
           },
           detail:
             solanaConnectionUrl === url &&

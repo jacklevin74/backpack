@@ -136,13 +136,20 @@ export function LoginRequest({
                 height="96"
                 style={{ marginBottom: 32 }}
               />
-              <StyledText
-                fontSize={48}
-                fontWeight="$bold"
-                color="$baseTextHighEmphasis"
+              <div
+                style={{
+                  fontSize: 48,
+                  fontWeight: 700,
+                  background: "linear-gradient(180deg, #fff, #0ff, #00a8cc)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                  filter: "drop-shadow(0 0 5px rgba(0, 255, 255, 0.5))",
+                  letterSpacing: "0.08em",
+                }}
               >
                 X1 WALLET
-              </StyledText>
+              </div>
             </Stack>
             <Stack marginHorizontal="$3" marginTop="$4" zIndex={1}>
               <Stack

@@ -119,14 +119,10 @@ function Container({ navigation, route }: SendConfirmationScreenProps) {
       <YStack
         ai="center"
         backgroundColor="$baseBackgroundL1"
-        borderRadius={24}
-        gap={32}
-        p={32}
+        borderRadius={12}
+        gap={24}
+        p={24}
         width="100%"
-        style={{
-          boxShadow: "0 8px 32px rgba(0, 255, 255, 0.1)",
-          border: "1px solid rgba(0, 255, 255, 0.2)",
-        }}
       >
         <ConfirmationIcon confirmed={isConfirmed} hasError={!!errorMessage} />
 

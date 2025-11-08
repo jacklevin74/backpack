@@ -36,12 +36,9 @@ export function ConfirmationIcon({
         width={80}
         height={80}
         borderRadius={40}
-        backgroundColor="rgba(0, 255, 100, 0.1)"
-        style={{
-          boxShadow: "0 0 20px rgba(0, 255, 100, 0.3)",
-        }}
+        backgroundColor="rgba(255, 255, 255, 0.05)"
       >
-        <CheckCircleIcon size={60} color="#00ff64" />
+        <CheckCircleIcon size={60} color="#fff" />
       </YStack>
     );
   } else if (hasError) {
@@ -53,9 +50,6 @@ export function ConfirmationIcon({
         height={80}
         borderRadius={40}
         backgroundColor="rgba(255, 80, 80, 0.1)"
-        style={{
-          boxShadow: "0 0 20px rgba(255, 80, 80, 0.3)",
-        }}
       >
         <XCircleIcon size={60} color={theme.redIcon.val} />
       </YStack>
@@ -68,10 +62,7 @@ export function ConfirmationIcon({
       width={80}
       height={80}
       borderRadius={40}
-      backgroundColor="rgba(0, 255, 255, 0.1)"
-      style={{
-        boxShadow: "0 0 20px rgba(0, 255, 255, 0.3)",
-      }}
+      backgroundColor="rgba(0, 255, 255, 0.05)"
     >
       <Loading />
     </YStack>
@@ -101,10 +92,7 @@ export function ConfirmationSubtitle({
           textAlign="center"
           fontSize="$lg"
           fontWeight="$semiBold"
-          color="#00ff64"
-          style={{
-            textShadow: "0 0 10px rgba(0, 255, 100, 0.5)",
-          }}
+          color="#fff"
         >
           Transaction Confirmed ✓
         </StyledText>

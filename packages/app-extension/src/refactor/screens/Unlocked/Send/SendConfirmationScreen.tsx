@@ -129,11 +129,13 @@ function Container({ navigation, route }: SendConfirmationScreenProps) {
             amount={amount}
             symbol={symbol}
             icon={
-              <ListItemIconCore
-                radius="$circular"
-                size={48}
-                image={data?.tokenListEntry?.logo || UNKNOWN_ICON_SRC}
-              />
+              data?.tokenListEntry?.logo && data.tokenListEntry.logo !== UNKNOWN_ICON_SRC ? (
+                <ListItemIconCore
+                  radius="$circular"
+                  size={48}
+                  image={data.tokenListEntry.logo}
+                />
+              ) : null
             }
           />
         </YStack>

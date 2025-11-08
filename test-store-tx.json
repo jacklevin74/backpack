@@ -1,0 +1,34 @@
+{
+  "address": "5paZC1vV94AF513DJn5yXj2TTnTEqm4RuPkWgKYujAi5",
+  "providerId": "X1-testnet",
+  "transactions": [
+    {
+      "hash": "test123abc456def789",
+      "type": "SEND",
+      "timestamp": "2025-11-07T14:23:45.000Z",
+      "amount": "10.5",
+      "tokenName": "X1 Token",
+      "tokenSymbol": "XNT",
+      "fee": "0.00005",
+      "feePayer": "test_payer_123",
+      "description": "Test transfer",
+      "error": null,
+      "source": "wallet",
+      "nfts": []
+    },
+    {
+      "hash": "test456xyz789abc123",
+      "type": "RECEIVE",
+      "timestamp": "2025-11-07T12:00:00.000Z",
+      "amount": "25.0",
+      "tokenName": "X1 Token",
+      "tokenSymbol": "XNT",
+      "fee": "0.00003",
+      "feePayer": "test_payer_456",
+      "description": "Test receive",
+      "error": null,
+      "source": "wallet",
+      "nfts": []
+    }
+  ]
+}

@@ -27,16 +27,193 @@
 const http = require("http");
 const https = require("https");
 const url = require("url");
+const sqlite3 = require("sqlite3").verbose();
+const path = require("path");
 
 const PORT = 4000;
 const X1_MAINNET_RPC_URL = "https://rpc.mainnet.x1.xyz";
 const X1_TESTNET_RPC_URL = "https://rpc.testnet.x1.xyz";
 const XNT_PRICE = 1.0; // $1 per XNT
+const DB_PATH = path.join(__dirname, "transactions.db");
 
 // Balance cache to avoid hitting RPC too frequently
 // Cache expires after 2 seconds for real-time updates
 const balanceCache = new Map();
 const CACHE_TTL_MS = 2000; // 2 seconds
+
+// ============================================================================
+// SQLite Database Setup
+// ============================================================================
+
+let db;
+
+function initializeDatabase() {
+  return new Promise((resolve, reject) => {
+    db = new sqlite3.Database(DB_PATH, (err) => {
+      if (err) {
+        console.error("❌ Error opening database:", err);
+        reject(err);
+        return;
+      }
+
+      console.log("📁 Database connected:", DB_PATH);
+
+      // Create transactions table
+      db.run(
+        `CREATE TABLE IF NOT EXISTS transactions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          wallet_prefix TEXT NOT NULL,
+          wallet_address TEXT NOT NULL,
+          hash TEXT NOT NULL UNIQUE,
+          type TEXT NOT NULL,
+          timestamp TEXT NOT NULL,
+          amount TEXT,
+          token_name TEXT,
+          token_symbol TEXT,
+          fee TEXT,
+          fee_payer TEXT,
+          description TEXT,
+          error TEXT,
+          source TEXT,
+          nfts TEXT,
+          provider_id TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`,
+        (err) => {
+          if (err) {
+            console.error("❌ Error creating table:", err);
+            reject(err);
+            return;
+          }
+
+          // Create indexes
+          db.run(
+            `CREATE INDEX IF NOT EXISTS idx_wallet_prefix ON transactions(wallet_prefix)`,
+            (err) => {
+              if (err) console.error("Warning: Error creating wallet_prefix index:", err);
+            }
+          );
+
+          db.run(
+            `CREATE INDEX IF NOT EXISTS idx_timestamp ON transactions(timestamp DESC)`,
+            (err) => {
+              if (err) console.error("Warning: Error creating timestamp index:", err);
+            }
+          );
+
+          db.run(
+            `CREATE INDEX IF NOT EXISTS idx_hash ON transactions(hash)`,
+            (err) => {
+              if (err) console.error("Warning: Error creating hash index:", err);
+            }
+          );
+
+          console.log("✅ Database initialized");
+          resolve();
+        }
+      );
+    });
+  });
+}
+
+// Get first 8 characters of wallet address as prefix
+function getWalletPrefix(address) {
+  return address.substring(0, 8).toLowerCase();
+}
+
+// Insert transaction into database
+function insertTransaction(walletAddress, transaction, providerId) {
+  return new Promise((resolve, reject) => {
+    const prefix = getWalletPrefix(walletAddress);
+    const nftsJson = transaction.nfts ? JSON.stringify(transaction.nfts) : null;
+
+    const sql = `INSERT OR REPLACE INTO transactions
+      (wallet_prefix, wallet_address, hash, type, timestamp, amount, token_name,
+       token_symbol, fee, fee_payer, description, error, source, nfts, provider_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+    const params = [
+      prefix,
+      walletAddress,
+      transaction.hash,
+      transaction.type,
+      transaction.timestamp,
+      transaction.amount,
+      transaction.tokenName,
+      transaction.tokenSymbol,
+      transaction.fee,
+      transaction.feePayer,
+      transaction.description,
+      transaction.error,
+      transaction.source,
+      nftsJson,
+      providerId,
+    ];
+
+    db.run(sql, params, function (err) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(this.lastID);
+      }
+    });
+  });
+}
+
+// Get transactions for a wallet address
+function getTransactions(walletAddress, providerId, limit = 50, offset = 0) {
+  return new Promise((resolve, reject) => {
+    const prefix = getWalletPrefix(walletAddress);
+
+    const sql = `SELECT * FROM transactions
+      WHERE wallet_prefix = ? AND provider_id = ?
+      ORDER BY timestamp DESC
+      LIMIT ? OFFSET ?`;
+
+    db.all(sql, [prefix, providerId, limit, offset], (err, rows) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+
+      // Transform database rows to transaction objects
+      const transactions = rows.map((row) => ({
+        hash: row.hash,
+        type: row.type,
+        timestamp: row.timestamp,
+        amount: row.amount,
+        tokenName: row.token_name,
+        tokenSymbol: row.token_symbol,
+        fee: row.fee,
+        feePayer: row.fee_payer,
+        description: row.description,
+        error: row.error,
+        source: row.source,
+        nfts: row.nfts ? JSON.parse(row.nfts) : [],
+      }));
+
+      resolve(transactions);
+    });
+  });
+}
+
+// Get total count of transactions for a wallet
+function getTransactionCount(walletAddress, providerId) {
+  return new Promise((resolve, reject) => {
+    const prefix = getWalletPrefix(walletAddress);
+
+    const sql = `SELECT COUNT(*) as count FROM transactions
+      WHERE wallet_prefix = ? AND provider_id = ?`;
+
+    db.get(sql, [prefix, providerId], (err, row) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(row.count);
+      }
+    });
+  });
+}
 
 // ============================================================================
 // Transaction Mock Data Functions
@@ -297,7 +474,7 @@ const server = http.createServer((req, res) => {
       body += chunk.toString();
     });
 
-    req.on("end", () => {
+    req.on("end", async () => {
       try {
         const requestData = JSON.parse(body);
         const {
@@ -309,30 +486,27 @@ const server = http.createServer((req, res) => {
         } = requestData;
 
         console.log(`\n📥 Transaction Activity Request:`);
-        console.log(`   Address: ${address}`);
+        console.log(`   Address: ${address} (prefix: ${getWalletPrefix(address)})`);
         console.log(`   Provider: ${providerId}`);
         console.log(`   Limit: ${limit}, Offset: ${offset}`);
         if (tokenMint) console.log(`   Token Mint: ${tokenMint}`);
 
-        // Generate mock transactions
-        const totalTransactions = 25; // Total mock transactions available
-        const transactions = [];
         const actualLimit = Math.min(limit, 50);
 
-        for (
-          let i = 0;
-          i < actualLimit && offset + i < totalTransactions;
-          i++
-        ) {
-          transactions.push(createMockTransaction(i, offset));
-        }
-
-        const hasMore = offset + transactions.length < totalTransactions;
+        // Fetch from database
+        const transactions = await getTransactions(
+          address,
+          providerId,
+          actualLimit,
+          offset
+        );
+        const totalCount = await getTransactionCount(address, providerId);
+        const hasMore = offset + transactions.length < totalCount;
 
         const response = {
           transactions,
           hasMore,
-          totalCount: totalTransactions,
+          totalCount,
           requestParams: {
             address,
             providerId,
@@ -346,17 +520,87 @@ const server = http.createServer((req, res) => {
         };
 
         console.log(
-          `✅ Returning ${transactions.length} transactions (hasMore: ${hasMore})\n`
+          `✅ Returning ${transactions.length} transactions from DB (total: ${totalCount}, hasMore: ${hasMore})\n`
         );
 
         res.writeHead(200);
         res.end(JSON.stringify(response, null, 2));
       } catch (error) {
         console.error(`❌ Transaction request error: ${error.message}`);
-        res.writeHead(400);
+        res.writeHead(500);
         res.end(
           JSON.stringify({
-            error: "Bad Request",
+            error: "Internal Server Error",
+            message: error.message,
+          })
+        );
+      }
+    });
+    return;
+  }
+
+  // Handle /transactions/store endpoint to add transactions to database
+  if (pathname === "/transactions/store" && req.method === "POST") {
+    let body = "";
+
+    req.on("data", (chunk) => {
+      body += chunk.toString();
+    });
+
+    req.on("end", async () => {
+      try {
+        const requestData = JSON.parse(body);
+        const { address, providerId, transactions } = requestData;
+
+        if (!address || !providerId || !transactions || !Array.isArray(transactions)) {
+          res.writeHead(400);
+          res.end(
+            JSON.stringify({
+              error: "Bad Request",
+              message: "Required fields: address, providerId, transactions (array)",
+            })
+          );
+          return;
+        }
+
+        console.log(`\n💾 Storing ${transactions.length} transactions for ${getWalletPrefix(address)}`);
+
+        const results = [];
+        for (const tx of transactions) {
+          try {
+            const id = await insertTransaction(address, tx, providerId);
+            results.push({ hash: tx.hash, id, status: "inserted" });
+          } catch (err) {
+            if (err.message.includes("UNIQUE constraint")) {
+              results.push({ hash: tx.hash, status: "duplicate" });
+            } else {
+              results.push({ hash: tx.hash, status: "error", error: err.message });
+            }
+          }
+        }
+
+        const inserted = results.filter((r) => r.status === "inserted").length;
+        const duplicates = results.filter((r) => r.status === "duplicate").length;
+        const errors = results.filter((r) => r.status === "error").length;
+
+        console.log(`✅ Stored: ${inserted} inserted, ${duplicates} duplicates, ${errors} errors\n`);
+
+        res.writeHead(200);
+        res.end(
+          JSON.stringify({
+            success: true,
+            inserted,
+            duplicates,
+            errors,
+            results,
+          })
+        );
+      } catch (error) {
+        console.error(`❌ Store transaction error: ${error.message}`);
+        res.writeHead(500);
+        res.end(
+          JSON.stringify({
+            error: "Internal Server Error",
             message: error.message,
           })
         );
@@ -498,48 +742,72 @@ const server = http.createServer((req, res) => {
   }
 });
 
-server.listen(PORT, "0.0.0.0", () => {
-  console.log("");
-  console.log("=".repeat(80));
-  console.log("🚀 X1 JSON Server Started");
-  console.log("=".repeat(80));
-  console.log(
-    `📡 Listening on: http://0.0.0.0:${PORT} (accessible from 162.250.126.66:${PORT})`
-  );
-  console.log("");
-  console.log("📋 Endpoints:");
-  console.log(
-    `   GET  /wallet/:address?providerId=X1     - Wallet balance & tokens`
-  );
-  console.log(
-    `   POST /transactions                      - Transaction activity`
-  );
-  console.log(`   POST /v2/graphql                        - GraphQL queries`);
-  console.log(`   GET  /test                              - Test page`);
-  console.log("");
-  console.log("Examples:");
-  console.log(
-    `  curl "http://localhost:${PORT}/wallet/5paZC1vV94AF513DJn5yXj2TTnTEqm4RuPkWgKYujAi5?providerId=X1"`
-  );
-  console.log("");
-  console.log(`  curl -X POST http://localhost:${PORT}/transactions \\`);
-  console.log(`    -H "Content-Type: application/json" \\`);
-  console.log(
-    `    -d '{"address":"5paZC1vV94AF513DJn5yXj2TTnTEqm4RuPkWgKYujAi5","providerId":"X1-testnet","limit":10,"offset":0}'`
-  );
-  console.log("");
-  console.log(`🧪 Test Page: http://162.250.126.66:${PORT}/test`);
-  console.log("");
-  console.log("Press Ctrl+C to stop");
-  console.log("=".repeat(80));
-  console.log("");
-});
+// Initialize database then start server
+initializeDatabase()
+  .then(() => {
+    server.listen(PORT, "0.0.0.0", () => {
+      console.log("");
+      console.log("=".repeat(80));
+      console.log("🚀 X1 JSON Server Started with SQLite Database");
+      console.log("=".repeat(80));
+      console.log(
+        `📡 Listening on: http://0.0.0.0:${PORT} (accessible from 162.250.126.66:${PORT})`
+      );
+      console.log(`💾 Database: ${DB_PATH}`);
+      console.log("");
+      console.log("📋 Endpoints:");
+      console.log(
+        `   GET  /wallet/:address?providerId=X1       - Wallet balance & tokens`
+      );
+      console.log(
+        `   POST /transactions                        - Get transactions (from DB)`
+      );
+      console.log(
+        `   POST /transactions/store                  - Store transactions to DB`
+      );
+      console.log(`   POST /v2/graphql                          - GraphQL queries`);
+      console.log(`   GET  /test                                - Test page`);
+      console.log("");
+      console.log("Examples:");
+      console.log(
+        `  curl "http://localhost:${PORT}/wallet/5paZC1vV94AF513DJn5yXj2TTnTEqm4RuPkWgKYujAi5?providerId=X1"`
+      );
+      console.log("");
+      console.log(`  curl -X POST http://localhost:${PORT}/transactions \\`);
+      console.log(`    -H "Content-Type: application/json" \\`);
+      console.log(
+        `    -d '{"address":"5paZC1vV94AF513DJn5yXj2TTnTEqm4RuPkWgKYujAi5","providerId":"X1-testnet","limit":10,"offset":0}'`
+      );
+      console.log("");
+      console.log(`🧪 Test Page: http://162.250.126.66:${PORT}/test`);
+      console.log("");
+      console.log("Press Ctrl+C to stop");
+      console.log("=".repeat(80));
+      console.log("");
+    });
+  })
+  .catch((err) => {
+    console.error("❌ Failed to initialize database:", err);
+    process.exit(1);
+  });
 
 // Graceful shutdown
 process.on("SIGINT", () => {
   console.log("\n\n👋 Shutting down X1 JSON Server...");
   server.close(() => {
-    console.log("✅ Server stopped");
-    process.exit(0);
+    if (db) {
+      db.close((err) => {
+        if (err) {
+          console.error("❌ Error closing database:", err);
+        } else {
+          console.log("💾 Database closed");
+        }
+        console.log("✅ Server stopped");
+        process.exit(0);
+      });
+    } else {
+      console.log("✅ Server stopped");
+      process.exit(0);
+    }
   });
 });

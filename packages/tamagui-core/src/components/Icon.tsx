@@ -41,6 +41,49 @@ export function RedBackpackIcon(props: SvgProps) {
   );
 }
 
+export function X1WalletIcon(props: SvgProps) {
+  return (
+    <Svg width="100" height="100" viewBox="0 0 100 100" fill="none" {...props}>
+      {/* Outer glow */}
+      <Circle cx="50" cy="50" r="48" fill="#00FFFF" fillOpacity="0.1" />
+
+      {/* Main X shape */}
+      <Path
+        d="M25 25 L45 50 L25 75"
+        stroke="#00FFFF"
+        strokeWidth="4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <Path
+        d="M75 25 L55 50 L75 75"
+        stroke="#00FFFF"
+        strokeWidth="4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+
+      {/* Center "1" */}
+      <Rect
+        x="48"
+        y="30"
+        width="4"
+        height="40"
+        fill="#00FFFF"
+        rx="2"
+      />
+      <Path
+        d="M44 35 L48 30"
+        stroke="#00FFFF"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
 type SvgIconProps = SvgProps & { fill?: string };
 
 export function TwitterIcon({

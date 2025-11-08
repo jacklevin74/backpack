@@ -10,7 +10,6 @@ import {
   Button,
   CustomScrollView,
   Form,
-  RedBackpackIcon,
   Stack,
   StyledText,
   useTheme,
@@ -130,8 +129,20 @@ export function LoginRequest({
             space="$4"
           >
             <Stack paddingTop="$9" alignItems="center">
-              <RedBackpackIcon style={{ marginBottom: 32 }} />
-              <BackpackText fill={theme.baseTextHighEmphasis.val} />
+              <img
+                src="x1.png"
+                alt="X1 Wallet"
+                width="96"
+                height="96"
+                style={{ marginBottom: 32 }}
+              />
+              <StyledText
+                fontSize={48}
+                fontWeight="$bold"
+                color="$baseTextHighEmphasis"
+              >
+                X1 WALLET
+              </StyledText>
             </Stack>
             <Stack marginHorizontal="$3" marginTop="$4" zIndex={1}>
               <Stack

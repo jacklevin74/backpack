@@ -9,7 +9,7 @@
   "types": "dist/esm/index.d.ts",
   "react-native": "src/index.ts",
   "scripts": {
-    "build": "echo 'Skipping data-components build - GraphQL dependencies removed'",
+    "build": "tsc -b && tsc-alias",
     "start": "tsc --watch",
     "lint": "eslint ./src --ext .js,.jsx,.ts,.tsx --cache",
     "gql:generate": "graphql-codegen --config codegen.yml",

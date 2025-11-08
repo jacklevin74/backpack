@@ -9,7 +9,6 @@ import {
 } from "@coral-xyz/react-common";
 import {
   BpPrimaryButton,
-  RedBackpackIcon,
   StyledText,
   useTheme,
   XStack,
@@ -48,10 +47,10 @@ export function SetupComplete({ onClose }: { onClose: () => void }) {
         <XStack gap={12}>
           <_CallToAction
             icon={
-              <RedBackpackIcon
-                style={{ marginLeft: 4 }}
-                height={24}
-                width={17}
+              <img
+                src="x1.png"
+                alt="X1 Wallet"
+                style={{ marginLeft: 4, height: 24, width: 24 }}
               />
             }
             title={t("support")}

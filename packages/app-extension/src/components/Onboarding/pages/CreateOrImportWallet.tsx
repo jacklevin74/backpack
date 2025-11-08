@@ -2,7 +2,6 @@ import { useTranslation } from "@coral-xyz/i18n";
 import {
   BpPrimaryButton,
   BpSecondaryButton,
-  RedBackpackIcon,
   StyledText,
   YStack,
 } from "@coral-xyz/tamagui";
@@ -16,11 +15,15 @@ export const CreateOrImportWallet = ({
   return (
     <YStack gap={40}>
       <div style={{ textAlign: "center" }}>
-        <RedBackpackIcon />
+        <img
+          src="x1.png"
+          alt="X1 Wallet"
+          style={{ width: 96, height: 96 }}
+        />
       </div>
       <YStack gap={8}>
         <StyledText fontSize={36} fontWeight="$semiBold" textAlign="center">
-          {t("welcome_to_backpack")}
+          Welcome to X1 Wallet
         </StyledText>
         <StyledText color="$baseTextMedEmphasis" textAlign="center">
           {t("lets_get_started")}

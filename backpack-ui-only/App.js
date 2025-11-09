@@ -891,55 +891,48 @@ export default function App() {
         </Pressable>
       </Modal>
 
-      {/* Debug Drawer */}
+      {/* Debug Console - Full Page */}
       <Modal
         visible={showDebugDrawer}
-        transparent={true}
+        transparent={false}
         animationType="slide"
         onRequestClose={() => setShowDebugDrawer(false)}
       >
-        <View style={styles.settingsDrawerOverlay}>
-          <Pressable
-            style={styles.debugDrawerBackdrop}
-            onPress={() => setShowDebugDrawer(false)}
-          />
-          <View style={styles.settingsDrawerContent}>
-            <View style={styles.settingsDrawerContentArea}>
-              {/* Header */}
-              <View style={styles.settingsDrawerHeader}>
-                <Text style={styles.settingsDrawerTitle}>Debug Console</Text>
-                <TouchableOpacity onPress={() => setShowDebugDrawer(false)}>
-                  <Text style={styles.settingsDrawerClose}>✕</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Debug Logs */}
-              <ScrollView
-                style={styles.debugLogList}
-                showsVerticalScrollIndicator={true}
-                nestedScrollEnabled={true}
-              >
-                {debugLogs.length === 0 ? (
-                  <Text style={styles.debugNoLogs}>No logs yet...</Text>
-                ) : (
-                  debugLogs.map((log, index) => (
-                    <Text key={index} style={styles.debugLogText}>
-                      {log}
-                    </Text>
-                  ))
-                )}
-              </ScrollView>
-
-              {/* Clear Button */}
-              <TouchableOpacity
-                style={styles.debugClearButton}
-                onPress={() => setDebugLogs([])}
-              >
-                <Text style={styles.debugClearButtonText}>Clear Logs</Text>
-              </TouchableOpacity>
-            </View>
+        <SafeAreaView style={styles.debugFullPageContainer}>
+          {/* Header */}
+          <View style={styles.debugFullPageHeader}>
+            <Text style={styles.debugFullPageTitle}>Debug Console</Text>
+            <TouchableOpacity onPress={() => setShowDebugDrawer(false)}>
+              <Text style={styles.debugFullPageClose}>✕</Text>
+            </TouchableOpacity>
           </View>
-        </View>
+
+          {/* Debug Logs */}
+          <ScrollView
+            style={styles.debugLogList}
+            showsVerticalScrollIndicator={true}
+          >
+            {debugLogs.length === 0 ? (
+              <Text style={styles.debugNoLogs}>No logs yet...</Text>
+            ) : (
+              debugLogs.map((log, index) => (
+                <Text key={index} style={styles.debugLogText}>
+                  {log}
+                </Text>
+              ))
+            )}
+          </ScrollView>
+
+          {/* Clear Button */}
+          <View style={styles.debugFullPageFooter}>
+            <TouchableOpacity
+              style={styles.debugClearButton}
+              onPress={() => setDebugLogs([])}
+            >
+              <Text style={styles.debugClearButtonText}>Clear Logs</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
       </Modal>
 
       {/* Receive Drawer */}
@@ -1252,7 +1245,7 @@ const styles = StyleSheet.create({
   activityCard: {
     backgroundColor: "#0a0a0a",
     borderRadius: 8,
-    padding: 12,
+    padding: 14,
     marginHorizontal: 16,
     marginTop: 8,
   },
@@ -1956,17 +1949,40 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: "#666666",
   },
-  debugDrawerBackdrop: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+  debugFullPageContainer: {
+    flex: 1,
+    backgroundColor: "#000000",
+  },
+  debugFullPageHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: "#000000",
+    borderBottomWidth: 1,
+    borderBottomColor: "#1a1a1a",
+  },
+  debugFullPageTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+  },
+  debugFullPageClose: {
+    fontSize: 22,
+    color: "#888888",
+  },
+  debugFullPageFooter: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: "#000000",
+    borderTopWidth: 1,
+    borderTopColor: "#1a1a1a",
   },
   debugLogList: {
     flex: 1,
-    marginBottom: 16,
-    maxHeight: 400,
+    paddingHorizontal: 20,
+    paddingTop: 16,
   },
   debugNoLogs: {
     fontSize: 14,

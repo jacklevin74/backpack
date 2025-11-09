@@ -1,0 +1,1523 @@
+import "react-native-get-random-values";
+import { Buffer } from "buffer";
+global.Buffer = Buffer;
+
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
+import {
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  Alert,
+  ScrollView,
+  FlatList,
+  Image,
+  StatusBar,
+  Modal,
+  Pressable,
+  Linking,
+} from "react-native";
+import { Keypair, Connection, clusterApiUrl } from "@solana/web3.js";
+import * as bip39 from "bip39";
+import { randomBytes, secretbox } from "tweetnacl";
+import bs58 from "bs58";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import BottomSheet, {
+  BottomSheetBackdrop,
+  BottomSheetView,
+} from "@gorhom/bottom-sheet";
+
+// Network configurations
+const API_SERVER = "http://162.250.126.66:4000";
+const DEMO_WALLET_ADDRESS = "29dSqUTTH5okWAr3oLkQWrV968FQxgVqPCSqMqRLj8K2";
+
+// Mock wallets data
+const MOCK_WALLETS = [
+  {
+    id: 1,
+    name: "Ledger 1",
+    address: "29dS...j8K2",
+    publicKey: DEMO_WALLET_ADDRESS,
+    selected: true,
+  },
+  {
+    id: 2,
+    name: "Ledger 2",
+    address: "FSnt...DHyF",
+    publicKey: "FSnt1234DHyF567890abcdefghijklmnopqrstuv",
+    selected: false,
+  },
+  {
+    id: 3,
+    name: "Wallet 1",
+    address: "5FMQ...kCRg",
+    publicKey: "5FMQ5678kCRg012345zyxwvutsrqponmlkjihgfedcb",
+    selected: false,
+  },
+  {
+    id: 4,
+    name: "Wallet 2",
+    address: "H5kT...uY9L",
+    publicKey: "H5kT9012uY9L345678mnopqrstuvwxyzABCDEF123456",
+    selected: false,
+  },
+];
+
+// Mock account data
+const MOCK_ACCOUNTS = [
+  {
+    id: 1,
+    badge: "A1",
+    name: "Account 1",
+    badgeColor: "#4A90E2",
+    selected: true,
+  },
+  {
+    id: 2,
+    badge: "A2",
+    name: "Account 2",
+    badgeColor: "#50C878",
+    selected: false,
+  },
+  {
+    id: 3,
+    badge: "A3",
+    name: "Account 3",
+    badgeColor: "#FFB6C1",
+    selected: false,
+  },
+  {
+    id: 4,
+    badge: "A4",
+    name: "Account 4",
+    badgeColor: "#DDA0DD",
+    selected: false,
+  },
+];
+
+// Available networks
+const NETWORKS = [
+  {
+    id: "X1",
+    name: "X1 Mainnet",
+    providerId: "X1-mainnet",
+    logo: require("./assets/x1.png"),
+    nativeToken: {
+      name: "X1 Native Token",
+      symbol: "XNT",
+      logo: require("./assets/x1.png"),
+    },
+  },
+  {
+    id: "SOLANA",
+    name: "Solana",
+    providerId: "SOLANA-mainnet",
+    logo: require("./assets/solana.png"),
+    nativeToken: {
+      name: "Solana",
+      symbol: "SOL",
+      logo: require("./assets/solana.png"),
+    },
+  },
+];
+
+export default function App() {
+  const [wallets, setWallets] = useState(MOCK_WALLETS);
+  const [selectedWallet, setSelectedWallet] = useState(MOCK_WALLETS[0]);
+  const [accounts, setAccounts] = useState(MOCK_ACCOUNTS);
+  const [selectedAccount, setSelectedAccount] = useState(MOCK_ACCOUNTS[0]);
+  const [balance, setBalance] = useState("30,449.46");
+  const [balanceUSD, setBalanceUSD] = useState("$30,449.46");
+  const [tokens, setTokens] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [balanceCache, setBalanceCache] = useState({});
+  const [currentNetwork, setCurrentNetwork] = useState(NETWORKS[0]);
+
+  // Network selector states
+  const [showNetworkDrawer, setShowNetworkDrawer] = useState(false);
+  const [showAccountDrawer, setShowAccountDrawer] = useState(false);
+  const [showSettingsDrawer, setShowSettingsDrawer] = useState(false);
+
+  // Bottom sheet ref
+  const bottomSheetRef = useRef(null);
+  const snapPoints = useMemo(() => ["50%", "90%"], []);
+
+  // Get native token info based on current network
+  const getNativeTokenInfo = useCallback(() => {
+    return currentNetwork.nativeToken;
+  }, [currentNetwork]);
+
+  // Check balance function with caching
+  const checkBalance = async (network = null, useCache = true) => {
+    try {
+      // Use provided network or current network
+      const activeNetwork = network || currentNetwork;
+      const cacheKey = `${selectedWallet.publicKey}-${activeNetwork.providerId}`;
+
+      // Load from cache first if requested
+      if (useCache && balanceCache[cacheKey]) {
+        const cached = balanceCache[cacheKey];
+        setBalance(cached.balance);
+        setBalanceUSD(cached.balanceUSD);
+        setTokens(cached.tokens);
+        console.log("Loaded balance from cache for", activeNetwork.name);
+      }
+
+      // Fetch fresh data in background
+      const url = `${API_SERVER}/wallet/${selectedWallet.publicKey}?providerId=${activeNetwork.providerId}`;
+      console.log("Fetching balance from:", url);
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.balance !== undefined) {
+        // Format balance with full precision for display
+        const balanceStr = data.balance.toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+        const usdStr = data.tokens[0]?.valueUSD
+          ? `${data.tokens[0].valueUSD.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`
+          : "$0.00";
+
+        const formattedTokens = data.tokens.map((token, idx) => ({
+          id: String(idx + 1),
+          name: token.symbol,
+          balance: token.balance.toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 5,
+          }),
+          usdValue: `${token.valueUSD.toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`,
+          icon:
+            token.symbol === "XNT" ? "💎" : token.symbol === "SOL" ? "◎" : "🪙",
+        }));
+
+        setBalance(balanceStr);
+        setBalanceUSD(usdStr);
+        setTokens(formattedTokens);
+
+        // Save to cache
+        setBalanceCache((prev) => ({
+          ...prev,
+          [cacheKey]: {
+            balance: balanceStr,
+            balanceUSD: usdStr,
+            tokens: formattedTokens,
+          },
+        }));
+
+        console.log(
+          "Balance updated:",
+          balanceStr,
+          getNativeTokenInfo().symbol
+        );
+      }
+    } catch (error) {
+      console.error("Error checking balance:", error);
+    }
+  };
+
+  // Fetch transactions
+  const checkTransactions = async (network = null) => {
+    try {
+      const activeNetwork = network || currentNetwork;
+      const url = `${API_SERVER}/transactions/${selectedWallet.publicKey}?providerId=${activeNetwork.providerId}`;
+      console.log("Fetching fresh transactions from:", url);
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data && data.transactions) {
+        const formattedTransactions = data.transactions.map((tx) => ({
+          id: tx.signature,
+          type: tx.type || "transfer",
+          amount: (tx.amount || 0).toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 5,
+          }),
+          token: tx.symbol || getNativeTokenInfo().symbol,
+          timestamp: new Date(tx.timestamp * 1000).toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          }),
+          signature: tx.signature,
+        }));
+
+        setTransactions(formattedTransactions);
+      }
+    } catch (error) {
+      console.error("Error checking transactions:", error);
+    }
+  };
+
+  // Load initial balance and transactions
+  useEffect(() => {
+    checkBalance();
+    checkTransactions();
+  }, [selectedWallet.publicKey, currentNetwork]);
+
+  const switchNetwork = (network) => {
+    setCurrentNetwork(network);
+    // Use cache for instant switch, then fetch fresh data in background
+    checkBalance(network, true);
+    checkTransactions(network);
+    setShowNetworkDrawer(false);
+  };
+
+  const selectWallet = (wallet) => {
+    setWallets(wallets.map((w) => ({ ...w, selected: w.id === wallet.id })));
+    setSelectedWallet(wallet);
+    bottomSheetRef.current?.close();
+  };
+
+  const selectAccount = (account) => {
+    setAccounts(accounts.map((a) => ({ ...a, selected: a.id === account.id })));
+    setSelectedAccount(account);
+    setShowAccountDrawer(false);
+  };
+
+  const showWalletSelector = () => {
+    bottomSheetRef.current?.expand();
+  };
+
+  const showNetworkSelector = () => {
+    setShowNetworkDrawer(true);
+  };
+
+  const showAccountSelector = () => {
+    setShowAccountDrawer(true);
+  };
+
+  const handleReceive = () => {
+    Alert.alert("Receive", "Receive functionality would open here");
+  };
+
+  const handleSend = () => {
+    Alert.alert("Send", "Send functionality would open here");
+  };
+
+  const handleSwap = () => {
+    Alert.alert("Swap", "Swap functionality would open here");
+  };
+
+  const handleBridge = () => {
+    Alert.alert("Bridge", "Bridge functionality would open here");
+  };
+
+  const handleSheetChanges = useCallback((index) => {
+    console.log("handleSheetChanges", index);
+  }, []);
+
+  const renderBackdrop = useCallback(
+    (props) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+      />
+    ),
+    []
+  );
+
+  const openExplorer = (signature) => {
+    if (currentNetwork.id === "SOLANA") {
+      const url = `https://explorer.solana.com/tx/${signature}`;
+      Linking.openURL(url);
+    } else {
+      Alert.alert(
+        "Explorer",
+        `Would open explorer for transaction: ${signature}`
+      );
+    }
+  };
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView style={styles.container}>
+        <StatusBar hidden={true} />
+        {/* Top Header with Safe Area */}
+        <View style={styles.safeTopArea} />
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            style={[
+              styles.badge,
+              { backgroundColor: selectedAccount.badgeColor },
+            ]}
+            onPress={() => setShowSettingsDrawer(true)}
+          >
+            <Text style={styles.badgeText}>{selectedAccount.badge}</Text>
+          </TouchableOpacity>
+          <View style={styles.topBarCenter}>
+            <View style={styles.walletDropdown}>
+              <TouchableOpacity
+                style={styles.walletDropdownButton}
+                onPress={showWalletSelector}
+              >
+                <Image
+                  source={require("./assets/x1.png")}
+                  style={styles.x1LogoSmall}
+                />
+                <Text style={styles.walletDropdownText}>
+                  {selectedWallet.name}
+                </Text>
+                <Text style={styles.walletDropdownArrow}>▼</Text>
+              </TouchableOpacity>
+              <View style={styles.quickSwitchContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.quickSwitchButton,
+                    currentNetwork.id === "X1" &&
+                      styles.quickSwitchButtonActive,
+                  ]}
+                  onPress={() => switchNetwork(NETWORKS[0])}
+                >
+                  <Image
+                    source={require("./assets/x1.png")}
+                    style={styles.quickSwitchIcon}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.quickSwitchButton,
+                    currentNetwork.id === "SOLANA" &&
+                      styles.quickSwitchButtonActive,
+                  ]}
+                  onPress={() => switchNetwork(NETWORKS[1])}
+                >
+                  <Image
+                    source={require("./assets/solana.png")}
+                    style={styles.quickSwitchIcon}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+          <TouchableOpacity style={styles.settingsIcon}>
+            <Text style={styles.settingsIconText}>⚙</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Main Scrollable Content */}
+        <ScrollView
+          style={styles.mainContent}
+          contentContainerStyle={styles.mainContentContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Balance Section with all content */}
+          <View style={styles.balanceSection}>
+            {/* Balance display */}
+            <View style={styles.balanceContent}>
+              <Text style={styles.balance}>{balance}</Text>
+              <Text style={styles.balanceLabel}>
+                {getNativeTokenInfo().symbol}
+              </Text>
+              <Text style={styles.balanceUSD}>{balanceUSD}</Text>
+              <Text style={styles.balanceChange}>$0.00 0%</Text>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.actionsRow}>
+              <TouchableOpacity
+                style={styles.actionCircle}
+                onPress={handleReceive}
+              >
+                <View style={styles.actionCircleBg}>
+                  <Text style={styles.actionCircleIcon}>▼</Text>
+                </View>
+                <Text style={styles.actionCircleText}>Receive</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionCircle}
+                onPress={handleSend}
+              >
+                <View style={styles.actionCircleBg}>
+                  <Text style={styles.actionCircleIcon}>▲</Text>
+                </View>
+                <Text style={styles.actionCircleText}>Send</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Token List */}
+            <View style={styles.tokenSection}>
+              {tokens.map((token) => {
+                const nativeToken = getNativeTokenInfo();
+                return (
+                  <View key={token.id} style={styles.tokenRow}>
+                    <View style={styles.tokenLeft}>
+                      <View style={styles.tokenIconLarge}>
+                        <Image
+                          source={nativeToken.logo}
+                          style={styles.x1LogoLarge}
+                        />
+                      </View>
+                      <View style={styles.tokenInfo}>
+                        <Text style={styles.tokenNameLarge}>
+                          {nativeToken.name}
+                        </Text>
+                        <Text style={styles.tokenBalanceSmall}>
+                          {token.balance} {nativeToken.symbol}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.tokenRight}>
+                      <Text style={styles.tokenUsdLarge}>
+                        ${token.usdValue}
+                      </Text>
+                      <Text style={styles.tokenChange}>+$0.00</Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+
+            {/* Tabs */}
+            <View style={styles.tabs}>
+              <TouchableOpacity style={[styles.tab, styles.tabActive]}>
+                <Text style={styles.tabTextActive}>Activity</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.tab}>
+                <Text style={styles.tabText}>Collectibles</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Transactions List */}
+            <View style={styles.transactionsList}>
+              {transactions.map((tx) => (
+                <TouchableOpacity
+                  key={tx.id}
+                  style={styles.transactionRow}
+                  onPress={() => openExplorer(tx.signature)}
+                >
+                  <View style={styles.transactionLeft}>
+                    <View
+                      style={[
+                        styles.transactionIcon,
+                        {
+                          backgroundColor:
+                            tx.type === "received" ? "#00D084" : "#FF6B6B",
+                        },
+                      ]}
+                    >
+                      <Text style={styles.transactionIconText}>
+                        {tx.type === "received" ? "▼" : "▲"}
+                      </Text>
+                    </View>
+                    <View style={styles.transactionInfo}>
+                      <Text style={styles.transactionType}>
+                        {tx.type === "received" ? "Received" : "Sent"}{" "}
+                        {tx.token}
+                      </Text>
+                      <Text style={styles.transactionTime}>{tx.timestamp}</Text>
+                    </View>
+                  </View>
+                  <Text
+                    style={[
+                      styles.transactionAmount,
+                      { color: tx.type === "received" ? "#00D084" : "#FF6B6B" },
+                    ]}
+                  >
+                    {tx.type === "received" ? "+" : "-"}
+                    {tx.amount}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Bottom Network Badge */}
+        <View style={styles.bottomBadge}>
+          <TouchableOpacity
+            onPress={showNetworkSelector}
+            style={styles.bottomBadgeButton}
+          >
+            <Image
+              source={currentNetwork.logo}
+              style={styles.networkBadgeIcon}
+            />
+            <Text style={styles.bottomBadgeText}>
+              {currentNetwork.name.toUpperCase()}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+
+      {/* Network Selector Side Drawer */}
+      {showNetworkDrawer && (
+        <Modal
+          visible={showNetworkDrawer}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowNetworkDrawer(false)}
+        >
+          <Pressable
+            style={styles.networkDrawerOverlay}
+            onPress={() => setShowNetworkDrawer(false)}
+          >
+            <Pressable
+              style={styles.networkDrawerContent}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.networkDrawerContentArea}>
+                {/* Header */}
+                <View style={styles.networkDrawerHeader}>
+                  <Text style={styles.networkDrawerTitle}>Select Network</Text>
+                  <TouchableOpacity onPress={() => setShowNetworkDrawer(false)}>
+                    <Text style={styles.networkDrawerClose}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Network List */}
+                <ScrollView style={styles.networkList}>
+                  {NETWORKS.map((network) => (
+                    <TouchableOpacity
+                      key={network.id}
+                      style={[
+                        styles.networkItem,
+                        currentNetwork.id === network.id &&
+                          styles.networkItemSelected,
+                      ]}
+                      onPress={() => switchNetwork(network)}
+                    >
+                      <Image
+                        source={network.logo}
+                        style={styles.networkItemIcon}
+                      />
+                      <Text style={styles.networkItemText}>{network.name}</Text>
+                      {currentNetwork.id === network.id && (
+                        <Text style={styles.networkItemCheck}>✓</Text>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
+
+      {/* Wallet Selector Bottom Sheet */}
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        onChange={handleSheetChanges}
+        enablePanDownToClose={true}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: "#1a1a1a" }}
+        handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+      >
+        <BottomSheetView style={styles.bottomSheetContent}>
+          {/* Header */}
+          <View style={styles.bottomSheetHeader}>
+            <TouchableOpacity onPress={() => bottomSheetRef.current?.close()}>
+              <Text style={styles.bottomSheetClose}>✕</Text>
+            </TouchableOpacity>
+            <Text style={styles.bottomSheetTitle}>Wallets</Text>
+            <TouchableOpacity>
+              <Text style={styles.bottomSheetAdd}>+</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* X1 Logo */}
+          <View style={styles.bottomSheetLogo}>
+            <Image
+              source={require("./assets/x1.png")}
+              style={styles.x1LogoMedium}
+            />
+          </View>
+
+          {/* Wallets List */}
+          <ScrollView style={styles.bottomSheetList}>
+            {wallets.map((wallet) => (
+              <TouchableOpacity
+                key={wallet.id}
+                style={[
+                  styles.bottomSheetWalletItem,
+                  wallet.selected && styles.bottomSheetWalletItemSelected,
+                ]}
+                onPress={() => selectWallet(wallet)}
+              >
+                <View style={styles.bottomSheetWalletLeft}>
+                  <Image
+                    source={require("./assets/x1.png")}
+                    style={styles.x1LogoSmall}
+                  />
+                  <View style={styles.bottomSheetWalletInfo}>
+                    <Text style={styles.bottomSheetWalletName}>
+                      {wallet.name}
+                    </Text>
+                    <Text style={styles.bottomSheetWalletAddress}>
+                      {wallet.address}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.bottomSheetWalletRight}>
+                  <TouchableOpacity style={styles.bottomSheetCopyBtn}>
+                    <Text style={styles.bottomSheetCopyText}>Copy</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.bottomSheetMoreBtn}>
+                    <Text style={styles.bottomSheetMoreText}>⋯</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            ))}
+
+            {/* Add Button */}
+            <TouchableOpacity style={styles.bottomSheetAddButton}>
+              <Text style={styles.bottomSheetAddButtonText}>Add</Text>
+            </TouchableOpacity>
+          </ScrollView>
+
+          {/* Bottom Badge */}
+          <View style={styles.bottomSheetFooter}>
+            <Text style={styles.bottomSheetFooterText}>
+              {currentNetwork.name.toUpperCase()}
+            </Text>
+          </View>
+        </BottomSheetView>
+      </BottomSheet>
+
+      {/* Account Selector Side Drawer */}
+      <Modal
+        visible={showAccountDrawer}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowAccountDrawer(false)}
+      >
+        <Pressable
+          style={styles.accountDrawerOverlay}
+          onPress={() => setShowAccountDrawer(false)}
+        >
+          <Pressable
+            style={styles.accountDrawerContent}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.accountDrawerContentArea}>
+              {/* Header */}
+              <View style={styles.accountDrawerHeader}>
+                <Text style={styles.accountDrawerTitle}>Select Account</Text>
+                <TouchableOpacity onPress={() => setShowAccountDrawer(false)}>
+                  <Text style={styles.accountDrawerClose}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Account List */}
+              <ScrollView style={styles.accountList}>
+                {accounts.map((account) => (
+                  <TouchableOpacity
+                    key={account.id}
+                    style={[
+                      styles.accountItem,
+                      account.selected && styles.accountItemSelected,
+                    ]}
+                    onPress={() => selectAccount(account)}
+                  >
+                    <View
+                      style={[
+                        styles.accountBadge,
+                        { backgroundColor: account.badgeColor },
+                      ]}
+                    >
+                      <Text style={styles.accountBadgeText}>
+                        {account.badge}
+                      </Text>
+                    </View>
+                    <Text style={styles.accountItemText}>{account.name}</Text>
+                    {account.selected && (
+                      <Text style={styles.accountItemCheck}>✓</Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* Add New Account Button */}
+              <TouchableOpacity style={styles.addAccountButton}>
+                <Text style={styles.addAccountButtonText}>+ New Account</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Settings Drawer */}
+      <Modal
+        visible={showSettingsDrawer}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowSettingsDrawer(false)}
+      >
+        <Pressable
+          style={styles.settingsDrawerOverlay}
+          onPress={() => setShowSettingsDrawer(false)}
+        >
+          <Pressable
+            style={styles.settingsDrawerContent}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.settingsDrawerContentArea}>
+              {/* Header with Account Badge */}
+              <View style={styles.settingsDrawerHeader}>
+                <View style={styles.settingsHeaderLeft}>
+                  <View
+                    style={[
+                      styles.settingsAccountBadge,
+                      { backgroundColor: selectedAccount.badgeColor },
+                    ]}
+                  >
+                    <Text style={styles.settingsAccountBadgeText}>
+                      {selectedAccount.badge}
+                    </Text>
+                  </View>
+                  <Text style={styles.settingsAccountName}>
+                    {selectedAccount.name}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowSettingsDrawer(false)}>
+                  <Text style={styles.settingsDrawerClose}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Menu Items */}
+              <ScrollView style={styles.settingsMenuList}>
+                <TouchableOpacity
+                  style={styles.settingsMenuItem}
+                  onPress={() => {
+                    setShowSettingsDrawer(false);
+                    setShowNetworkDrawer(true);
+                  }}
+                >
+                  <Text style={styles.settingsMenuItemText}>Network</Text>
+                  <Text style={styles.settingsMenuItemArrow}>›</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.settingsMenuItem}
+                  onPress={() => {
+                    setShowSettingsDrawer(false);
+                    Alert.alert(
+                      "Rename Wallet",
+                      "Rename wallet functionality would open here"
+                    );
+                  }}
+                >
+                  <Text style={styles.settingsMenuItemText}>Rename Wallet</Text>
+                  <Text style={styles.settingsMenuItemArrow}>›</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.settingsMenuItem}
+                  onPress={() => {
+                    setShowSettingsDrawer(false);
+                    Alert.alert(
+                      "New Account",
+                      "Create new account functionality would open here"
+                    );
+                  }}
+                >
+                  <Text style={styles.settingsMenuItemText}>New Account</Text>
+                  <Text style={styles.settingsMenuItemArrow}>›</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.settingsMenuItem}
+                  onPress={() => {
+                    setShowSettingsDrawer(false);
+                    Alert.alert("Preferences", "Preferences would open here");
+                  }}
+                >
+                  <Text style={styles.settingsMenuItemText}>Preferences</Text>
+                  <Text style={styles.settingsMenuItemArrow}>›</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.settingsMenuItem}
+                  onPress={() => {
+                    setShowSettingsDrawer(false);
+                    Alert.alert("Settings", "Settings would open here");
+                  }}
+                >
+                  <Text style={styles.settingsMenuItemText}>Settings</Text>
+                  <Text style={styles.settingsMenuItemArrow}>›</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.settingsMenuItem}
+                  onPress={() => {
+                    setShowSettingsDrawer(false);
+                    Alert.alert(
+                      "About Backpack",
+                      "About Backpack info would open here"
+                    );
+                  }}
+                >
+                  <Text style={styles.settingsMenuItemText}>
+                    About Backpack
+                  </Text>
+                  <Text style={styles.settingsMenuItemArrow}>›</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </GestureHandlerRootView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#000000",
+  },
+  safeTopArea: {
+    backgroundColor: "#000000",
+    height: 0,
+  },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#000000",
+  },
+  badge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  badgeText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  topBarCenter: {
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginHorizontal: 12,
+  },
+  walletDropdown: {
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 8,
+  },
+  walletDropdownButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  walletDropdownText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    marginLeft: 8,
+    marginRight: 4,
+  },
+  walletDropdownArrow: {
+    color: "#FFFFFF",
+    fontSize: 10,
+  },
+  quickSwitchContainer: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  quickSwitchButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#1a1a1a",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#333333",
+  },
+  quickSwitchButtonActive: {
+    borderColor: "#4A90E2",
+    borderWidth: 2,
+  },
+  quickSwitchIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+  settingsIcon: {
+    width: 32,
+    height: 32,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  settingsIconText: {
+    fontSize: 20,
+    color: "#FFFFFF",
+  },
+  x1LogoSmall: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+  mainContent: {
+    flex: 1,
+  },
+  mainContentContainer: {
+    paddingBottom: 80,
+  },
+  balanceSection: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  balanceContent: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  balance: {
+    fontSize: 48,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: 4,
+  },
+  balanceLabel: {
+    fontSize: 14,
+    color: "#888888",
+    marginBottom: 8,
+  },
+  balanceUSD: {
+    fontSize: 18,
+    color: "#FFFFFF",
+    marginBottom: 4,
+  },
+  balanceChange: {
+    fontSize: 14,
+    color: "#00D084",
+  },
+  actionsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 40,
+    marginBottom: 32,
+  },
+  actionCircle: {
+    alignItems: "center",
+    gap: 8,
+  },
+  actionCircleBg: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#1a1a1a",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  actionCircleIcon: {
+    fontSize: 24,
+    color: "#4A90E2",
+  },
+  actionCircleText: {
+    fontSize: 12,
+    color: "#FFFFFF",
+  },
+  tokenSection: {
+    marginBottom: 24,
+  },
+  tokenRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    backgroundColor: "#1a1a1a",
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  tokenLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  tokenIconLarge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#000000",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  x1LogoLarge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  tokenInfo: {
+    gap: 4,
+  },
+  tokenNameLarge: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  tokenBalanceSmall: {
+    fontSize: 12,
+    color: "#888888",
+  },
+  tokenRight: {
+    alignItems: "flex-end",
+    gap: 4,
+  },
+  tokenUsdLarge: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  tokenChange: {
+    fontSize: 12,
+    color: "#00D084",
+  },
+  tabs: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#333333",
+    marginBottom: 16,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  tabActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: "#4A90E2",
+  },
+  tabText: {
+    fontSize: 14,
+    color: "#888888",
+  },
+  tabTextActive: {
+    fontSize: 14,
+    color: "#4A90E2",
+    fontWeight: "600",
+  },
+  transactionsList: {
+    gap: 8,
+  },
+  transactionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    backgroundColor: "#1a1a1a",
+    borderRadius: 12,
+  },
+  transactionLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  transactionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  transactionIconText: {
+    fontSize: 20,
+    color: "#FFFFFF",
+  },
+  transactionInfo: {
+    gap: 4,
+  },
+  transactionType: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  transactionTime: {
+    fontSize: 12,
+    color: "#888888",
+  },
+  transactionAmount: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  bottomBadge: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#1a1a1a",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    borderTopColor: "#333333",
+  },
+  bottomBadgeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  networkBadgeIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+  bottomBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#888888",
+    letterSpacing: 1,
+  },
+  networkDrawerOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  networkDrawerContent: {
+    backgroundColor: "#1a1a1a",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: "60%",
+  },
+  networkDrawerContentArea: {
+    padding: 20,
+  },
+  networkDrawerHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  networkDrawerTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+  },
+  networkDrawerClose: {
+    fontSize: 24,
+    color: "#888888",
+  },
+  networkList: {
+    maxHeight: 300,
+  },
+  networkItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    backgroundColor: "#0a0a0a",
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  networkItemSelected: {
+    backgroundColor: "#2a2a2a",
+    borderWidth: 1,
+    borderColor: "#4A90E2",
+  },
+  networkItemIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 12,
+  },
+  networkItemText: {
+    fontSize: 16,
+    color: "#FFFFFF",
+    flex: 1,
+  },
+  networkItemCheck: {
+    fontSize: 20,
+    color: "#4A90E2",
+  },
+  bottomSheetContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  bottomSheetHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  bottomSheetClose: {
+    fontSize: 24,
+    color: "#888888",
+  },
+  bottomSheetTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+  },
+  bottomSheetAdd: {
+    fontSize: 28,
+    color: "#4A90E2",
+    fontWeight: "300",
+  },
+  bottomSheetLogo: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  x1LogoMedium: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  bottomSheetList: {
+    flex: 1,
+  },
+  bottomSheetWalletItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    backgroundColor: "#0a0a0a",
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  bottomSheetWalletItemSelected: {
+    backgroundColor: "#2a2a2a",
+    borderWidth: 1,
+    borderColor: "#4A90E2",
+  },
+  bottomSheetWalletLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  bottomSheetWalletInfo: {
+    marginLeft: 12,
+  },
+  bottomSheetWalletName: {
+    fontSize: 16,
+    color: "#FFFFFF",
+    marginBottom: 4,
+  },
+  bottomSheetWalletAddress: {
+    fontSize: 12,
+    color: "#888888",
+  },
+  bottomSheetWalletRight: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  bottomSheetCopyBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "#333333",
+    borderRadius: 6,
+  },
+  bottomSheetCopyText: {
+    fontSize: 12,
+    color: "#FFFFFF",
+  },
+  bottomSheetMoreBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  bottomSheetMoreText: {
+    fontSize: 20,
+    color: "#FFFFFF",
+  },
+  bottomSheetAddButton: {
+    paddingVertical: 16,
+    alignItems: "center",
+    backgroundColor: "#0a0a0a",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#333333",
+    borderStyle: "dashed",
+    marginTop: 8,
+  },
+  bottomSheetAddButtonText: {
+    fontSize: 16,
+    color: "#4A90E2",
+  },
+  bottomSheetFooter: {
+    paddingVertical: 16,
+    alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: "#333333",
+    marginTop: 12,
+  },
+  bottomSheetFooterText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#888888",
+    letterSpacing: 1,
+  },
+  accountDrawerOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  accountDrawerContent: {
+    backgroundColor: "#1a1a1a",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: "60%",
+  },
+  accountDrawerContentArea: {
+    padding: 20,
+  },
+  accountDrawerHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  accountDrawerTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+  },
+  accountDrawerClose: {
+    fontSize: 24,
+    color: "#888888",
+  },
+  accountList: {
+    maxHeight: 300,
+  },
+  accountItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    backgroundColor: "#0a0a0a",
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  accountItemSelected: {
+    backgroundColor: "#2a2a2a",
+    borderWidth: 1,
+    borderColor: "#4A90E2",
+  },
+  accountBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  accountBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  accountItemText: {
+    fontSize: 16,
+    color: "#FFFFFF",
+    flex: 1,
+  },
+  accountItemCheck: {
+    fontSize: 20,
+    color: "#4A90E2",
+  },
+  addAccountButton: {
+    paddingVertical: 16,
+    alignItems: "center",
+    backgroundColor: "#0a0a0a",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#333333",
+    borderStyle: "dashed",
+    marginTop: 12,
+  },
+  addAccountButtonText: {
+    fontSize: 16,
+    color: "#4A90E2",
+  },
+  // Settings Drawer Styles
+  settingsDrawerOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  settingsDrawerContent: {
+    height: "85%",
+    backgroundColor: "#000000",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  settingsDrawerContentArea: {
+    flex: 1,
+    padding: 20,
+  },
+  settingsDrawerHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#1a1a1a",
+  },
+  settingsHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  settingsAccountBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  settingsAccountBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  settingsAccountName: {
+    fontSize: 18,
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+  settingsDrawerClose: {
+    fontSize: 28,
+    color: "#888888",
+  },
+  settingsMenuList: {
+    flex: 1,
+  },
+  settingsMenuItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    backgroundColor: "#0a0a0a",
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  settingsMenuItemText: {
+    fontSize: 16,
+    color: "#FFFFFF",
+  },
+  settingsMenuItemArrow: {
+    fontSize: 20,
+    color: "#666666",
+  },
+});

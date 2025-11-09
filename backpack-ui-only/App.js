@@ -374,7 +374,10 @@ export default function App() {
       return;
     }
     // TODO: Implement actual send transaction
-    Alert.alert("Success", `Sent ${sendAmount} ${getNativeTokenInfo().symbol} to ${sendAddress.substring(0, 8)}...`);
+    Alert.alert(
+      "Success",
+      `Sent ${sendAmount} ${getNativeTokenInfo().symbol} to ${sendAddress.substring(0, 8)}...`
+    );
     setShowSendDrawer(false);
     setSendAmount("");
     setSendAddress("");
@@ -477,13 +480,19 @@ export default function App() {
               style={styles.activityIcon}
               onPress={() => setShowActivityDrawer(true)}
             >
-              <Text style={styles.activityIconText}>🕐</Text>
+              <Image
+                source={require("./assets/clock.png")}
+                style={styles.activityIconImage}
+              />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.settingsIcon}
               onPress={() => setShowSettingsDrawer(true)}
             >
-              <Text style={styles.settingsIconText}>⚙</Text>
+              <Image
+                source={require("./assets/settings.png")}
+                style={styles.settingsIconImage}
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -494,74 +503,74 @@ export default function App() {
           contentContainerStyle={styles.mainContentContainer}
           showsVerticalScrollIndicator={false}
         >
-            {/* Balance Section with all content */}
-            <View style={styles.balanceSection}>
-              {/* Balance display */}
-              <View style={styles.balanceContent}>
-                <Text style={styles.balance}>{balance}</Text>
-                <Text style={styles.balanceLabel}>
-                  {getNativeTokenInfo().symbol}
-                </Text>
-                <Text style={styles.balanceUSD}>{balanceUSD}</Text>
-                <Text style={styles.balanceChange}>$0.00 0%</Text>
-              </View>
+          {/* Balance Section with all content */}
+          <View style={styles.balanceSection}>
+            {/* Balance display */}
+            <View style={styles.balanceContent}>
+              <Text style={styles.balance}>{balance}</Text>
+              <Text style={styles.balanceLabel}>
+                {getNativeTokenInfo().symbol}
+              </Text>
+              <Text style={styles.balanceUSD}>{balanceUSD}</Text>
+              <Text style={styles.balanceChange}>$0.00 0%</Text>
+            </View>
 
-              {/* Action Buttons */}
-              <View style={styles.actionsRow}>
-                <TouchableOpacity
-                  style={styles.actionCircle}
-                  onPress={handleReceive}
-                >
-                  <View style={styles.actionCircleBg}>
-                    <Text style={styles.actionCircleIcon}>▼</Text>
-                  </View>
-                  <Text style={styles.actionCircleText}>Receive</Text>
-                </TouchableOpacity>
+            {/* Action Buttons */}
+            <View style={styles.actionsRow}>
+              <TouchableOpacity
+                style={styles.actionCircle}
+                onPress={handleReceive}
+              >
+                <View style={styles.actionCircleBg}>
+                  <Text style={styles.actionCircleIcon}>▼</Text>
+                </View>
+                <Text style={styles.actionCircleText}>Receive</Text>
+              </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.actionCircle}
-                  onPress={handleSend}
-                >
-                  <View style={styles.actionCircleBg}>
-                    <Text style={styles.actionCircleIcon}>▲</Text>
-                  </View>
-                  <Text style={styles.actionCircleText}>Send</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={styles.actionCircle}
+                onPress={handleSend}
+              >
+                <View style={styles.actionCircleBg}>
+                  <Text style={styles.actionCircleIcon}>▲</Text>
+                </View>
+                <Text style={styles.actionCircleText}>Send</Text>
+              </TouchableOpacity>
+            </View>
 
-              {/* Token List */}
-              <View style={styles.tokenSection}>
-                {tokens.map((token) => {
-                  const nativeToken = getNativeTokenInfo();
-                  return (
-                    <View key={token.id} style={styles.tokenRow}>
-                      <View style={styles.tokenLeft}>
-                        <View style={styles.tokenIconLarge}>
-                          <Image
-                            source={nativeToken.logo}
-                            style={styles.x1LogoLarge}
-                          />
-                        </View>
-                        <View style={styles.tokenInfo}>
-                          <Text style={styles.tokenNameLarge}>
-                            {nativeToken.name}
-                          </Text>
-                          <Text style={styles.tokenBalanceSmall}>
-                            {token.balance} {nativeToken.symbol}
-                          </Text>
-                        </View>
+            {/* Token List */}
+            <View style={styles.tokenSection}>
+              {tokens.map((token) => {
+                const nativeToken = getNativeTokenInfo();
+                return (
+                  <View key={token.id} style={styles.tokenRow}>
+                    <View style={styles.tokenLeft}>
+                      <View style={styles.tokenIconLarge}>
+                        <Image
+                          source={nativeToken.logo}
+                          style={styles.x1LogoLarge}
+                        />
                       </View>
-                      <View style={styles.tokenRight}>
-                        <Text style={styles.tokenUsdLarge}>
-                          ${token.usdValue}
+                      <View style={styles.tokenInfo}>
+                        <Text style={styles.tokenNameLarge}>
+                          {nativeToken.name}
                         </Text>
-                        <Text style={styles.tokenChange}>+$0.00</Text>
+                        <Text style={styles.tokenBalanceSmall}>
+                          {token.balance} {nativeToken.symbol}
+                        </Text>
                       </View>
                     </View>
-                  );
-                })}
-              </View>
+                    <View style={styles.tokenRight}>
+                      <Text style={styles.tokenUsdLarge}>
+                        ${token.usdValue}
+                      </Text>
+                      <Text style={styles.tokenChange}>+$0.00</Text>
+                    </View>
+                  </View>
+                );
+              })}
             </View>
+          </View>
         </ScrollView>
       </SafeAreaView>
 
@@ -953,7 +962,9 @@ export default function App() {
             <View style={styles.settingsDrawerContentArea}>
               {/* Header */}
               <View style={styles.settingsDrawerHeader}>
-                <Text style={styles.settingsDrawerTitle}>Receive {getNativeTokenInfo().symbol}</Text>
+                <Text style={styles.settingsDrawerTitle}>
+                  Receive {getNativeTokenInfo().symbol}
+                </Text>
                 <TouchableOpacity onPress={() => setShowReceiveDrawer(false)}>
                   <Text style={styles.settingsDrawerClose}>✕</Text>
                 </TouchableOpacity>
@@ -1009,7 +1020,9 @@ export default function App() {
             <View style={styles.settingsDrawerContentArea}>
               {/* Header */}
               <View style={styles.settingsDrawerHeader}>
-                <Text style={styles.settingsDrawerTitle}>Send {getNativeTokenInfo().symbol}</Text>
+                <Text style={styles.settingsDrawerTitle}>
+                  Send {getNativeTokenInfo().symbol}
+                </Text>
                 <TouchableOpacity onPress={() => setShowSendDrawer(false)}>
                   <Text style={styles.settingsDrawerClose}>✕</Text>
                 </TouchableOpacity>
@@ -1019,7 +1032,9 @@ export default function App() {
               <View style={styles.sendBalanceContainer}>
                 <Text style={styles.sendBalanceLabel}>Available Balance</Text>
                 <TouchableOpacity onPress={() => setSendAmount(balance)}>
-                  <Text style={styles.sendBalanceText}>{balance} {getNativeTokenInfo().symbol}</Text>
+                  <Text style={styles.sendBalanceText}>
+                    {balance} {getNativeTokenInfo().symbol}
+                  </Text>
                 </TouchableOpacity>
               </View>
 
@@ -1040,8 +1055,12 @@ export default function App() {
               <View style={styles.sendInputContainer}>
                 <View style={styles.sendAddressHeader}>
                   <Text style={styles.sendInputLabel}>Recipient Address</Text>
-                  <TouchableOpacity onPress={() => setShowAddressSelector(true)}>
-                    <Text style={styles.sendSelectAddressText}>Select Address</Text>
+                  <TouchableOpacity
+                    onPress={() => setShowAddressSelector(true)}
+                  >
+                    <Text style={styles.sendSelectAddressText}>
+                      Select Address
+                    </Text>
                   </TouchableOpacity>
                 </View>
                 <TextInput
@@ -1133,6 +1152,7 @@ export default function App() {
             <View style={styles.settingsDrawerContentArea}>
               {/* Header */}
               <View style={styles.settingsDrawerHeader}>
+                <View style={{ width: 32 }} />
                 <Text style={styles.settingsDrawerTitle}>Activity</Text>
                 <TouchableOpacity onPress={() => setShowActivityDrawer(false)}>
                   <Text style={styles.settingsDrawerClose}>✕</Text>
@@ -1154,9 +1174,12 @@ export default function App() {
                       {/* Header with title and time */}
                       <View style={styles.activityCardHeader}>
                         <Text style={styles.activityCardTitle}>
-                          {tx.type === "received" ? "Received" : "Sent"} {tx.token}
+                          {tx.type === "received" ? "Received" : "Sent"}{" "}
+                          {tx.token}
                         </Text>
-                        <Text style={styles.activityCardTime}>{tx.timestamp}</Text>
+                        <Text style={styles.activityCardTime}>
+                          {tx.timestamp}
+                        </Text>
                       </View>
 
                       {/* Amount row */}
@@ -1166,7 +1189,8 @@ export default function App() {
                           style={[
                             styles.activityCardValue,
                             {
-                              color: tx.type === "received" ? "#00D084" : "#FF6B6B",
+                              color:
+                                tx.type === "received" ? "#00D084" : "#FF6B6B",
                             },
                           ]}
                         >
@@ -1245,8 +1269,8 @@ const styles = StyleSheet.create({
   activityCard: {
     backgroundColor: "#0a0a0a",
     borderRadius: 8,
-    padding: 14,
-    marginHorizontal: 16,
+    padding: 16,
+    marginHorizontal: 0,
     marginTop: 8,
   },
   activityCardHeader: {
@@ -1375,6 +1399,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  activityIconImage: {
+    width: 20,
+    height: 20,
+    tintColor: "#999999",
+  },
   activityIconText: {
     fontSize: 20,
     color: "#999999",
@@ -1384,6 +1413,11 @@ const styles = StyleSheet.create({
     height: 32,
     justifyContent: "center",
     alignItems: "center",
+  },
+  settingsIconImage: {
+    width: 20,
+    height: 20,
+    tintColor: "#999999",
   },
   settingsIconText: {
     fontSize: 20,

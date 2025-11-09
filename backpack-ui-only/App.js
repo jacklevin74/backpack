@@ -1104,7 +1104,7 @@ const styles = StyleSheet.create({
   },
   settingsIconText: {
     fontSize: 20,
-    color: "#FFFFFF",
+    color: "#999999",
   },
   x1LogoSmall: {
     width: 20,

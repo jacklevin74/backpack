@@ -206,6 +206,7 @@ export default function App() {
       console.log("Fetching balance from:", url);
 
       const response = await fetch(url);
+      console.log(`Balance API Response: ${response.status} ${response.statusText}`);
       const data = await response.json();
 
       if (data.balance !== undefined) {
@@ -269,6 +270,7 @@ export default function App() {
       console.log("Fetching fresh transactions from:", url);
 
       const response = await fetch(url);
+      console.log(`Transactions API Response: ${response.status} ${response.statusText}`);
       const data = await response.json();
 
       if (data && data.transactions) {

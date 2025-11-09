@@ -963,14 +963,12 @@ export default function App() {
         animationType="slide"
         onRequestClose={() => setShowDebugDrawer(false)}
       >
-        <Pressable
-          style={styles.settingsDrawerOverlay}
-          onPress={() => setShowDebugDrawer(false)}
-        >
+        <View style={styles.settingsDrawerOverlay}>
           <Pressable
-            style={styles.settingsDrawerContent}
-            onPress={(e) => e.stopPropagation()}
-          >
+            style={styles.debugDrawerBackdrop}
+            onPress={() => setShowDebugDrawer(false)}
+          />
+          <View style={styles.settingsDrawerContent}>
             <View style={styles.settingsDrawerContentArea}>
               {/* Header */}
               <View style={styles.settingsDrawerHeader}>
@@ -1005,8 +1003,8 @@ export default function App() {
                 <Text style={styles.debugClearButtonText}>Clear Logs</Text>
               </TouchableOpacity>
             </View>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
       {/* Receive Drawer */}
@@ -1931,6 +1929,13 @@ const styles = StyleSheet.create({
   settingsMenuItemArrow: {
     fontSize: 20,
     color: "#666666",
+  },
+  debugDrawerBackdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   debugLogList: {
     flex: 1,

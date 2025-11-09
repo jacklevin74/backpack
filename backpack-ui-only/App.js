@@ -1891,7 +1891,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   settingsDrawerContent: {
-    height: "85%",
+    height: "95%",
     backgroundColor: "#000000",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
@@ -1932,7 +1932,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   settingsDrawerClose: {
-    fontSize: 28,
+    fontSize: 22,
     color: "#888888",
   },
   settingsMenuList: {

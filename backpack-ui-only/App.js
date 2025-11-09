@@ -670,10 +670,10 @@ export default function App() {
             </TouchableOpacity>
           </View>
 
-          {/* X1 Logo */}
+          {/* Network Logo */}
           <View style={styles.bottomSheetLogo}>
             <Image
-              source={require("./assets/x1.png")}
+              source={currentNetwork.logo}
               style={styles.x1LogoMedium}
             />
           </View>
@@ -691,7 +691,7 @@ export default function App() {
               >
                 <View style={styles.bottomSheetWalletLeft}>
                   <Image
-                    source={require("./assets/x1.png")}
+                    source={currentNetwork.logo}
                     style={styles.x1LogoSmall}
                   />
                   <View style={styles.bottomSheetWalletInfo}>

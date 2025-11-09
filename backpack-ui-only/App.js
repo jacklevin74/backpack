@@ -938,10 +938,11 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: "#000000",
+    position: "relative",
   },
   viewToggle: {
     flexDirection: "row",
@@ -1098,6 +1099,8 @@ const styles = StyleSheet.create({
     height: 32,
     justifyContent: "center",
     alignItems: "center",
+    position: "absolute",
+    right: 16,
   },
   settingsIconText: {
     fontSize: 20,
@@ -1118,6 +1121,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    position: "absolute",
+    left: 16,
   },
   balanceSection: {
     paddingHorizontal: 20,

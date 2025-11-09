@@ -665,7 +665,7 @@ export default function App() {
         onChange={handleSheetChanges}
         enablePanDownToClose={true}
         backdropComponent={renderBackdrop}
-        backgroundStyle={{ backgroundColor: "#1a1a1a" }}
+        backgroundStyle={{ backgroundColor: "#000000" }}
         handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
       >
         <BottomSheetView style={styles.bottomSheetContent}>
@@ -1494,8 +1494,7 @@ const styles = StyleSheet.create({
   bottomSheetFooter: {
     paddingVertical: 16,
     alignItems: "center",
-    borderTopWidth: 1,
-    borderTopColor: "#333333",
+    backgroundColor: "transparent",
     marginTop: 12,
   },
   bottomSheetFooterText: {

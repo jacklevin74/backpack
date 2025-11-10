@@ -128,6 +128,7 @@ const NETWORKS = [
     id: "X1",
     name: "X1 Mainnet",
     providerId: "X1-mainnet",
+    rpcUrl: "https://rpc.mainnet.x1.xyz",
     logo: require("./assets/x1.png"),
     nativeToken: {
       name: "X1 Native Token",
@@ -139,6 +140,8 @@ const NETWORKS = [
     id: "SOLANA",
     name: "Solana",
     providerId: "SOLANA-mainnet",
+    rpcUrl:
+      "https://capable-autumn-thunder.solana-mainnet.quiknode.pro/3d4ed46b454fa0ca3df983502fdf15fe87145d9e/",
     logo: require("./assets/solana.png"),
     nativeToken: {
       name: "Solana",
@@ -337,6 +340,10 @@ export default function App() {
         `Transactions API Response: ${response.status} ${response.statusText}`
       );
       const data = await response.json();
+      console.log(
+        `Received ${data?.transactions?.length || 0} transactions from API`
+      );
+      console.log("Full API response:", JSON.stringify(data, null, 2));
 
       if (data && data.transactions) {
         const formattedTransactions = data.transactions.map((tx) => {
@@ -357,16 +364,31 @@ export default function App() {
               ? parseFloat(tx.amount)
               : tx.amount || 0;
 
+          // Map transaction type to display type
+          let displayType = "received";
+          if (tx.type === "SEND") {
+            displayType = "sent";
+          } else if (tx.type === "RECEIVE") {
+            displayType = "received";
+          } else if (tx.type === "SWAP") {
+            displayType = "swap";
+          } else if (tx.type === "UNKNOWN") {
+            displayType = "unknown";
+          }
+
           return {
             id: tx.hash || tx.signature,
-            type: tx.type === "SEND" ? "sent" : "received",
+            type: displayType,
             amount: amountNum.toLocaleString("en-US", {
               minimumFractionDigits: 2,
               maximumFractionDigits: 9,
             }),
             token: tx.tokenSymbol || tx.symbol || getNativeTokenInfo().symbol,
             timestamp: isValidDate
-              ? date.toLocaleTimeString("en-US", {
+              ? date.toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
                   hour: "numeric",
                   minute: "2-digit",
                   hour12: true,
@@ -377,7 +399,13 @@ export default function App() {
           };
         });
 
+        console.log(
+          `Setting ${formattedTransactions.length} formatted transactions to state`
+        );
+        console.log("First transaction:", formattedTransactions[0]);
         setTransactions(formattedTransactions);
+      } else {
+        console.log("No transactions in response or invalid response format");
       }
     } catch (error) {
       console.error("Error checking transactions:", error);
@@ -402,6 +430,107 @@ export default function App() {
     setWallets(wallets.map((w) => ({ ...w, selected: w.id === wallet.id })));
     setSelectedWallet(wallet);
     bottomSheetRef.current?.close();
+  };
+
+  const handleDeleteWallet = (wallet) => {
+    console.log("=== DELETING WALLET ===");
+    console.log("Wallet ID:", wallet.id);
+    console.log("Wallet name:", wallet.name);
+    console.log("Wallet address:", wallet.address);
+    console.log("Wallet publicKey:", wallet.publicKey);
+    console.log("Is Ledger?:", wallet.isLedger);
+    console.log("Derivation path:", wallet.derivationPath);
+    console.log("Ledger device ID:", wallet.ledgerDeviceId);
+    console.log("Device ID type:", typeof wallet.ledgerDeviceId);
+    console.log("Full wallet object:", JSON.stringify(wallet, null, 2));
+    console.log("=== END WALLET INFO ===");
+
+    Alert.alert(
+      "Delete Wallet",
+      `Are you sure you want to delete "${wallet.name}"?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+          onPress: () => {
+            console.log("Delete cancelled for wallet:", wallet.name);
+          },
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            console.log("Deleting wallet:", wallet.name);
+            // Remove the wallet from the list
+            const updatedWallets = wallets.filter((w) => w.id !== wallet.id);
+            console.log("Wallets after deletion:", updatedWallets.length);
+            setWallets(updatedWallets);
+
+            // If we deleted the selected wallet, select the first remaining wallet or reset
+            if (wallet.selected && updatedWallets.length > 0) {
+              const newSelectedWallet = {
+                ...updatedWallets[0],
+                selected: true,
+              };
+              setWallets(
+                updatedWallets.map((w) => ({
+                  ...w,
+                  selected: w.id === newSelectedWallet.id,
+                }))
+              );
+              setSelectedWallet(newSelectedWallet);
+            } else if (updatedWallets.length === 0) {
+              // No wallets left, reset to initial state
+              setSelectedWallet({
+                id: 1,
+                name: "Wallet 1",
+                address: "Abc1...xyz2",
+                publicKey: "",
+                selected: true,
+              });
+            }
+
+            Alert.alert("Success", "Wallet deleted successfully");
+          },
+        },
+      ]
+    );
+  };
+
+  // Register wallet with the transaction indexer API
+  const registerWalletWithIndexer = async (address, network) => {
+    try {
+      console.log(
+        `📝 Registering wallet with indexer: ${address} on ${network}`
+      );
+
+      const response = await fetch(`${API_SERVER}/wallets/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          address,
+          network, // Use full provider ID like "X1-mainnet" or "SOLANA-mainnet"
+          enabled: true,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log(`✅ Wallet registered successfully: ${address}`);
+      } else {
+        console.error(
+          `❌ Failed to register wallet: ${data.error || "Unknown error"}`
+        );
+      }
+    } catch (error) {
+      console.error(
+        `❌ Error registering wallet with indexer: ${error.message}`
+      );
+      // Don't throw - wallet registration failure shouldn't break wallet creation
+    }
   };
 
   const selectAccount = (account) => {
@@ -441,9 +570,12 @@ export default function App() {
       return;
     }
 
+    // Trim the address to remove any whitespace
+    const trimmedAddress = sendAddress.trim();
+
     // Validate address format
     try {
-      new PublicKey(sendAddress);
+      new PublicKey(trimmedAddress);
     } catch (e) {
       Alert.alert("Error", "Invalid recipient address");
       return;
@@ -471,8 +603,8 @@ export default function App() {
 
     try {
       console.log("Creating transaction...");
-      console.log("From:", selectedWallet.address);
-      console.log("To:", sendAddress);
+      console.log("From:", selectedWallet.publicKey);
+      console.log("To:", trimmedAddress);
       console.log("Amount:", amountNum);
       console.log("Network:", currentNetwork.rpcUrl);
 
@@ -480,8 +612,8 @@ export default function App() {
       const connection = new Connection(currentNetwork.rpcUrl, "confirmed");
 
       // Create transaction
-      const fromPubkey = new PublicKey(selectedWallet.address);
-      const toPubkey = new PublicKey(sendAddress);
+      const fromPubkey = new PublicKey(selectedWallet.publicKey);
+      const toPubkey = new PublicKey(trimmedAddress);
       const lamports = Math.floor(amountNum * LAMPORTS_PER_SOL);
 
       const transaction = new Transaction().add(
@@ -497,22 +629,62 @@ export default function App() {
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = fromPubkey;
 
-      // Get the wallet's keypair for signing
-      // For demo wallet, we need to get the keypair from the encrypted seed
+      // Get the wallet's data
       const selectedWalletData = wallets.find(
         (w) => w.id === selectedWallet.id
       );
-      if (!selectedWalletData || !selectedWalletData.keypair) {
-        throw new Error(
-          "Wallet keypair not found. Please make sure you created or imported this wallet."
+
+      // Check if this is a Ledger wallet
+      if (selectedWalletData && selectedWalletData.isLedger) {
+        // Sign with Ledger
+        console.log("Signing transaction with Ledger...");
+        console.log("Connecting to Ledger device...");
+
+        // Get the device ID from the wallet
+        const deviceId = selectedWalletData.ledgerDeviceId;
+        if (!deviceId) {
+          throw new Error(
+            "Ledger device ID not found. Please reconnect your Ledger."
+          );
+        }
+
+        // Connect to Ledger via BLE
+        const transport = await TransportBLE.open(deviceId);
+        const solana = new AppSolana(transport);
+
+        // Get the derivation path for this wallet
+        const derivationPath = selectedWalletData.derivationPath;
+        console.log("Using derivation path:", derivationPath);
+
+        // Sign the transaction with Ledger
+        const serializedTx = transaction.serializeMessage();
+        const signature = await solana.signTransaction(
+          derivationPath,
+          serializedTx
         );
+
+        console.log("Ledger signature obtained");
+
+        // Add the signature to the transaction
+        transaction.addSignature(fromPubkey, Buffer.from(signature.signature));
+
+        // Disconnect from Ledger
+        await transport.close();
+        console.log("Ledger disconnected");
+      } else {
+        // Sign with keypair for regular wallets
+        if (!selectedWalletData || !selectedWalletData.keypair) {
+          throw new Error(
+            "Wallet keypair not found. Please make sure you created or imported this wallet."
+          );
+        }
+
+        const keypair = selectedWalletData.keypair;
+
+        // Sign transaction
+        console.log("Signing transaction with keypair...");
+        transaction.sign(keypair);
       }
-
-      const keypair = selectedWalletData.keypair;
-
-      // Sign transaction
-      console.log("Signing transaction...");
-      transaction.sign(keypair);
 
       // Send transaction
       console.log("Sending transaction...");
@@ -532,7 +704,7 @@ export default function App() {
 
       // Refresh balance after a short delay
       setTimeout(() => {
-        fetchWalletBalance(selectedWallet.address);
+        checkBalance(currentNetwork, false); // Force refresh without cache
       }, 2000);
     } catch (error) {
       console.error("Send transaction error:", error);
@@ -625,6 +797,12 @@ export default function App() {
       setImportMnemonic("");
       setImportPrivateKey("");
       setShowImportWalletModal(false);
+
+      // Register the wallet with the transaction indexer
+      await registerWalletWithIndexer(
+        keypair.publicKey.toString(),
+        currentNetwork.providerId
+      );
     } catch (error) {
       Alert.alert("Error", "Failed to import wallet: " + error.message);
     }
@@ -902,8 +1080,9 @@ export default function App() {
       // Store the transport for future cleanup
       ledgerTransportRef.current = transport;
 
-      // Note: We intentionally don't store the device ID
-      // Always doing fresh scans avoids BLE library connection issues
+      // Store the device ID for transaction signing
+      setLedgerDeviceId(deviceId);
+      console.log("Stored device ID for signing:", deviceId);
 
       console.log("BLE transport opened successfully");
       console.log("Creating Solana app instance...");
@@ -1121,6 +1300,15 @@ export default function App() {
   };
 
   const handleSelectLedgerAccount = async (account) => {
+    console.log("=== ADDING LEDGER WALLET ===");
+    console.log("Account index:", account.index);
+    console.log("Account address:", account.address);
+    console.log("Derivation path:", account.derivationPath);
+    console.log("Device ID from state:", ledgerDeviceId);
+    console.log("Device ID type:", typeof ledgerDeviceId);
+    console.log("Device ID is null?", ledgerDeviceId === null);
+    console.log("Device ID is undefined?", ledgerDeviceId === undefined);
+
     const newWallet = {
       id: Date.now(),
       name: `Ledger ${account.index + 1}`,
@@ -1129,11 +1317,20 @@ export default function App() {
       selected: false,
       isLedger: true,
       derivationPath: account.derivationPath,
+      ledgerDeviceId: ledgerDeviceId, // Store device ID for later signing
     };
+
+    console.log("New wallet object:", JSON.stringify(newWallet, null, 2));
+    console.log("Wallet ledgerDeviceId field:", newWallet.ledgerDeviceId);
+    console.log("=== END ADDING LEDGER WALLET ===");
 
     setWallets([...wallets, newWallet]);
     setShowLedgerModal(false);
     setLedgerAccounts([]);
+
+    // Register the wallet with the transaction indexer
+    await registerWalletWithIndexer(account.address, currentNetwork.providerId);
+
     Alert.alert("Success", `Added Ledger account ${account.index + 1}`);
 
     // Clean up BLE connection after account is selected
@@ -1454,7 +1651,13 @@ export default function App() {
                   <TouchableOpacity style={styles.bottomSheetCopyBtn}>
                     <Text style={styles.bottomSheetCopyIcon}>⧉</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.bottomSheetMoreBtn}>
+                  <TouchableOpacity
+                    style={styles.bottomSheetMoreBtn}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleDeleteWallet(wallet);
+                    }}
+                  >
                     <Text style={styles.bottomSheetMoreText}>⋯</Text>
                   </TouchableOpacity>
                 </View>
@@ -1880,7 +2083,7 @@ export default function App() {
                     key={wallet.id}
                     style={styles.addressItem}
                     onPress={() => {
-                      setSendAddress(wallet.address);
+                      setSendAddress(wallet.publicKey);
                       setShowAddressSelector(false);
                     }}
                   >

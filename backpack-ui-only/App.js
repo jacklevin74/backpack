@@ -1221,33 +1221,81 @@ export default function App() {
     }
   };
 
-  const connectToLedger = async (device) => {
+  const connectToLedger = async (device, retryCount = 0) => {
+    const MAX_RETRIES = 3;
     let transport = null;
+
     try {
       setLedgerConnecting(true);
 
+      // Clean up any existing transport first
+      if (ledgerTransportRef.current) {
+        console.log("Cleaning up existing transport before new connection...");
+        try {
+          await ledgerTransportRef.current.close();
+          ledgerTransportRef.current = null;
+          console.log("Previous transport cleaned up");
+        } catch (cleanupError) {
+          console.log(
+            "Error cleaning up previous transport (ignoring):",
+            cleanupError.message
+          );
+          ledgerTransportRef.current = null;
+        }
+        // Wait a bit for cleanup to complete
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+
       // If device is just a string, it's a device ID
-      const deviceId =
-        typeof device === "string" ? device : device.id || device;
-      const deviceName =
-        typeof device === "string"
-          ? "Ledger (stored)"
-          : device.name || device.localName;
+      // Otherwise, it's the full device descriptor from the scan
+      const isDeviceDescriptor = typeof device === "object" && device !== null;
+      const deviceId = isDeviceDescriptor ? device.id : device;
+      const deviceName = isDeviceDescriptor
+        ? device.name || device.localName
+        : "Ledger (stored)";
 
       console.log("Connecting to Ledger device:", deviceName);
       console.log("Device ID:", deviceId);
-      console.log("Opening BLE transport...");
+      console.log("Using full device descriptor:", isDeviceDescriptor);
+      if (retryCount > 0) {
+        console.log(`Retry attempt ${retryCount} of ${MAX_RETRIES}`);
+      }
 
-      // Add timeout for connection attempt (60 seconds to allow for pairing)
+      // Use the full device descriptor if available, otherwise just the ID
+      const connectionTarget = isDeviceDescriptor ? device : deviceId;
+      console.log(
+        "Connecting with:",
+        isDeviceDescriptor ? "device descriptor" : "device ID"
+      );
+
+      // If we have the device object and a cancelConnection method, try to cancel any pending connections
+      if (isDeviceDescriptor && typeof device.cancelConnection === "function") {
+        try {
+          console.log("Canceling any pending connections on device...");
+          await device.cancelConnection();
+          console.log("Pending connections cancelled");
+          // Brief wait after cancellation
+          await new Promise((resolve) => setTimeout(resolve, 300));
+        } catch (cancelError) {
+          console.log(
+            "No pending connection to cancel (or error canceling):",
+            cancelError.message
+          );
+        }
+      }
+
+      console.log("Opening BLE transport with timeout...");
+
+      // Open transport with timeout (8 seconds)
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(
-          () => reject(new Error("Connection timeout after 60 seconds")),
-          60000
+          () => reject(new Error("Connection timeout after 8 seconds")),
+          8000
         )
       );
 
       transport = await Promise.race([
-        TransportBLE.open(deviceId),
+        TransportBLE.open(connectionTarget),
         timeoutPromise,
       ]);
 
@@ -1310,11 +1358,46 @@ export default function App() {
       setLedgerConnecting(false);
       console.log(`Found ${accounts.length} accounts from Ledger`);
     } catch (error) {
-      setLedgerConnecting(false);
       console.error("Error connecting to Ledger:", error);
       console.error("Error name:", error.name);
       console.error("Error message:", error.message);
       console.error("Error stack:", error.stack);
+
+      // Check if this is a "cancelled" error and we should retry
+      const isCancelledError =
+        (error.message &&
+          (error.message.includes("cancelled") ||
+            error.message.includes("canceled"))) ||
+        error.errorCode === 2;
+
+      if (isCancelledError && retryCount < MAX_RETRIES) {
+        // Calculate exponential backoff delay: 1s, 2s, 4s
+        const delayMs = 1000 * Math.pow(2, retryCount);
+        console.log(`Connection cancelled, retrying in ${delayMs}ms...`);
+
+        // Clean up transport if it exists
+        if (transport) {
+          try {
+            await transport.close();
+            ledgerTransportRef.current = null;
+          } catch (closeError) {
+            console.log(
+              "Error closing transport (ignoring):",
+              closeError.message
+            );
+            ledgerTransportRef.current = null;
+          }
+        }
+
+        // Wait for exponential backoff delay
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+
+        // Retry connection
+        return connectToLedger(device, retryCount + 1);
+      }
+
+      // If we've exhausted retries or it's a different error, handle it
+      setLedgerConnecting(false);
 
       // Try to clean up transport if it was created
       if (transport) {
@@ -1336,6 +1419,8 @@ export default function App() {
       if (error.message && error.message.includes("timeout")) {
         errorMessage +=
           "Connection timed out. Make sure the Solana app is open on your Ledger and Bluetooth pairing is accepted.";
+      } else if (isCancelledError) {
+        errorMessage += `Connection was cancelled after ${MAX_RETRIES} attempts.\n\nTroubleshooting:\n• Go to Phone Settings > Bluetooth\n• Forget/Unpair your Ledger device\n• Try connecting again\n• Accept the pairing request on your PHONE\n• Unlock and open Solana app on Ledger`;
       } else if (
         error.message &&
         (error.message.includes("pairing") ||

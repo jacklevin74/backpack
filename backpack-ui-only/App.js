@@ -28,6 +28,7 @@ import {
   PermissionsAndroid,
   Platform,
   NativeModules,
+  RefreshControl,
 } from "react-native";
 import {
   Keypair,
@@ -165,12 +166,8 @@ export default function App() {
   const [currentNetwork, setCurrentNetwork] = useState(NETWORKS[0]);
 
   // Network selector states
-  const [showNetworkDrawer, setShowNetworkDrawer] = useState(false);
-  const [showAccountDrawer, setShowAccountDrawer] = useState(false);
-  const [showSettingsDrawer, setShowSettingsDrawer] = useState(false);
   const [showDebugDrawer, setShowDebugDrawer] = useState(false);
   const [debugLogs, setDebugLogs] = useState([]);
-  const [showActivityDrawer, setShowActivityDrawer] = useState(false);
   const [showBluetoothDrawer, setShowBluetoothDrawer] = useState(false);
   const [pairedDevices, setPairedDevices] = useState([]);
 
@@ -182,17 +179,17 @@ export default function App() {
   const [importMnemonic, setImportMnemonic] = useState("");
   const [importPrivateKey, setImportPrivateKey] = useState("");
   const [importType, setImportType] = useState("mnemonic"); // "mnemonic" or "privateKey"
-  const [showEditWalletModal, setShowEditWalletModal] = useState(false);
   const [editingWallet, setEditingWallet] = useState(null);
   const [editWalletName, setEditWalletName] = useState("");
   const [showPrivateKey, setShowPrivateKey] = useState(false);
   const [showChangeNameModal, setShowChangeNameModal] = useState(false);
   const [showViewPrivateKeyModal, setShowViewPrivateKeyModal] = useState(false);
+  const [showLedgerModal, setShowLedgerModal] = useState(false);
   const [addressCopied, setAddressCopied] = useState(false);
   const [copiedWalletId, setCopiedWalletId] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Ledger states
-  const [showLedgerModal, setShowLedgerModal] = useState(false);
   const [ledgerScanning, setLedgerScanning] = useState(false);
   const [ledgerAccounts, setLedgerAccounts] = useState([]);
   const [ledgerConnecting, setLedgerConnecting] = useState(false);
@@ -205,18 +202,25 @@ export default function App() {
   const ledgerCleanedUpRef = useRef(false); // Track if cleanup has already been completed
 
   // Send and Receive states
-  const [showReceiveDrawer, setShowReceiveDrawer] = useState(false);
-  const [showSendDrawer, setShowSendDrawer] = useState(false);
   const [sendAmount, setSendAmount] = useState("");
   const [sendAddress, setSendAddress] = useState("");
-  const [showAddressSelector, setShowAddressSelector] = useState(false);
   const [showSendConfirm, setShowSendConfirm] = useState(false);
   const [sendConfirming, setSendConfirming] = useState(false);
   const [sendSignature, setSendSignature] = useState("");
   const [sendError, setSendError] = useState("");
 
-  // Bottom sheet ref
+  // Bottom sheet refs
   const bottomSheetRef = useRef(null);
+  const sendSheetRef = useRef(null);
+  const receiveSheetRef = useRef(null);
+  const activitySheetRef = useRef(null);
+  const settingsSheetRef = useRef(null);
+  const networkSheetRef = useRef(null);
+  const accountSheetRef = useRef(null);
+  const addressSheetRef = useRef(null);
+  const ledgerSheetRef = useRef(null);
+  const editWalletSheetRef = useRef(null);
+
   const snapPoints = useMemo(() => ["50%", "90%"], []);
 
   // Debug logging function
@@ -457,6 +461,22 @@ export default function App() {
     }
   };
 
+  // Handle pull-to-refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      // Fetch both balance and transactions without using cache
+      await Promise.all([
+        checkBalance(null, false), // false = don't use cache
+        checkTransactions(),
+      ]);
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   // Load initial balance
   useEffect(() => {
     if (!selectedWallet) return;
@@ -474,19 +494,12 @@ export default function App() {
     return () => clearInterval(interval);
   }, [selectedWallet?.publicKey, currentNetwork]);
 
-  // Fetch transactions when activity drawer opens
-  useEffect(() => {
-    if (showActivityDrawer && selectedWallet) {
-      checkTransactions();
-    }
-  }, [showActivityDrawer]);
-
   const switchNetwork = (network) => {
     setCurrentNetwork(network);
     // Use cache for instant switch, then fetch fresh data in background
     checkBalance(network, true);
     checkTransactions(network);
-    setShowNetworkDrawer(false);
+    networkSheetRef.current?.close();
   };
 
   const selectWallet = (wallet) => {
@@ -599,7 +612,7 @@ export default function App() {
   const selectAccount = (account) => {
     setAccounts(accounts.map((a) => ({ ...a, selected: a.id === account.id })));
     setSelectedAccount(account);
-    setShowAccountDrawer(false);
+    accountSheetRef.current?.close();
   };
 
   const showWalletSelector = () => {
@@ -607,19 +620,19 @@ export default function App() {
   };
 
   const showNetworkSelector = () => {
-    setShowNetworkDrawer(true);
+    networkSheetRef.current?.expand();
   };
 
   const showAccountSelector = () => {
-    setShowAccountDrawer(true);
+    accountSheetRef.current?.expand();
   };
 
   const handleReceive = () => {
-    setShowReceiveDrawer(true);
+    receiveSheetRef.current?.expand();
   };
 
   const handleSend = () => {
-    setShowSendDrawer(true);
+    sendSheetRef.current?.expand();
   };
 
   const copyToClipboard = (text) => {
@@ -667,7 +680,7 @@ export default function App() {
     }
 
     // Close send drawer and show confirmation screen
-    setShowSendDrawer(false);
+    sendSheetRef.current?.close();
     setShowSendConfirm(true);
     setSendConfirming(true);
     setSendError("");
@@ -967,7 +980,7 @@ export default function App() {
     // If Bluetooth device is already stored/connected, skip setup instructions
     if (ledgerDeviceInfo || ledgerDeviceId) {
       console.log("Bluetooth device already known, skipping setup dialog");
-      setShowLedgerModal(true);
+      ledgerSheetRef.current?.expand();
       scanForLedger();
       return;
     }
@@ -985,7 +998,7 @@ export default function App() {
         {
           text: "Continue",
           onPress: () => {
-            setShowLedgerModal(true);
+            ledgerSheetRef.current?.expand();
             scanForLedger();
           },
         },
@@ -1167,7 +1180,7 @@ export default function App() {
           console.log("Ledger scan complete");
           setLedgerScanning(false);
         },
-        next: (e) => {
+        next: async (e) => {
           console.log("Ledger device event received!");
           console.log("Event type:", e.type);
           if (e.type === "add") {
@@ -1184,6 +1197,13 @@ export default function App() {
             }
 
             setLedgerScanning(false);
+
+            // Wait for BLE stack to settle after scan cleanup before connecting
+            console.log(
+              "Waiting for BLE stack to settle after scan cleanup..."
+            );
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+
             connectToLedger(device);
           }
         },
@@ -1242,8 +1262,8 @@ export default function App() {
           );
           ledgerTransportRef.current = null;
         }
-        // Wait a bit for cleanup to complete
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        // Wait for BLE stack to fully settle after cleanup
+        await new Promise((resolve) => setTimeout(resolve, 1500));
       }
 
       // If device is just a string, it's a device ID
@@ -1268,20 +1288,20 @@ export default function App() {
         isDeviceDescriptor ? "device descriptor" : "device ID"
       );
 
-      // If we have the device object and a cancelConnection method, try to cancel any pending connections
-      if (isDeviceDescriptor && typeof device.cancelConnection === "function") {
-        try {
-          console.log("Canceling any pending connections on device...");
-          await device.cancelConnection();
-          console.log("Pending connections cancelled");
-          // Brief wait after cancellation
-          await new Promise((resolve) => setTimeout(resolve, 300));
-        } catch (cancelError) {
-          console.log(
-            "No pending connection to cancel (or error canceling):",
-            cancelError.message
-          );
-        }
+      // Disconnect any existing connection to this device before attempting new connection
+      try {
+        console.log("Disconnecting any existing connection to device...");
+        await TransportBLE.disconnect(deviceId);
+        console.log("Previous connection disconnected");
+        // Wait for BLE stack to settle after disconnect
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      } catch (disconnectError) {
+        console.log(
+          "No active connection to disconnect (or error disconnecting):",
+          disconnectError.message
+        );
+        // Brief wait even if disconnect failed
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
 
       console.log("Opening BLE transport with timeout...");
@@ -1601,7 +1621,7 @@ export default function App() {
     setWallets(updatedWallets);
     await saveWalletsToStorage(updatedWallets);
 
-    setShowLedgerModal(false);
+    ledgerSheetRef.current?.close();
     setLedgerAccounts([]);
 
     // Register the wallet with the transaction indexer
@@ -1699,7 +1719,7 @@ export default function App() {
           <View style={styles.topBarRightIcons}>
             <TouchableOpacity
               style={styles.activityIcon}
-              onPress={() => setShowActivityDrawer(true)}
+              onPress={() => activitySheetRef.current?.expand()}
             >
               <Image
                 source={require("./assets/clock.png")}
@@ -1708,7 +1728,7 @@ export default function App() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.settingsIcon}
-              onPress={() => setShowSettingsDrawer(true)}
+              onPress={() => settingsSheetRef.current?.expand()}
             >
               <Image
                 source={require("./assets/settings.png")}
@@ -1723,6 +1743,14 @@ export default function App() {
           style={styles.mainContent}
           contentContainerStyle={styles.mainContentContainer}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#4A90E2"
+              colors={["#4A90E2"]}
+            />
+          }
         >
           {/* Balance Section with all content */}
           <View style={styles.balanceSection}>
@@ -1815,58 +1843,47 @@ export default function App() {
       </SafeAreaView>
 
       {/* Network Selector Side Drawer */}
-      {showNetworkDrawer && (
-        <Modal
-          visible={showNetworkDrawer}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={() => setShowNetworkDrawer(false)}
-        >
-          <Pressable
-            style={styles.networkDrawerOverlay}
-            onPress={() => setShowNetworkDrawer(false)}
-          >
-            <Pressable
-              style={styles.networkDrawerContent}
-              onPress={(e) => e.stopPropagation()}
-            >
-              <View style={styles.networkDrawerContentArea}>
-                {/* Header */}
-                <View style={styles.networkDrawerHeader}>
-                  <Text style={styles.networkDrawerTitle}>Select Network</Text>
-                  <TouchableOpacity onPress={() => setShowNetworkDrawer(false)}>
-                    <Text style={styles.networkDrawerClose}>✕</Text>
-                  </TouchableOpacity>
-                </View>
+      <BottomSheet
+        ref={networkSheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        enablePanDownToClose={true}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: "#000000" }}
+        handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+      >
+        <BottomSheetView style={styles.bottomSheetContent}>
+          {/* Header */}
+          <View style={styles.bottomSheetHeader}>
+            <TouchableOpacity onPress={() => networkSheetRef.current?.close()}>
+              <Text style={styles.bottomSheetClose}>✕</Text>
+            </TouchableOpacity>
+            <Text style={styles.bottomSheetTitle}>Select Network</Text>
+            <View style={{ width: 24 }} />
+          </View>
 
-                {/* Network List */}
-                <ScrollView style={styles.networkList}>
-                  {NETWORKS.map((network) => (
-                    <TouchableOpacity
-                      key={network.id}
-                      style={[
-                        styles.networkItem,
-                        currentNetwork.id === network.id &&
-                          styles.networkItemSelected,
-                      ]}
-                      onPress={() => switchNetwork(network)}
-                    >
-                      <Image
-                        source={network.logo}
-                        style={styles.networkItemIcon}
-                      />
-                      <Text style={styles.networkItemText}>{network.name}</Text>
-                      {currentNetwork.id === network.id && (
-                        <Text style={styles.networkItemCheck}>✓</Text>
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            </Pressable>
-          </Pressable>
-        </Modal>
-      )}
+          {/* Network List */}
+          <ScrollView style={styles.networkList}>
+            {NETWORKS.map((network) => (
+              <TouchableOpacity
+                key={network.id}
+                style={[
+                  styles.networkItem,
+                  currentNetwork.id === network.id &&
+                    styles.networkItemSelected,
+                ]}
+                onPress={() => switchNetwork(network)}
+              >
+                <Image source={network.logo} style={styles.networkItemIcon} />
+                <Text style={styles.networkItemText}>{network.name}</Text>
+                {currentNetwork.id === network.id && (
+                  <Text style={styles.networkItemCheck}>✓</Text>
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </BottomSheetView>
+      </BottomSheet>
 
       {/* Bluetooth Devices Drawer */}
       {showBluetoothDrawer && (
@@ -1929,7 +1946,7 @@ export default function App() {
                             style={styles.bluetoothDeviceConnectButton}
                             onPress={async () => {
                               setShowBluetoothDrawer(false);
-                              setShowLedgerModal(true);
+                              ledgerSheetRef.current?.expand();
                               setLedgerDeviceId(device.id);
                               // Re-connect to this device
                               await connectToLedger(device);
@@ -1953,13 +1970,17 @@ export default function App() {
                   )}
                 </ScrollView>
 
-                {/* Refresh Button */}
+                {/* Connect Button */}
                 <TouchableOpacity
                   style={styles.bluetoothRefreshButton}
-                  onPress={fetchPairedBluetoothDevices}
+                  onPress={async () => {
+                    setShowBluetoothDrawer(false);
+                    ledgerSheetRef.current?.expand();
+                    await scanForLedger();
+                  }}
                 >
                   <Text style={styles.bluetoothRefreshButtonText}>
-                    Refresh List
+                    Connect New Device
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -2015,7 +2036,7 @@ export default function App() {
                 <View style={styles.bottomSheetWalletLeft}>
                   <Image
                     source={currentNetwork.logo}
-                    style={styles.x1LogoSmall}
+                    style={styles.x1LogoLarge}
                   />
                   <View style={styles.bottomSheetWalletInfo}>
                     <Text style={styles.bottomSheetWalletName}>
@@ -2045,7 +2066,8 @@ export default function App() {
                     onPress={(e) => {
                       e.stopPropagation();
                       setEditingWallet(wallet);
-                      setShowEditWalletModal(true);
+                      setEditWalletName(wallet.name);
+                      editWalletSheetRef.current?.expand();
                     }}
                   >
                     <Text style={styles.bottomSheetEditIcon}>⋮</Text>
@@ -2058,213 +2080,194 @@ export default function App() {
       </BottomSheet>
 
       {/* Account Selector Side Drawer */}
-      <Modal
-        visible={showAccountDrawer}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowAccountDrawer(false)}
+      <BottomSheet
+        ref={accountSheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        enablePanDownToClose={true}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: "#000000" }}
+        handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
       >
-        <Pressable
-          style={styles.accountDrawerOverlay}
-          onPress={() => setShowAccountDrawer(false)}
-        >
-          <Pressable
-            style={styles.accountDrawerContent}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <View style={styles.accountDrawerContentArea}>
-              {/* Header */}
-              <View style={styles.accountDrawerHeader}>
-                <Text style={styles.accountDrawerTitle}>Select Account</Text>
-                <TouchableOpacity onPress={() => setShowAccountDrawer(false)}>
-                  <Text style={styles.accountDrawerClose}>✕</Text>
-                </TouchableOpacity>
-              </View>
+        <BottomSheetView style={styles.bottomSheetContent}>
+          {/* Header */}
+          <View style={styles.bottomSheetHeader}>
+            <TouchableOpacity onPress={() => accountSheetRef.current?.close()}>
+              <Text style={styles.bottomSheetClose}>✕</Text>
+            </TouchableOpacity>
+            <Text style={styles.bottomSheetTitle}>Select Account</Text>
+            <View style={{ width: 24 }} />
+          </View>
 
-              {/* Account List */}
-              <ScrollView style={styles.accountList}>
-                {accounts.map((account) => (
-                  <TouchableOpacity
-                    key={account.id}
-                    style={[
-                      styles.accountItem,
-                      account.selected && styles.accountItemSelected,
-                    ]}
-                    onPress={() => selectAccount(account)}
-                  >
-                    <View
-                      style={[
-                        styles.accountBadge,
-                        { backgroundColor: account.badgeColor },
-                      ]}
-                    >
-                      <Text style={styles.accountBadgeText}>
-                        {account.badge}
-                      </Text>
-                    </View>
-                    <Text style={styles.accountItemText}>{account.name}</Text>
-                    {account.selected && (
-                      <Text style={styles.accountItemCheck}>✓</Text>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              {/* Add New Account Button */}
-              <TouchableOpacity style={styles.addAccountButton}>
-                <Text style={styles.addAccountButtonText}>+ New Account</Text>
+          {/* Account List */}
+          <ScrollView style={styles.accountList}>
+            {accounts.map((account) => (
+              <TouchableOpacity
+                key={account.id}
+                style={[
+                  styles.accountItem,
+                  account.selected && styles.accountItemSelected,
+                ]}
+                onPress={() => selectAccount(account)}
+              >
+                <View
+                  style={[
+                    styles.accountBadge,
+                    { backgroundColor: account.badgeColor },
+                  ]}
+                >
+                  <Text style={styles.accountBadgeText}>{account.badge}</Text>
+                </View>
+                <Text style={styles.accountItemText}>{account.name}</Text>
+                {account.selected && (
+                  <Text style={styles.accountItemCheck}>✓</Text>
+                )}
               </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+            ))}
+          </ScrollView>
+
+          {/* Add New Account Button */}
+          <TouchableOpacity style={styles.addAccountButton}>
+            <Text style={styles.addAccountButtonText}>+ New Account</Text>
+          </TouchableOpacity>
+        </BottomSheetView>
+      </BottomSheet>
 
       {/* Settings Drawer */}
-      <Modal
-        visible={showSettingsDrawer}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowSettingsDrawer(false)}
+      <BottomSheet
+        ref={settingsSheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        enablePanDownToClose={true}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: "#000000" }}
+        handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
       >
-        <Pressable
-          style={styles.settingsDrawerOverlay}
-          onPress={() => setShowSettingsDrawer(false)}
-        >
-          <Pressable
-            style={styles.settingsDrawerContent}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <View style={styles.settingsDrawerContentArea}>
-              {/* Header with Account Badge */}
-              <View style={styles.settingsDrawerHeader}>
-                <View style={styles.settingsHeaderLeft}>
-                  <View
-                    style={[
-                      styles.settingsAccountBadge,
-                      { backgroundColor: selectedAccount.badgeColor },
-                    ]}
-                  >
-                    <Text style={styles.settingsAccountBadgeText}>
-                      {selectedAccount.badge}
-                    </Text>
-                  </View>
-                  <Text style={styles.settingsAccountName}>
-                    {selectedAccount.name}
-                  </Text>
-                </View>
-                <TouchableOpacity onPress={() => setShowSettingsDrawer(false)}>
-                  <Text style={styles.settingsDrawerClose}>✕</Text>
-                </TouchableOpacity>
+        <BottomSheetView style={styles.bottomSheetContent}>
+          {/* Header with Account Badge */}
+          <View style={styles.bottomSheetHeader}>
+            <View style={styles.settingsHeaderLeft}>
+              <View
+                style={[
+                  styles.settingsAccountBadge,
+                  { backgroundColor: selectedAccount.badgeColor },
+                ]}
+              >
+                <Text style={styles.settingsAccountBadgeText}>
+                  {selectedAccount.badge}
+                </Text>
               </View>
-
-              {/* Menu Items */}
-              <ScrollView style={styles.settingsMenuList}>
-                <TouchableOpacity
-                  style={styles.settingsMenuItem}
-                  onPress={() => {
-                    setShowSettingsDrawer(false);
-                    setShowNetworkDrawer(true);
-                  }}
-                >
-                  <Text style={styles.settingsMenuItemText}>Network</Text>
-                  <Text style={styles.settingsMenuItemArrow}>›</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.settingsMenuItem}
-                  onPress={() => {
-                    setShowSettingsDrawer(false);
-                    setShowBluetoothDrawer(true);
-                    fetchPairedBluetoothDevices();
-                  }}
-                >
-                  <Text style={styles.settingsMenuItemText}>
-                    Bluetooth Devices
-                  </Text>
-                  <Text style={styles.settingsMenuItemArrow}>›</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.settingsMenuItem}
-                  onPress={() => {
-                    setShowSettingsDrawer(false);
-                    Alert.alert(
-                      "Rename Wallet",
-                      "Rename wallet functionality would open here"
-                    );
-                  }}
-                >
-                  <Text style={styles.settingsMenuItemText}>Rename Wallet</Text>
-                  <Text style={styles.settingsMenuItemArrow}>›</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.settingsMenuItem}
-                  onPress={() => {
-                    setShowSettingsDrawer(false);
-                    Alert.alert(
-                      "New Account",
-                      "Create new account functionality would open here"
-                    );
-                  }}
-                >
-                  <Text style={styles.settingsMenuItemText}>New Account</Text>
-                  <Text style={styles.settingsMenuItemArrow}>›</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.settingsMenuItem}
-                  onPress={() => {
-                    setShowSettingsDrawer(false);
-                    Alert.alert("Preferences", "Preferences would open here");
-                  }}
-                >
-                  <Text style={styles.settingsMenuItemText}>Preferences</Text>
-                  <Text style={styles.settingsMenuItemArrow}>›</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.settingsMenuItem}
-                  onPress={() => {
-                    setShowSettingsDrawer(false);
-                    Alert.alert("Settings", "Settings would open here");
-                  }}
-                >
-                  <Text style={styles.settingsMenuItemText}>Settings</Text>
-                  <Text style={styles.settingsMenuItemArrow}>›</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.settingsMenuItem}
-                  onPress={() => {
-                    setShowSettingsDrawer(false);
-                    Alert.alert(
-                      "About Backpack",
-                      "About Backpack info would open here"
-                    );
-                  }}
-                >
-                  <Text style={styles.settingsMenuItemText}>
-                    About Backpack
-                  </Text>
-                  <Text style={styles.settingsMenuItemArrow}>›</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.settingsMenuItem}
-                  onPress={() => {
-                    setShowSettingsDrawer(false);
-                    setShowDebugDrawer(true);
-                  }}
-                >
-                  <Text style={styles.settingsMenuItemText}>Debug</Text>
-                  <Text style={styles.settingsMenuItemArrow}>›</Text>
-                </TouchableOpacity>
-              </ScrollView>
+              <Text style={styles.settingsAccountName}>
+                {selectedAccount.name}
+              </Text>
             </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+            <TouchableOpacity onPress={() => settingsSheetRef.current?.close()}>
+              <Text style={styles.bottomSheetClose}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Menu Items */}
+          <ScrollView style={styles.settingsMenuList}>
+            <TouchableOpacity
+              style={styles.settingsMenuItem}
+              onPress={() => {
+                settingsSheetRef.current?.close();
+                networkSheetRef.current?.expand();
+              }}
+            >
+              <Text style={styles.settingsMenuItemText}>Network</Text>
+              <Text style={styles.settingsMenuItemArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingsMenuItem}
+              onPress={() => {
+                settingsSheetRef.current?.close();
+                setShowBluetoothDrawer(true);
+                fetchPairedBluetoothDevices();
+              }}
+            >
+              <Text style={styles.settingsMenuItemText}>Bluetooth Devices</Text>
+              <Text style={styles.settingsMenuItemArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingsMenuItem}
+              onPress={() => {
+                settingsSheetRef.current?.close();
+                Alert.alert(
+                  "Rename Wallet",
+                  "Rename wallet functionality would open here"
+                );
+              }}
+            >
+              <Text style={styles.settingsMenuItemText}>Rename Wallet</Text>
+              <Text style={styles.settingsMenuItemArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingsMenuItem}
+              onPress={() => {
+                settingsSheetRef.current?.close();
+                Alert.alert(
+                  "New Account",
+                  "Create new account functionality would open here"
+                );
+              }}
+            >
+              <Text style={styles.settingsMenuItemText}>New Account</Text>
+              <Text style={styles.settingsMenuItemArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingsMenuItem}
+              onPress={() => {
+                settingsSheetRef.current?.close();
+                Alert.alert("Preferences", "Preferences would open here");
+              }}
+            >
+              <Text style={styles.settingsMenuItemText}>Preferences</Text>
+              <Text style={styles.settingsMenuItemArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingsMenuItem}
+              onPress={() => {
+                settingsSheetRef.current?.close();
+                Alert.alert("Settings", "Settings would open here");
+              }}
+            >
+              <Text style={styles.settingsMenuItemText}>Settings</Text>
+              <Text style={styles.settingsMenuItemArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingsMenuItem}
+              onPress={() => {
+                settingsSheetRef.current?.close();
+                Alert.alert(
+                  "About Backpack",
+                  "About Backpack info would open here"
+                );
+              }}
+            >
+              <Text style={styles.settingsMenuItemText}>About Backpack</Text>
+              <Text style={styles.settingsMenuItemArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingsMenuItem}
+              onPress={() => {
+                settingsSheetRef.current?.close();
+                setShowDebugDrawer(true);
+              }}
+            >
+              <Text style={styles.settingsMenuItemText}>Debug</Text>
+              <Text style={styles.settingsMenuItemArrow}>›</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </BottomSheetView>
+      </BottomSheet>
 
       {/* Debug Console - Full Page */}
       <Modal
@@ -2311,303 +2314,271 @@ export default function App() {
       </Modal>
 
       {/* Receive Drawer */}
-      <Modal
-        visible={showReceiveDrawer}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowReceiveDrawer(false)}
+      <BottomSheet
+        ref={receiveSheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        enablePanDownToClose={true}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: "#000000" }}
+        handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
       >
-        <Pressable
-          style={styles.settingsDrawerOverlay}
-          onPress={() => setShowReceiveDrawer(false)}
-        >
-          <Pressable
-            style={styles.settingsDrawerContent}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <View style={styles.settingsDrawerContentArea}>
-              {/* Header */}
-              <View style={styles.settingsDrawerHeader}>
-                <Text style={styles.settingsDrawerTitle}>
-                  Receive {getNativeTokenInfo().symbol}
-                </Text>
-                <TouchableOpacity onPress={() => setShowReceiveDrawer(false)}>
-                  <Text style={styles.settingsDrawerClose}>✕</Text>
-                </TouchableOpacity>
-              </View>
+        <BottomSheetView style={styles.bottomSheetContent}>
+          {/* Header */}
+          <View style={styles.bottomSheetHeader}>
+            <Text style={styles.bottomSheetTitle}>
+              Receive {getNativeTokenInfo().symbol}
+            </Text>
+            <TouchableOpacity onPress={() => receiveSheetRef.current?.close()}>
+              <Text style={styles.bottomSheetClose}>✕</Text>
+            </TouchableOpacity>
+          </View>
 
-              {/* QR Code */}
-              <View style={styles.receiveQRContainer}>
-                <View style={styles.receiveQRWrapper}>
-                  <QRCode
-                    value={selectedWallet?.publicKey || "No wallet"}
-                    size={200}
-                    backgroundColor="white"
-                    color="black"
-                  />
-                </View>
-              </View>
-
-              {/* Address */}
-              <View style={styles.receiveAddressContainer}>
-                <Text style={styles.receiveAddressLabel}>Your Address</Text>
-                <Text style={styles.receiveAddressText} numberOfLines={1}>
-                  {addressCopied
-                    ? "Copied"
-                    : selectedWallet?.publicKey || "No wallet selected"}
-                </Text>
-              </View>
-
-              {/* Copy Button */}
-              <TouchableOpacity
-                style={styles.receiveCopyButton}
-                onPress={() => {
-                  copyToClipboard(selectedWallet.publicKey);
-                  setAddressCopied(true);
-                  setTimeout(() => {
-                    setAddressCopied(false);
-                  }, 4000);
-                }}
-              >
-                <Text style={styles.receiveCopyButtonText}>Copy Address</Text>
-              </TouchableOpacity>
+          {/* QR Code */}
+          <View style={styles.receiveQRContainer}>
+            <View style={styles.receiveQRWrapper}>
+              <QRCode
+                value={selectedWallet?.publicKey || "No wallet"}
+                size={200}
+                backgroundColor="white"
+                color="black"
+              />
             </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+          </View>
+
+          {/* Address */}
+          <View style={styles.receiveAddressContainer}>
+            <Text style={styles.receiveAddressLabel}>Your Address</Text>
+            <Text style={styles.receiveAddressText} numberOfLines={1}>
+              {addressCopied
+                ? "Copied"
+                : selectedWallet?.publicKey || "No wallet selected"}
+            </Text>
+          </View>
+
+          {/* Copy Button */}
+          <TouchableOpacity
+            style={styles.receiveCopyButton}
+            onPress={() => {
+              copyToClipboard(selectedWallet.publicKey);
+              setAddressCopied(true);
+              setTimeout(() => {
+                setAddressCopied(false);
+              }, 4000);
+            }}
+          >
+            <Text style={styles.receiveCopyButtonText}>Copy Address</Text>
+          </TouchableOpacity>
+        </BottomSheetView>
+      </BottomSheet>
 
       {/* Send Drawer */}
-      <Modal
-        visible={showSendDrawer}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowSendDrawer(false)}
+      <BottomSheet
+        ref={sendSheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        enablePanDownToClose={true}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: "#000000" }}
+        handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
       >
-        <Pressable
-          style={styles.settingsDrawerOverlay}
-          onPress={() => setShowSendDrawer(false)}
-        >
-          <Pressable
-            style={styles.settingsDrawerContent}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <View style={styles.settingsDrawerContentArea}>
-              {/* Header */}
-              <View style={styles.settingsDrawerHeader}>
-                <Image
-                  source={currentNetwork.logo}
-                  style={styles.x1LogoLarge}
-                />
-                <Text style={styles.settingsDrawerTitle}>
-                  Send {getNativeTokenInfo().symbol}
-                </Text>
-                <TouchableOpacity onPress={() => setShowSendDrawer(false)}>
-                  <Text style={styles.settingsDrawerClose}>✕</Text>
-                </TouchableOpacity>
-              </View>
+        <BottomSheetView style={styles.bottomSheetContent}>
+          {/* Header */}
+          <View style={styles.bottomSheetHeader}>
+            <TouchableOpacity onPress={() => sendSheetRef.current?.close()}>
+              <Text style={styles.bottomSheetClose}>✕</Text>
+            </TouchableOpacity>
+            <View style={styles.bottomSheetTitleContainer}>
+              <Image source={currentNetwork.logo} style={styles.x1LogoSmall} />
+              <Text style={styles.bottomSheetTitle}>
+                Send {getNativeTokenInfo().symbol}
+              </Text>
+            </View>
+            <View style={{ width: 24 }} />
+          </View>
 
-              {/* Balance Display */}
-              <View style={styles.sendBalanceContainer}>
-                <Text style={styles.sendBalanceLabel}>Available Balance</Text>
-                <TouchableOpacity onPress={() => setSendAmount(balance)}>
-                  <Text style={styles.sendBalanceText}>
-                    {balance} {getNativeTokenInfo().symbol}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+          {/* Balance Display */}
+          <View style={styles.sendBalanceContainer}>
+            <Text style={styles.sendBalanceLabel}>Available Balance</Text>
+            <TouchableOpacity onPress={() => setSendAmount(balance)}>
+              <Text style={styles.sendBalanceText}>
+                {balance} {getNativeTokenInfo().symbol}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-              {/* Amount Input */}
-              <View style={styles.sendInputContainer}>
-                <Text style={styles.sendInputLabel}>Amount</Text>
-                <TextInput
-                  style={styles.sendInput}
-                  placeholder="0.00"
-                  placeholderTextColor="#666666"
-                  value={sendAmount}
-                  onChangeText={setSendAmount}
-                  keyboardType="decimal-pad"
-                />
-              </View>
+          {/* Amount Input */}
+          <View style={styles.sendInputContainer}>
+            <Text style={styles.sendInputLabel}>Amount</Text>
+            <TextInput
+              style={styles.sendInput}
+              placeholder="0.00"
+              placeholderTextColor="#666666"
+              value={sendAmount}
+              onChangeText={setSendAmount}
+              keyboardType="decimal-pad"
+            />
+          </View>
 
-              {/* Address Input */}
-              <View style={styles.sendInputContainer}>
-                <View style={styles.sendAddressHeader}>
-                  <Text style={styles.sendInputLabel}>Recipient Address</Text>
-                  <TouchableOpacity
-                    onPress={() => setShowAddressSelector(true)}
-                  >
-                    <Text style={styles.sendSelectAddressText}>
-                      Select Address
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-                <TextInput
-                  style={styles.sendInput}
-                  placeholder="Enter address..."
-                  placeholderTextColor="#666666"
-                  value={sendAddress}
-                  onChangeText={setSendAddress}
-                  autoCapitalize="none"
-                />
-              </View>
-
-              {/* Send Button */}
+          {/* Address Input */}
+          <View style={styles.sendInputContainer}>
+            <View style={styles.sendAddressHeader}>
+              <Text style={styles.sendInputLabel}>Recipient Address</Text>
               <TouchableOpacity
-                style={styles.sendSubmitButton}
-                onPress={handleSendSubmit}
+                onPress={() => addressSheetRef.current?.expand()}
               >
-                <Text style={styles.sendSubmitButtonText}>Send</Text>
+                <Text style={styles.sendSelectAddressText}>Select Address</Text>
               </TouchableOpacity>
             </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+            <TextInput
+              style={styles.sendInput}
+              placeholder="Enter address..."
+              placeholderTextColor="#666666"
+              value={sendAddress}
+              onChangeText={setSendAddress}
+              autoCapitalize="none"
+            />
+          </View>
+
+          {/* Send Button */}
+          <TouchableOpacity
+            style={styles.sendSubmitButton}
+            onPress={handleSendSubmit}
+          >
+            <Text style={styles.sendSubmitButtonText}>Send</Text>
+          </TouchableOpacity>
+        </BottomSheetView>
+      </BottomSheet>
 
       {/* Address Selector Modal */}
-      <Modal
-        visible={showAddressSelector}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowAddressSelector(false)}
+      <BottomSheet
+        ref={addressSheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        enablePanDownToClose={true}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: "#000000" }}
+        handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
       >
-        <Pressable
-          style={styles.settingsDrawerOverlay}
-          onPress={() => setShowAddressSelector(false)}
-        >
-          <Pressable
-            style={styles.settingsDrawerContent}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <View style={styles.settingsDrawerContentArea}>
-              {/* Header */}
-              <View style={styles.settingsDrawerHeader}>
-                <Text style={styles.settingsDrawerTitle}>Select Address</Text>
-                <TouchableOpacity onPress={() => setShowAddressSelector(false)}>
-                  <Text style={styles.settingsDrawerClose}>✕</Text>
-                </TouchableOpacity>
-              </View>
+        <BottomSheetView style={styles.bottomSheetContent}>
+          {/* Header */}
+          <View style={styles.bottomSheetHeader}>
+            <Text style={styles.bottomSheetTitle}>Select Address</Text>
+            <TouchableOpacity onPress={() => addressSheetRef.current?.close()}>
+              <Text style={styles.bottomSheetClose}>✕</Text>
+            </TouchableOpacity>
+          </View>
 
-              {/* Address List */}
-              <ScrollView style={styles.addressList}>
-                {wallets.map((wallet) => (
-                  <TouchableOpacity
-                    key={wallet.id}
-                    style={styles.addressItem}
-                    onPress={() => {
-                      setSendAddress(wallet.publicKey);
-                      setShowAddressSelector(false);
-                    }}
-                  >
-                    <View style={styles.addressItemContent}>
-                      <Text style={styles.addressItemName}>{wallet.name}</Text>
-                      <Text style={styles.addressItemAddress} numberOfLines={1}>
-                        {wallet.address}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+          {/* Address List */}
+          <ScrollView style={styles.addressList}>
+            {wallets.map((wallet) => (
+              <TouchableOpacity
+                key={wallet.id}
+                style={styles.addressItem}
+                onPress={() => {
+                  setSendAddress(wallet.publicKey);
+                  addressSheetRef.current?.close();
+                }}
+              >
+                <View style={styles.addressItemContent}>
+                  <Text style={styles.addressItemName}>{wallet.name}</Text>
+                  <Text style={styles.addressItemAddress} numberOfLines={1}>
+                    {wallet.address}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </BottomSheetView>
+      </BottomSheet>
 
       {/* Activity Drawer */}
-      <Modal
-        visible={showActivityDrawer}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowActivityDrawer(false)}
+      <BottomSheet
+        ref={activitySheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        enablePanDownToClose={true}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: "#000000" }}
+        handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
       >
-        <Pressable
-          style={styles.settingsDrawerOverlay}
-          onPress={() => setShowActivityDrawer(false)}
-        >
-          <Pressable
-            style={styles.settingsDrawerContent}
-            onPress={(e) => e.stopPropagation()}
+        <BottomSheetView style={styles.bottomSheetContent}>
+          {/* Header */}
+          <View style={styles.bottomSheetHeader}>
+            <TouchableOpacity onPress={() => checkTransactions()}>
+              <Text style={styles.bottomSheetClose}>↻</Text>
+            </TouchableOpacity>
+            <Text style={styles.bottomSheetTitle}>Activity</Text>
+            <TouchableOpacity onPress={() => activitySheetRef.current?.close()}>
+              <Text style={styles.bottomSheetClose}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Activity List */}
+          <ScrollView
+            style={styles.settingsMenuList}
+            showsVerticalScrollIndicator={false}
           >
-            <View style={styles.settingsDrawerContentArea}>
-              {/* Header */}
-              <View style={styles.settingsDrawerHeader}>
-                <TouchableOpacity onPress={() => checkTransactions()}>
-                  <Text style={styles.settingsDrawerClose}>↻</Text>
+            <View style={styles.transactionsList}>
+              {transactions.map((tx) => (
+                <TouchableOpacity
+                  key={tx.id}
+                  style={styles.activityCard}
+                  onPress={() => openExplorer(tx.signature)}
+                >
+                  {/* Token logo */}
+                  <Image
+                    source={
+                      tx.token === "XNT"
+                        ? require("./assets/x1.png")
+                        : require("./assets/solana.png")
+                    }
+                    style={styles.activityCardLogo}
+                  />
+
+                  <View style={styles.activityCardContent}>
+                    {/* Header with title and time */}
+                    <View style={styles.activityCardHeader}>
+                      <Text style={styles.activityCardTitle}>
+                        {tx.type === "received" ? "Received" : "Sent"}{" "}
+                        {tx.token}
+                      </Text>
+                      <Text style={styles.activityCardTime}>
+                        {tx.timestamp}
+                      </Text>
+                    </View>
+
+                    {/* Amount row */}
+                    <View style={styles.activityCardRow}>
+                      <Text style={styles.activityCardLabel}>Amount</Text>
+                      <Text
+                        style={[
+                          styles.activityCardValue,
+                          {
+                            color:
+                              tx.type === "received" ? "#00D084" : "#FF6B6B",
+                          },
+                        ]}
+                      >
+                        {tx.type === "received" ? "+" : "-"}
+                        {tx.amount} {tx.token}
+                      </Text>
+                    </View>
+
+                    {/* Fee row */}
+                    <View style={styles.activityCardRow}>
+                      <Text style={styles.activityCardLabel}>Fee</Text>
+                      <Text style={styles.activityCardValue}>
+                        {tx.fee || "0.000001650"} {tx.token}
+                      </Text>
+                    </View>
+                  </View>
                 </TouchableOpacity>
-                <Text style={styles.settingsDrawerTitle}>Activity</Text>
-                <TouchableOpacity onPress={() => setShowActivityDrawer(false)}>
-                  <Text style={styles.settingsDrawerClose}>✕</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Activity List */}
-              <ScrollView
-                style={styles.settingsMenuList}
-                showsVerticalScrollIndicator={false}
-              >
-                <View style={styles.transactionsList}>
-                  {transactions.map((tx) => (
-                    <TouchableOpacity
-                      key={tx.id}
-                      style={styles.activityCard}
-                      onPress={() => openExplorer(tx.signature)}
-                    >
-                      {/* Token logo */}
-                      <Image
-                        source={
-                          tx.token === "XNT"
-                            ? require("./assets/x1.png")
-                            : require("./assets/solana.png")
-                        }
-                        style={styles.activityCardLogo}
-                      />
-
-                      <View style={styles.activityCardContent}>
-                        {/* Header with title and time */}
-                        <View style={styles.activityCardHeader}>
-                          <Text style={styles.activityCardTitle}>
-                            {tx.type === "received" ? "Received" : "Sent"}{" "}
-                            {tx.token}
-                          </Text>
-                          <Text style={styles.activityCardTime}>
-                            {tx.timestamp}
-                          </Text>
-                        </View>
-
-                        {/* Amount row */}
-                        <View style={styles.activityCardRow}>
-                          <Text style={styles.activityCardLabel}>Amount</Text>
-                          <Text
-                            style={[
-                              styles.activityCardValue,
-                              {
-                                color:
-                                  tx.type === "received"
-                                    ? "#00D084"
-                                    : "#FF6B6B",
-                              },
-                            ]}
-                          >
-                            {tx.type === "received" ? "+" : "-"}
-                            {tx.amount} {tx.token}
-                          </Text>
-                        </View>
-
-                        {/* Fee row */}
-                        <View style={styles.activityCardRow}>
-                          <Text style={styles.activityCardLabel}>Fee</Text>
-                          <Text style={styles.activityCardValue}>
-                            {tx.fee || "0.000001650"} {tx.token}
-                          </Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </ScrollView>
+              ))}
             </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+          </ScrollView>
+        </BottomSheetView>
+      </BottomSheet>
 
       {/* Add Wallet Modal - Choice */}
       <Modal
@@ -2814,98 +2785,82 @@ export default function App() {
       </Modal>
 
       {/* Edit Wallet Modal */}
-      <Modal
-        visible={showEditWalletModal}
-        transparent={true}
-        animationType="slide"
-        onShow={() => {
-          if (editingWallet) {
-            setEditWalletName(editingWallet.name);
-          }
-        }}
+      <BottomSheet
+        ref={editWalletSheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        enablePanDownToClose={true}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: "#000000" }}
+        handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
       >
-        <Pressable
-          style={styles.settingsDrawerOverlay}
-          onPress={() => {
-            setShowEditWalletModal(false);
-            setEditingWallet(null);
-          }}
-        >
-          <Pressable
-            style={styles.settingsDrawerContent}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <View style={styles.settingsDrawerContentArea}>
-              <View style={styles.settingsDrawerHeader}>
-                <View style={{ width: 32 }} />
-                <Text style={styles.settingsDrawerTitle}>Edit Wallet</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    setShowEditWalletModal(false);
-                    setEditingWallet(null);
-                  }}
-                >
-                  <Text style={styles.settingsDrawerClose}>✕</Text>
-                </TouchableOpacity>
-              </View>
+        <BottomSheetView style={styles.bottomSheetContent}>
+          <View style={styles.bottomSheetHeader}>
+            <View style={{ width: 32 }} />
+            <Text style={styles.bottomSheetTitle}>Edit Wallet</Text>
+            <TouchableOpacity
+              onPress={() => {
+                editWalletSheetRef.current?.close();
+                setEditingWallet(null);
+              }}
+            >
+              <Text style={styles.bottomSheetClose}>✕</Text>
+            </TouchableOpacity>
+          </View>
 
-              {/* Menu Items */}
-              <ScrollView style={styles.settingsMenuList}>
-                <TouchableOpacity
-                  style={styles.settingsMenuItem}
-                  onPress={() => {
-                    setShowEditWalletModal(false);
-                    setShowChangeNameModal(true);
-                  }}
-                >
-                  <Text style={styles.settingsMenuItemText}>
-                    Change Account Name
-                  </Text>
-                  <Text style={styles.settingsMenuItemArrow}>›</Text>
-                </TouchableOpacity>
+          {/* Menu Items */}
+          <ScrollView style={styles.settingsMenuList}>
+            <TouchableOpacity
+              style={styles.settingsMenuItem}
+              onPress={() => {
+                editWalletSheetRef.current?.close();
+                setShowChangeNameModal(true);
+              }}
+            >
+              <Text style={styles.settingsMenuItemText}>
+                Change Account Name
+              </Text>
+              <Text style={styles.settingsMenuItemArrow}>›</Text>
+            </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.settingsMenuItem}
-                  onPress={() => {
-                    Alert.alert(
-                      "Delete Account",
-                      `Are you sure you want to delete "${editingWallet?.name}"? This action cannot be undone.`,
-                      [
-                        {
-                          text: "Cancel",
-                          style: "cancel",
-                        },
-                        {
-                          text: "Delete",
-                          style: "destructive",
-                          onPress: async () => {
-                            if (editingWallet) {
-                              const updatedWallets = wallets.filter(
-                                (w) => w.id !== editingWallet.id
-                              );
-                              setWallets(updatedWallets);
-                              await saveWallets(updatedWallets);
-                              setShowEditWalletModal(false);
-                              setEditingWallet(null);
-                            }
-                          },
-                        },
-                      ]
-                    );
-                  }}
-                >
-                  <Text
-                    style={[styles.settingsMenuItemText, { color: "#FF4444" }]}
-                  >
-                    Delete Account
-                  </Text>
-                  <Text style={styles.settingsMenuItemArrow}>›</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+            <TouchableOpacity
+              style={styles.settingsMenuItem}
+              onPress={() => {
+                Alert.alert(
+                  "Delete Account",
+                  `Are you sure you want to delete "${editingWallet?.name}"? This action cannot be undone.`,
+                  [
+                    {
+                      text: "Cancel",
+                      style: "cancel",
+                    },
+                    {
+                      text: "Delete",
+                      style: "destructive",
+                      onPress: async () => {
+                        if (editingWallet) {
+                          const updatedWallets = wallets.filter(
+                            (w) => w.id !== editingWallet.id
+                          );
+                          setWallets(updatedWallets);
+                          await saveWallets(updatedWallets);
+                          editWalletSheetRef.current?.close();
+                          setEditingWallet(null);
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
+            >
+              <Text style={[styles.settingsMenuItemText, { color: "#FF4444" }]}>
+                Delete Account
+              </Text>
+              <Text style={styles.settingsMenuItemArrow}>›</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </BottomSheetView>
+      </BottomSheet>
 
       {/* Change Name Modal */}
       <Modal
@@ -2918,7 +2873,7 @@ export default function App() {
           onPress={() => {
             console.log("OVERLAY PRESSED - Closing all modals");
             setShowChangeNameModal(false);
-            setShowEditWalletModal(false);
+            editWalletSheetRef.current?.close();
             setEditingWallet(null);
           }}
         >
@@ -2932,7 +2887,7 @@ export default function App() {
                   onPress={() => {
                     console.log("BACK BUTTON PRESSED (<) - Closing all modals");
                     setShowChangeNameModal(false);
-                    setShowEditWalletModal(false);
+                    editWalletSheetRef.current?.close();
                     setEditingWallet(null);
                   }}
                 >
@@ -2943,7 +2898,7 @@ export default function App() {
                   onPress={() => {
                     console.log("X BUTTON PRESSED - Closing all modals");
                     setShowChangeNameModal(false);
-                    setShowEditWalletModal(false);
+                    editWalletSheetRef.current?.close();
                     setEditingWallet(null);
                   }}
                 >
@@ -2989,7 +2944,7 @@ export default function App() {
                     saveWalletsToStorage(updatedWallets);
                     console.log("Closing both modals");
                     setShowChangeNameModal(false);
-                    setShowEditWalletModal(false);
+                    editWalletSheetRef.current?.close();
                     setEditingWallet(null);
                   } else {
                     console.log("Not saving - wallet or name is empty");
@@ -3020,7 +2975,7 @@ export default function App() {
           style={styles.settingsDrawerOverlay}
           onPress={() => {
             setShowViewPrivateKeyModal(false);
-            setShowEditWalletModal(true);
+            editWalletSheetRef.current?.expand();
           }}
         >
           <Pressable
@@ -3032,7 +2987,7 @@ export default function App() {
                 <TouchableOpacity
                   onPress={() => {
                     setShowViewPrivateKeyModal(false);
-                    setShowEditWalletModal(true);
+                    editWalletSheetRef.current?.expand();
                   }}
                 >
                   <Text style={styles.settingsDrawerClose}>‹</Text>
@@ -3058,7 +3013,7 @@ export default function App() {
       <Modal visible={showLedgerModal} transparent={true} animationType="slide">
         <Pressable
           style={styles.settingsDrawerOverlay}
-          onPress={() => setShowLedgerModal(false)}
+          onPress={() => ledgerSheetRef.current?.close()}
         >
           <Pressable
             style={styles.settingsDrawerContent}
@@ -3068,7 +3023,9 @@ export default function App() {
               <View style={styles.settingsDrawerHeader}>
                 <View style={{ width: 32 }} />
                 <Text style={styles.settingsDrawerTitle}>Connect Ledger</Text>
-                <TouchableOpacity onPress={() => setShowLedgerModal(false)}>
+                <TouchableOpacity
+                  onPress={() => ledgerSheetRef.current?.close()}
+                >
                   <Text style={styles.settingsDrawerClose}>✕</Text>
                 </TouchableOpacity>
               </View>
@@ -3087,29 +3044,39 @@ export default function App() {
                   <Text style={styles.ledgerStatusText}>Connecting...</Text>
                 </View>
               ) : Array.isArray(ledgerAccounts) && ledgerAccounts.length > 0 ? (
-                <ScrollView style={{ maxHeight: 400 }}>
+                <>
                   <Text style={styles.ledgerAccountsTitle}>
                     Select an account:
                   </Text>
-                  {ledgerAccounts.map((account) => (
-                    <TouchableOpacity
-                      key={`ledger-${account.index}`}
-                      style={styles.ledgerAccount}
-                      onPress={() => handleSelectLedgerAccount(account)}
-                    >
-                      <Text style={styles.ledgerAccountIndex}>
-                        Account {account.index + 1}
-                      </Text>
-                      <Text
-                        style={styles.ledgerAccountAddress}
-                        numberOfLines={2}
-                        ellipsizeMode="middle"
+                  <ScrollView style={styles.ledgerAccountsList}>
+                    {ledgerAccounts.map((account) => (
+                      <TouchableOpacity
+                        key={`ledger-${account.index}`}
+                        style={styles.ledgerAccount}
+                        onPress={() => handleSelectLedgerAccount(account)}
                       >
-                        {account.address || "Unknown address"}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                        <View style={styles.ledgerAccountLeft}>
+                          <Image
+                            source={currentNetwork.logo}
+                            style={styles.x1LogoLarge}
+                          />
+                          <View style={styles.ledgerAccountInfo}>
+                            <Text style={styles.ledgerAccountIndex}>
+                              Account {account.index + 1}
+                            </Text>
+                            <Text
+                              style={styles.ledgerAccountAddress}
+                              numberOfLines={1}
+                              ellipsizeMode="middle"
+                            >
+                              {account.address || "Unknown address"}
+                            </Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </>
               ) : (
                 <View style={styles.ledgerStatus}>
                   <Text style={styles.ledgerStatusText}>No device found</Text>
@@ -4358,6 +4325,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingHorizontal: 16,
   },
+  ledgerAccountsList: {
+    flex: 1,
+  },
   ledgerAccount: {
     backgroundColor: "#1a1a1a",
     padding: 16,
@@ -4365,16 +4335,23 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 12,
   },
+  ledgerAccountLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  ledgerAccountInfo: {
+    flex: 1,
+  },
   ledgerAccountIndex: {
-    fontSize: 14,
-    color: "#888888",
+    fontSize: 16,
+    color: "#FFFFFF",
+    fontWeight: "600",
     marginBottom: 4,
   },
   ledgerAccountAddress: {
     fontSize: 12,
-    color: "#FFFFFF",
+    color: "#888888",
     fontFamily: "monospace",
-    flexWrap: "wrap",
-    maxWidth: "100%",
   },
 });

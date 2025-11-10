@@ -457,11 +457,10 @@ export default function App() {
     }
   };
 
-  // Load initial balance and transactions
+  // Load initial balance
   useEffect(() => {
     if (!selectedWallet) return;
     checkBalance();
-    checkTransactions();
   }, [selectedWallet?.publicKey, currentNetwork]);
 
   // Auto-refresh balance every 3 seconds
@@ -470,11 +469,17 @@ export default function App() {
 
     const interval = setInterval(() => {
       checkBalance(null, false); // Don't use cache for auto-refresh
-      checkTransactions();
     }, 3000);
 
     return () => clearInterval(interval);
   }, [selectedWallet?.publicKey, currentNetwork]);
+
+  // Fetch transactions when activity drawer opens
+  useEffect(() => {
+    if (showActivityDrawer && selectedWallet) {
+      checkTransactions();
+    }
+  }, [showActivityDrawer]);
 
   const switchNetwork = (network) => {
     setCurrentNetwork(network);
@@ -2304,6 +2309,10 @@ export default function App() {
             <View style={styles.settingsDrawerContentArea}>
               {/* Header */}
               <View style={styles.settingsDrawerHeader}>
+                <Image
+                  source={currentNetwork.logo}
+                  style={styles.x1LogoLarge}
+                />
                 <Text style={styles.settingsDrawerTitle}>
                   Send {getNativeTokenInfo().symbol}
                 </Text>
@@ -2436,7 +2445,9 @@ export default function App() {
             <View style={styles.settingsDrawerContentArea}>
               {/* Header */}
               <View style={styles.settingsDrawerHeader}>
-                <View style={{ width: 32 }} />
+                <TouchableOpacity onPress={() => checkTransactions()}>
+                  <Text style={styles.settingsDrawerClose}>↻</Text>
+                </TouchableOpacity>
                 <Text style={styles.settingsDrawerTitle}>Activity</Text>
                 <TouchableOpacity onPress={() => setShowActivityDrawer(false)}>
                   <Text style={styles.settingsDrawerClose}>✕</Text>
@@ -3253,6 +3264,11 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
+  },
+  x1LogoLarge: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
   },
   mainContent: {
     flex: 1,

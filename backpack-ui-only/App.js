@@ -25,6 +25,8 @@ import {
   Linking,
   Clipboard,
   TextInput,
+  PermissionsAndroid,
+  Platform,
 } from "react-native";
 import { Keypair, Connection, clusterApiUrl } from "@solana/web3.js";
 import * as bip39 from "bip39";
@@ -36,6 +38,9 @@ import BottomSheet, {
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import QRCode from "react-native-qrcode-svg";
+import { BleManager } from "react-native-ble-plx";
+import TransportBLE from "@ledgerhq/react-native-hw-transport-ble";
+import AppSolana from "@ledgerhq/hw-app-solana";
 
 // Network configurations
 const API_SERVER = "http://162.250.126.66:4000";
@@ -151,6 +156,21 @@ export default function App() {
   const [debugLogs, setDebugLogs] = useState([]);
   const [showActivityDrawer, setShowActivityDrawer] = useState(false);
 
+  // Wallet management states
+  const [showAddWalletModal, setShowAddWalletModal] = useState(false);
+  const [showCreateWalletModal, setShowCreateWalletModal] = useState(false);
+  const [showImportWalletModal, setShowImportWalletModal] = useState(false);
+  const [newMnemonic, setNewMnemonic] = useState("");
+  const [importMnemonic, setImportMnemonic] = useState("");
+  const [importPrivateKey, setImportPrivateKey] = useState("");
+  const [importType, setImportType] = useState("mnemonic"); // "mnemonic" or "privateKey"
+
+  // Ledger states
+  const [showLedgerModal, setShowLedgerModal] = useState(false);
+  const [ledgerScanning, setLedgerScanning] = useState(false);
+  const [ledgerAccounts, setLedgerAccounts] = useState([]);
+  const [ledgerConnecting, setLedgerConnecting] = useState(false);
+
   // Send and Receive states
   const [showReceiveDrawer, setShowReceiveDrawer] = useState(false);
   const [showSendDrawer, setShowSendDrawer] = useState(false);
@@ -206,7 +226,9 @@ export default function App() {
       console.log("Fetching balance from:", url);
 
       const response = await fetch(url);
-      console.log(`Balance API Response: ${response.status} ${response.statusText}`);
+      console.log(
+        `Balance API Response: ${response.status} ${response.statusText}`
+      );
       const data = await response.json();
 
       if (data.balance !== undefined) {
@@ -270,7 +292,9 @@ export default function App() {
       console.log("Fetching fresh transactions from:", url);
 
       const response = await fetch(url);
-      console.log(`Transactions API Response: ${response.status} ${response.statusText}`);
+      console.log(
+        `Transactions API Response: ${response.status} ${response.statusText}`
+      );
       const data = await response.json();
 
       if (data && data.transactions) {
@@ -399,6 +423,206 @@ export default function App() {
 
   const copyAddress = () => {
     Clipboard.setString(selectedWallet.publicKey);
+  };
+
+  // Wallet management functions
+  const handleAddWallet = () => {
+    setShowAddWalletModal(true);
+  };
+
+  const handleCreateNewWallet = () => {
+    // Generate new mnemonic (12 words)
+    const mnemonic = bip39.generateMnemonic();
+    setNewMnemonic(mnemonic);
+    setShowAddWalletModal(false);
+    setShowCreateWalletModal(true);
+  };
+
+  const handleShowImportWallet = () => {
+    setShowAddWalletModal(false);
+    setShowImportWalletModal(true);
+  };
+
+  const copySeedPhrase = () => {
+    Clipboard.setString(newMnemonic);
+    Alert.alert("Copied", "Seed phrase copied to clipboard");
+  };
+
+  const handleImportWallet = async () => {
+    try {
+      let keypair;
+
+      if (importType === "mnemonic") {
+        if (!bip39.validateMnemonic(importMnemonic.trim())) {
+          Alert.alert("Error", "Invalid recovery phrase");
+          return;
+        }
+        const seed = await bip39.mnemonicToSeed(importMnemonic.trim());
+        keypair = Keypair.fromSeed(seed.slice(0, 32));
+      } else {
+        // Import from private key (try bs58 first, then JSON array)
+        const trimmedKey = importPrivateKey.trim();
+        try {
+          // Try bs58 format first
+          const decoded = bs58.decode(trimmedKey);
+          keypair = Keypair.fromSecretKey(decoded);
+        } catch {
+          // If bs58 fails, try JSON array format
+          try {
+            const privateKeyArray = JSON.parse(trimmedKey);
+            keypair = Keypair.fromSecretKey(new Uint8Array(privateKeyArray));
+          } catch {
+            Alert.alert(
+              "Error",
+              "Invalid private key format. Use bs58 or JSON array format."
+            );
+            return;
+          }
+        }
+      }
+
+      const newWallet = {
+        id: String(wallets.length + 1),
+        name: `Wallet ${wallets.length + 1}`,
+        address: `${keypair.publicKey.toString().slice(0, 4)}...${keypair.publicKey.toString().slice(-4)}`,
+        publicKey: keypair.publicKey.toString(),
+        selected: false,
+      };
+
+      setWallets([...wallets, newWallet]);
+      setImportMnemonic("");
+      setImportPrivateKey("");
+      setShowImportWalletModal(false);
+    } catch (error) {
+      Alert.alert("Error", "Failed to import wallet: " + error.message);
+    }
+  };
+
+  const handleConfirmCreateWallet = async () => {
+    try {
+      const seed = await bip39.mnemonicToSeed(newMnemonic);
+      const keypair = Keypair.fromSeed(seed.slice(0, 32));
+
+      const newWallet = {
+        id: String(wallets.length + 1),
+        name: `Wallet ${wallets.length + 1}`,
+        address: `${keypair.publicKey.toString().slice(0, 4)}...${keypair.publicKey.toString().slice(-4)}`,
+        publicKey: keypair.publicKey.toString(),
+        selected: false,
+      };
+
+      setWallets([...wallets, newWallet]);
+      setNewMnemonic("");
+      setShowCreateWalletModal(false);
+    } catch (error) {
+      Alert.alert("Error", "Failed to create wallet: " + error.message);
+    }
+  };
+
+  const requestBluetoothPermissions = async () => {
+    if (Platform.OS === "android" && Platform.Version >= 31) {
+      try {
+        const granted = await PermissionsAndroid.requestMultiple([
+          PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+          PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        ]);
+
+        return (
+          granted["android.permission.BLUETOOTH_SCAN"] ===
+            PermissionsAndroid.RESULTS.GRANTED &&
+          granted["android.permission.BLUETOOTH_CONNECT"] ===
+            PermissionsAndroid.RESULTS.GRANTED &&
+          granted["android.permission.ACCESS_FINE_LOCATION"] ===
+            PermissionsAndroid.RESULTS.GRANTED
+        );
+      } catch (err) {
+        console.warn(err);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const handleShowLedger = async () => {
+    setShowAddWalletModal(false);
+
+    Alert.alert(
+      "Ledger Support",
+      "Ledger Bluetooth support is currently in development.\n\nTo use your Ledger wallet:\n\n1. Connect Ledger to your computer\n2. Open Solana app on Ledger\n3. Use Ledger Live or Solana CLI to get your public key\n4. Use 'Import Wallet' to add the public key\n\nNote: Your Ledger private keys stay secure on the device. Only the public key is imported for viewing balances.",
+      [
+        { text: "Import Manually", onPress: handleShowImportWallet },
+        {
+          text: "Cancel",
+          style: "cancel",
+          onPress: () => setShowAddWalletModal(true),
+        },
+      ]
+    );
+  };
+
+  // Ledger Bluetooth scanning - disabled for now due to library compatibility issues
+  const scanForLedger = async () => {
+    Alert.alert(
+      "Not Available",
+      "Ledger Bluetooth scanning is not available yet. Please import your Ledger public key manually."
+    );
+  };
+
+  const connectToLedger = async (device) => {
+    try {
+      setLedgerConnecting(true);
+      console.log("Connecting to Ledger device:", device);
+
+      // Connect to the device using the device descriptor/ID
+      const deviceId = device.id || device;
+      const transport = await TransportBLE.open(deviceId);
+      const solana = new AppSolana(transport);
+
+      // Get first 5 accounts
+      const accounts = [];
+      for (let i = 0; i < 5; i++) {
+        const derivationPath = `44'/501'/${i}'/0'`;
+        console.log(`Getting address for path: ${derivationPath}`);
+        const result = await solana.getAddress(derivationPath);
+        const address = result.address || result;
+
+        accounts.push({
+          index: i,
+          address: typeof address === "string" ? address : address.toString(),
+          derivationPath,
+        });
+      }
+
+      await transport.close();
+      setLedgerAccounts(accounts);
+      setLedgerConnecting(false);
+      console.log("Successfully retrieved Ledger accounts:", accounts);
+    } catch (error) {
+      setLedgerConnecting(false);
+      console.error("Error connecting to Ledger:", error);
+      Alert.alert(
+        "Connection Error",
+        error.message || "Failed to connect to Ledger"
+      );
+    }
+  };
+
+  const handleSelectLedgerAccount = (account) => {
+    const newWallet = {
+      id: Date.now(),
+      name: `Ledger ${account.index + 1}`,
+      address: account.address.slice(0, 4) + "..." + account.address.slice(-4),
+      publicKey: account.address,
+      selected: false,
+      isLedger: true,
+      derivationPath: account.derivationPath,
+    };
+
+    setWallets([...wallets, newWallet]);
+    setShowLedgerModal(false);
+    setLedgerAccounts([]);
+    Alert.alert("Success", `Added Ledger account ${account.index + 1}`);
   };
 
   const handleSheetChanges = useCallback((index) => {
@@ -673,7 +897,7 @@ export default function App() {
                 {currentNetwork.name}
               </Text>
             </View>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={handleAddWallet}>
               <Text style={styles.bottomSheetAdd}>+</Text>
             </TouchableOpacity>
           </View>
@@ -721,7 +945,7 @@ export default function App() {
 
             {/* Add Button */}
             <TouchableOpacity style={styles.bottomSheetAddButton}>
-              <Text style={styles.bottomSheetAddButtonText}>Add</Text>
+              <Text style={styles.bottomSheetAddButtonText}>+</Text>
             </TouchableOpacity>
           </ScrollView>
         </BottomSheetView>
@@ -1232,6 +1456,278 @@ export default function App() {
                   ))}
                 </View>
               </ScrollView>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Add Wallet Modal - Choice */}
+      <Modal
+        visible={showAddWalletModal}
+        transparent={true}
+        animationType="slide"
+      >
+        <Pressable
+          style={styles.settingsDrawerOverlay}
+          onPress={() => setShowAddWalletModal(false)}
+        >
+          <Pressable
+            style={styles.settingsDrawerContent}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.settingsDrawerContentArea}>
+              <View style={styles.settingsDrawerHeader}>
+                <View style={{ width: 32 }} />
+                <Text style={styles.settingsDrawerTitle}>Add Wallet</Text>
+                <TouchableOpacity onPress={() => setShowAddWalletModal(false)}>
+                  <Text style={styles.settingsDrawerClose}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity
+                style={styles.walletOptionButton}
+                onPress={handleCreateNewWallet}
+              >
+                <Text style={styles.walletOptionText}>Create New Wallet</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.walletOptionButton}
+                onPress={handleShowImportWallet}
+              >
+                <Text style={styles.walletOptionText}>Import Wallet</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.walletOptionButton}
+                onPress={handleShowLedger}
+              >
+                <Text style={styles.walletOptionText}>Connect Ledger</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Create Wallet Modal - Display Seed Phrase */}
+      <Modal
+        visible={showCreateWalletModal}
+        transparent={true}
+        animationType="slide"
+      >
+        <Pressable
+          style={styles.settingsDrawerOverlay}
+          onPress={() => setShowCreateWalletModal(false)}
+        >
+          <Pressable
+            style={styles.settingsDrawerContent}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.settingsDrawerContentArea}>
+              <View style={styles.settingsDrawerHeader}>
+                <View style={{ width: 32 }} />
+                <Text style={styles.settingsDrawerTitle}>Create Wallet</Text>
+                <TouchableOpacity
+                  onPress={() => setShowCreateWalletModal(false)}
+                >
+                  <Text style={styles.settingsDrawerClose}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.seedPhraseTitle}>Your Seed Phrase</Text>
+              <Text style={styles.seedPhraseSubtitle}>
+                Tap anywhere to copy to clipboard
+              </Text>
+              <TouchableOpacity
+                style={styles.seedPhraseContainer}
+                onPress={copySeedPhrase}
+              >
+                <View style={styles.seedPhraseGrid}>
+                  {newMnemonic.split(" ").map((word, index) => (
+                    <View key={index} style={styles.seedPhraseWord}>
+                      <Text style={styles.seedPhraseText}>
+                        {index + 1}. {word}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </TouchableOpacity>
+              <Text style={styles.seedPhraseWarning}>
+                Save this seed phrase securely. You'll need it to recover your
+                wallet.
+              </Text>
+              <TouchableOpacity
+                style={styles.confirmButton}
+                onPress={handleConfirmCreateWallet}
+              >
+                <Text style={styles.confirmButtonText}>
+                  I've Saved My Seed Phrase
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Import Wallet Modal */}
+      <Modal
+        visible={showImportWalletModal}
+        transparent={true}
+        animationType="slide"
+      >
+        <Pressable
+          style={styles.settingsDrawerOverlay}
+          onPress={() => setShowImportWalletModal(false)}
+        >
+          <Pressable
+            style={styles.settingsDrawerContent}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.settingsDrawerContentArea}>
+              <View style={styles.settingsDrawerHeader}>
+                <View style={{ width: 32 }} />
+                <Text style={styles.settingsDrawerTitle}>Import Wallet</Text>
+                <TouchableOpacity
+                  onPress={() => setShowImportWalletModal(false)}
+                >
+                  <Text style={styles.settingsDrawerClose}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.importTypeToggle}>
+                <TouchableOpacity
+                  style={[
+                    styles.importTypeButton,
+                    importType === "mnemonic" && styles.importTypeButtonActive,
+                  ]}
+                  onPress={() => setImportType("mnemonic")}
+                >
+                  <Text
+                    style={[
+                      styles.importTypeButtonText,
+                      importType === "mnemonic" &&
+                        styles.importTypeButtonTextActive,
+                    ]}
+                  >
+                    Recovery Phrase
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.importTypeButton,
+                    importType === "privateKey" &&
+                      styles.importTypeButtonActive,
+                  ]}
+                  onPress={() => setImportType("privateKey")}
+                >
+                  <Text
+                    style={[
+                      styles.importTypeButtonText,
+                      importType === "privateKey" &&
+                        styles.importTypeButtonTextActive,
+                    ]}
+                  >
+                    Private Key
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {importType === "mnemonic" ? (
+                <TextInput
+                  style={styles.importInput}
+                  placeholder="Enter your 12-word recovery phrase"
+                  placeholderTextColor="#666666"
+                  value={importMnemonic}
+                  onChangeText={setImportMnemonic}
+                  multiline
+                  numberOfLines={4}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              ) : (
+                <TextInput
+                  style={styles.importInput}
+                  placeholder="Enter your private key (bs58 or JSON array)"
+                  placeholderTextColor="#666666"
+                  value={importPrivateKey}
+                  onChangeText={setImportPrivateKey}
+                  multiline
+                  numberOfLines={4}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              )}
+
+              <TouchableOpacity
+                style={styles.confirmButton}
+                onPress={handleImportWallet}
+              >
+                <Text style={styles.confirmButtonText}>Import Wallet</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Ledger Connection Modal */}
+      <Modal visible={showLedgerModal} transparent={true} animationType="slide">
+        <Pressable
+          style={styles.settingsDrawerOverlay}
+          onPress={() => setShowLedgerModal(false)}
+        >
+          <Pressable
+            style={styles.settingsDrawerContent}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.settingsDrawerContentArea}>
+              <View style={styles.settingsDrawerHeader}>
+                <View style={{ width: 32 }} />
+                <Text style={styles.settingsDrawerTitle}>Connect Ledger</Text>
+                <TouchableOpacity onPress={() => setShowLedgerModal(false)}>
+                  <Text style={styles.settingsDrawerClose}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              {ledgerScanning ? (
+                <View style={styles.ledgerStatus}>
+                  <Text style={styles.ledgerStatusText}>
+                    Scanning for Ledger Nano X...
+                  </Text>
+                  <Text style={styles.ledgerStatusSubtext}>
+                    Make sure Bluetooth is on and Solana app is open
+                  </Text>
+                </View>
+              ) : ledgerConnecting ? (
+                <View style={styles.ledgerStatus}>
+                  <Text style={styles.ledgerStatusText}>Connecting...</Text>
+                </View>
+              ) : ledgerAccounts.length > 0 ? (
+                <ScrollView>
+                  <Text style={styles.ledgerAccountsTitle}>
+                    Select an account:
+                  </Text>
+                  {ledgerAccounts.map((account) => (
+                    <TouchableOpacity
+                      key={account.index}
+                      style={styles.ledgerAccount}
+                      onPress={() => handleSelectLedgerAccount(account)}
+                    >
+                      <Text style={styles.ledgerAccountIndex}>
+                        Account {account.index + 1}
+                      </Text>
+                      <Text style={styles.ledgerAccountAddress}>
+                        {account.address}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              ) : (
+                <View style={styles.ledgerStatus}>
+                  <Text style={styles.ledgerStatusText}>No device found</Text>
+                  <TouchableOpacity
+                    style={styles.confirmButton}
+                    onPress={scanForLedger}
+                  >
+                    <Text style={styles.confirmButtonText}>Scan Again</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           </Pressable>
         </Pressable>
@@ -2189,6 +2685,144 @@ const styles = StyleSheet.create({
   addressItemAddress: {
     fontSize: 12,
     color: "#888888",
+    fontFamily: "monospace",
+  },
+  walletOptionButton: {
+    backgroundColor: "#1a1a1a",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    alignItems: "center",
+  },
+  walletOptionText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  seedPhraseTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  seedPhraseSubtitle: {
+    fontSize: 14,
+    color: "#888888",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  seedPhraseContainer: {
+    backgroundColor: "#1a1a1a",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    minHeight: 100,
+  },
+  seedPhraseGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  seedPhraseWord: {
+    width: "33.33%",
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  seedPhraseText: {
+    fontSize: 14,
+    color: "#FFFFFF",
+    textAlign: "left",
+  },
+  seedPhraseWarning: {
+    fontSize: 12,
+    color: "#FF6B6B",
+    marginBottom: 24,
+    textAlign: "center",
+  },
+  confirmButton: {
+    backgroundColor: "#4A90E2",
+    borderRadius: 12,
+    padding: 16,
+    alignItems: "center",
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  importTypeToggle: {
+    flexDirection: "row",
+    backgroundColor: "#0a0a0a",
+    borderRadius: 8,
+    padding: 4,
+    marginBottom: 16,
+  },
+  importTypeButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    alignItems: "center",
+  },
+  importTypeButtonActive: {
+    backgroundColor: "#1a1a1a",
+  },
+  importTypeButtonText: {
+    fontSize: 14,
+    color: "#888888",
+  },
+  importTypeButtonTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+  importInput: {
+    backgroundColor: "#1a1a1a",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    color: "#FFFFFF",
+    fontSize: 14,
+    minHeight: 100,
+    textAlignVertical: "top",
+  },
+  ledgerStatus: {
+    padding: 32,
+    alignItems: "center",
+  },
+  ledgerStatusText: {
+    fontSize: 16,
+    color: "#FFFFFF",
+    fontWeight: "600",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  ledgerStatusSubtext: {
+    fontSize: 14,
+    color: "#888888",
+    textAlign: "center",
+  },
+  ledgerAccountsTitle: {
+    fontSize: 16,
+    color: "#FFFFFF",
+    fontWeight: "600",
+    marginBottom: 16,
+    paddingHorizontal: 16,
+  },
+  ledgerAccount: {
+    backgroundColor: "#1a1a1a",
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 12,
+  },
+  ledgerAccountIndex: {
+    fontSize: 14,
+    color: "#888888",
+    marginBottom: 4,
+  },
+  ledgerAccountAddress: {
+    fontSize: 12,
+    color: "#FFFFFF",
     fontFamily: "monospace",
   },
 });

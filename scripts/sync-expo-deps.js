@@ -15,6 +15,12 @@ const appMobilePackagePath = path.join(
   "package.json"
 );
 
+// Check if app-mobile package.json exists, exit gracefully if not
+if (!fs.existsSync(appMobilePackagePath)) {
+  console.log("app-mobile package.json not found, skipping sync");
+  process.exit(0);
+}
+
 const appMobilePackage = JSON.parse(
   fs.readFileSync(appMobilePackagePath, "utf8")
 );

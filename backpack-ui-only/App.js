@@ -50,6 +50,7 @@ import BottomSheet, {
 import QRCode from "react-native-qrcode-svg";
 import TransportBLE from "@ledgerhq/react-native-hw-transport-ble";
 import AppSolana from "@ledgerhq/hw-app-solana";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Import native USB Ledger module
 const { LedgerUsb } = NativeModules;
@@ -152,8 +153,8 @@ const NETWORKS = [
 ];
 
 export default function App() {
-  const [wallets, setWallets] = useState(MOCK_WALLETS);
-  const [selectedWallet, setSelectedWallet] = useState(MOCK_WALLETS[0]);
+  const [wallets, setWallets] = useState([]);
+  const [selectedWallet, setSelectedWallet] = useState(null);
   const [accounts, setAccounts] = useState(MOCK_ACCOUNTS);
   const [selectedAccount, setSelectedAccount] = useState(MOCK_ACCOUNTS[0]);
   const [balance, setBalance] = useState("30,449.46");
@@ -170,6 +171,8 @@ export default function App() {
   const [showDebugDrawer, setShowDebugDrawer] = useState(false);
   const [debugLogs, setDebugLogs] = useState([]);
   const [showActivityDrawer, setShowActivityDrawer] = useState(false);
+  const [showBluetoothDrawer, setShowBluetoothDrawer] = useState(false);
+  const [pairedDevices, setPairedDevices] = useState([]);
 
   // Wallet management states
   const [showAddWalletModal, setShowAddWalletModal] = useState(false);
@@ -186,6 +189,7 @@ export default function App() {
   const [ledgerAccounts, setLedgerAccounts] = useState([]);
   const [ledgerConnecting, setLedgerConnecting] = useState(false);
   const [ledgerDeviceId, setLedgerDeviceId] = useState(null); // Store device ID to skip scanning
+  const [ledgerDeviceInfo, setLedgerDeviceInfo] = useState(null); // Store device info (name, id)
   const [ledgerConnectionType, setLedgerConnectionType] = useState("usb"); // 'usb' or 'bluetooth'
   const ledgerTransportRef = useRef(null); // Store transport reference for cleanup
   const ledgerScanSubscriptionRef = useRef(null); // Store scan subscription for cleanup
@@ -211,6 +215,37 @@ export default function App() {
   const addDebugLog = useCallback((message) => {
     const timestamp = new Date().toLocaleTimeString();
     setDebugLogs((prev) => [...prev, `[${timestamp}] ${message}`].slice(-100)); // Keep last 100 logs
+  }, []);
+
+  // Wallet storage functions
+  const saveWalletsToStorage = async (walletsToSave) => {
+    try {
+      await AsyncStorage.setItem("@wallets", JSON.stringify(walletsToSave));
+      console.log("Wallets saved to storage:", walletsToSave.length);
+    } catch (error) {
+      console.error("Error saving wallets:", error);
+    }
+  };
+
+  const loadWalletsFromStorage = async () => {
+    try {
+      const storedWallets = await AsyncStorage.getItem("@wallets");
+      if (storedWallets) {
+        const parsed = JSON.parse(storedWallets);
+        console.log("Loaded wallets from storage:", parsed.length);
+        setWallets(parsed);
+        if (parsed.length > 0 && !selectedWallet) {
+          setSelectedWallet(parsed[0]);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading wallets:", error);
+    }
+  };
+
+  // Load wallets on mount
+  useEffect(() => {
+    loadWalletsFromStorage();
   }, []);
 
   // Override console.log to capture logs
@@ -251,6 +286,7 @@ export default function App() {
 
   // Check balance function with caching
   const checkBalance = async (network = null, useCache = true) => {
+    if (!selectedWallet) return;
     try {
       // Use provided network or current network
       const activeNetwork = network || currentNetwork;
@@ -330,6 +366,7 @@ export default function App() {
 
   // Fetch transactions
   const checkTransactions = async (network = null) => {
+    if (!selectedWallet) return;
     try {
       const activeNetwork = network || currentNetwork;
       const url = `${API_SERVER}/transactions/${selectedWallet.publicKey}?providerId=${activeNetwork.providerId}`;
@@ -414,9 +451,10 @@ export default function App() {
 
   // Load initial balance and transactions
   useEffect(() => {
+    if (!selectedWallet) return;
     checkBalance();
     checkTransactions();
-  }, [selectedWallet.publicKey, currentNetwork]);
+  }, [selectedWallet?.publicKey, currentNetwork]);
 
   const switchNetwork = (network) => {
     setCurrentNetwork(network);
@@ -560,11 +598,19 @@ export default function App() {
   };
 
   const copyToClipboard = (text) => {
+    console.log("📋 Copying to clipboard:", text);
+    console.log("📋 Text length:", text?.length);
+    console.log("📋 selectedWallet.address:", selectedWallet?.address);
+    console.log("📋 selectedWallet.publicKey:", selectedWallet?.publicKey);
     Clipboard.setString(text);
     Alert.alert("Copied", "Address copied to clipboard");
   };
 
   const handleSendSubmit = async () => {
+    if (!selectedWallet) {
+      Alert.alert("Error", "No wallet selected");
+      return;
+    }
     if (!sendAddress || !sendAmount) {
       Alert.alert("Error", "Please enter both address and amount");
       return;
@@ -785,24 +831,33 @@ export default function App() {
         }
       }
 
+      // Check for duplicate wallet
+      const publicKeyStr = keypair.publicKey.toString();
+      const isDuplicate = wallets.some((w) => w.publicKey === publicKeyStr);
+
+      if (isDuplicate) {
+        Alert.alert("Duplicate Wallet", "This wallet has already been added.");
+        return;
+      }
+
       const newWallet = {
         id: String(wallets.length + 1),
         name: `Wallet ${wallets.length + 1}`,
-        address: `${keypair.publicKey.toString().slice(0, 4)}...${keypair.publicKey.toString().slice(-4)}`,
-        publicKey: keypair.publicKey.toString(),
+        address: `${publicKeyStr.slice(0, 4)}...${publicKeyStr.slice(-4)}`,
+        publicKey: publicKeyStr,
         selected: false,
       };
 
-      setWallets([...wallets, newWallet]);
+      const updatedWallets = [...wallets, newWallet];
+      setWallets(updatedWallets);
+      await saveWalletsToStorage(updatedWallets);
+
       setImportMnemonic("");
       setImportPrivateKey("");
       setShowImportWalletModal(false);
 
       // Register the wallet with the transaction indexer
-      await registerWalletWithIndexer(
-        keypair.publicKey.toString(),
-        currentNetwork.providerId
-      );
+      await registerWalletWithIndexer(publicKeyStr, currentNetwork.providerId);
     } catch (error) {
       Alert.alert("Error", "Failed to import wallet: " + error.message);
     }
@@ -813,15 +868,27 @@ export default function App() {
       const seed = await bip39.mnemonicToSeed(newMnemonic);
       const keypair = Keypair.fromSeed(seed.slice(0, 32));
 
+      // Check for duplicate wallet
+      const publicKeyStr = keypair.publicKey.toString();
+      const isDuplicate = wallets.some((w) => w.publicKey === publicKeyStr);
+
+      if (isDuplicate) {
+        Alert.alert("Duplicate Wallet", "This wallet has already been added.");
+        return;
+      }
+
       const newWallet = {
         id: String(wallets.length + 1),
         name: `Wallet ${wallets.length + 1}`,
-        address: `${keypair.publicKey.toString().slice(0, 4)}...${keypair.publicKey.toString().slice(-4)}`,
-        publicKey: keypair.publicKey.toString(),
+        address: `${publicKeyStr.slice(0, 4)}...${publicKeyStr.slice(-4)}`,
+        publicKey: publicKeyStr,
         selected: false,
       };
 
-      setWallets([...wallets, newWallet]);
+      const updatedWallets = [...wallets, newWallet];
+      setWallets(updatedWallets);
+      await saveWalletsToStorage(updatedWallets);
+
       setNewMnemonic("");
       setShowCreateWalletModal(false);
     } catch (error) {
@@ -872,17 +939,19 @@ export default function App() {
       return;
     }
 
-    // Show pairing instructions
+    // If Bluetooth device is already stored/connected, skip setup instructions
+    if (ledgerDeviceInfo || ledgerDeviceId) {
+      console.log("Bluetooth device already known, skipping setup dialog");
+      setShowLedgerModal(true);
+      scanForLedger();
+      return;
+    }
+
+    // Show setup instructions only for first-time connection
     Alert.alert(
       "Ledger Bluetooth Setup",
-      "Before connecting, please ensure:\n\n1. Your Ledger is unlocked\n2. The Solana app is open on your Ledger\n3. Your Ledger is paired in Android Bluetooth settings\n\nTo pair:\n• Go to Settings > Bluetooth\n• Find 'Ledger Flex' or 'Ledger Nano X'\n• Tap to pair and accept pairing on both devices\n\nOnce paired, tap 'Continue' to connect.",
+      "Before connecting, please ensure:\n\n1. Your Ledger is unlocked\n2. The Solana app is open on your Ledger\n3. Bluetooth is enabled on your phone\n\nThe app will automatically pair with your Ledger when you connect.",
       [
-        {
-          text: "Open Settings",
-          onPress: () => {
-            Linking.openSettings();
-          },
-        },
         {
           text: "Cancel",
           style: "cancel",
@@ -959,6 +1028,90 @@ export default function App() {
     }
   };
 
+  // Fetch paired Bluetooth devices
+  const fetchPairedBluetoothDevices = async () => {
+    try {
+      console.log("Fetching paired Bluetooth devices...");
+
+      const deviceList = [];
+
+      // Add the stored ledger device if available
+      if (ledgerDeviceInfo) {
+        console.log("Found stored ledger device info:", ledgerDeviceInfo);
+        deviceList.push({
+          id: ledgerDeviceInfo.id,
+          name: ledgerDeviceInfo.name || "Ledger Device",
+          address: ledgerDeviceInfo.id,
+          isConnected: false,
+        });
+      } else if (ledgerDeviceId) {
+        // Fallback to deviceId if no info stored
+        console.log("Found stored ledger device ID (no name):", ledgerDeviceId);
+        deviceList.push({
+          id: ledgerDeviceId,
+          name: "Ledger Device",
+          address: ledgerDeviceId,
+          isConnected: false,
+        });
+      }
+
+      setPairedDevices(deviceList);
+      console.log("Device list updated:", deviceList);
+    } catch (error) {
+      console.error("Error fetching paired devices:", error);
+      Alert.alert("Error", `Failed to fetch paired devices: ${error.message}`);
+    }
+  };
+
+  // Forget/unpair a Bluetooth device
+  const forgetBluetoothDevice = async (deviceId) => {
+    try {
+      console.log("Forgetting device:", deviceId);
+
+      Alert.alert(
+        "Forget Device",
+        "Are you sure you want to forget this device? You will need to pair it again to use it.",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "Forget",
+            style: "destructive",
+            onPress: () => {
+              try {
+                // Clear stored device ID and info if it matches
+                if (ledgerDeviceId === deviceId) {
+                  setLedgerDeviceId(null);
+                  setLedgerDeviceInfo(null);
+                  console.log("Cleared stored ledger device ID and info");
+                }
+
+                // Refresh the list
+                fetchPairedBluetoothDevices();
+
+                Alert.alert(
+                  "Success",
+                  "Device has been forgotten. You will need to reconnect it to use it again."
+                );
+              } catch (error) {
+                console.error("Error forgetting device:", error);
+                Alert.alert(
+                  "Error",
+                  `Failed to forget device: ${error.message}`
+                );
+              }
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("Error in forgetBluetoothDevice:", error);
+      Alert.alert("Error", `Failed to forget device: ${error.message}`);
+    }
+  };
+
   // Ledger Bluetooth scanning using official TransportBLE API
   const scanForLedger = async () => {
     try {
@@ -996,16 +1149,13 @@ export default function App() {
             const device = e.descriptor;
             console.log("Found Ledger device:", device);
 
-            // CRITICAL: Unsubscribe IMMEDIATELY to prevent multiple connection attempts
-            console.log(
-              "Unsubscribing from scan to prevent multiple connections..."
-            );
+            // Unsubscribe immediately to prevent finding the device multiple times
             try {
               subscription.unsubscribe();
-              console.log("✓ Successfully unsubscribed from scan");
+              console.log("✓ Stopped scan to prevent duplicate connections");
               ledgerScanSubscriptionRef.current = null;
             } catch (unsubError) {
-              console.log("⚠ Error unsubscribing:", unsubError.message);
+              console.log("⚠ Error stopping scan:", unsubError.message);
             }
 
             setLedgerScanning(false);
@@ -1062,13 +1212,25 @@ export default function App() {
       console.log("Connecting to Ledger device:", deviceName);
       console.log("Device ID:", deviceId);
 
+      // Show Solana app instruction alert
+      Alert.alert(
+        "Open Solana App",
+        "Please open the Solana app on your Ledger device.",
+        [{ text: "OK" }],
+        { cancelable: false }
+      );
+
       console.log("Opening BLE transport...");
 
-      // Add timeout for connection attempt
+      // Give user time to read the message and BLE stack time to stabilize
+      console.log("Waiting 3 seconds for BLE stack to stabilize...");
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      // Add timeout for connection attempt (60 seconds to allow for pairing)
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(
-          () => reject(new Error("Connection timeout after 30 seconds")),
-          30000
+          () => reject(new Error("Connection timeout after 60 seconds")),
+          60000
         )
       );
 
@@ -1083,6 +1245,10 @@ export default function App() {
       // Store the device ID for transaction signing
       setLedgerDeviceId(deviceId);
       console.log("Stored device ID for signing:", deviceId);
+
+      // Store the device info (name + ID) for Bluetooth manager
+      setLedgerDeviceInfo({ id: deviceId, name: deviceName });
+      console.log("Stored device info:", { id: deviceId, name: deviceName });
 
       console.log("BLE transport opened successfully");
       console.log("Creating Solana app instance...");
@@ -1158,22 +1324,24 @@ export default function App() {
       if (error.message && error.message.includes("timeout")) {
         errorMessage +=
           "Connection timed out. Make sure the Solana app is open on your Ledger and Bluetooth pairing is accepted.";
-      } else if (error.message && error.message.includes("pairing")) {
+      } else if (
+        error.message &&
+        (error.message.includes("pairing") ||
+          error.message.includes("PairingFailed") ||
+          error.message.includes("notify change failed"))
+      ) {
         errorMessage +=
-          "Pairing failed. Please pair your Ledger in Android Bluetooth settings first, then try again.";
+          "Pairing failed or was not accepted in time.\n\nPlease ensure you:\n• Accept the pairing request on your PHONE when it appears\n• Approve the connection on your LEDGER device\n• Have the Solana app open on the Ledger";
       } else if (error.message) {
         errorMessage += error.message;
       } else {
         errorMessage +=
-          "Please ensure:\n• Ledger is unlocked\n• Solana app is open on Ledger\n• Device is paired in Bluetooth settings";
+          "Please ensure:\n• Ledger is unlocked\n• Solana app is open on Ledger\n• Accept the pairing request when it appears";
       }
 
       Alert.alert("Connection Error", errorMessage, [
-        {
-          text: "Open Bluetooth Settings",
-          onPress: () => Linking.openSettings(),
-        },
-        { text: "OK" },
+        { text: "Try Again", onPress: () => scanForLedger() },
+        { text: "Cancel" },
       ]);
     }
   };
@@ -1309,6 +1477,14 @@ export default function App() {
     console.log("Device ID is null?", ledgerDeviceId === null);
     console.log("Device ID is undefined?", ledgerDeviceId === undefined);
 
+    // Check for duplicate wallet
+    const isDuplicate = wallets.some((w) => w.publicKey === account.address);
+
+    if (isDuplicate) {
+      Alert.alert("Duplicate Wallet", "This wallet has already been added.");
+      return;
+    }
+
     const newWallet = {
       id: Date.now(),
       name: `Ledger ${account.index + 1}`,
@@ -1324,7 +1500,10 @@ export default function App() {
     console.log("Wallet ledgerDeviceId field:", newWallet.ledgerDeviceId);
     console.log("=== END ADDING LEDGER WALLET ===");
 
-    setWallets([...wallets, newWallet]);
+    const updatedWallets = [...wallets, newWallet];
+    setWallets(updatedWallets);
+    await saveWalletsToStorage(updatedWallets);
+
     setShowLedgerModal(false);
     setLedgerAccounts([]);
 
@@ -1384,7 +1563,7 @@ export default function App() {
                 style={styles.x1LogoSmall}
               />
               <Text style={styles.walletDropdownText}>
-                {selectedWallet.name}
+                {selectedWallet?.name || "No wallet"}
               </Text>
               <Text style={styles.walletDropdownArrow}>▼</Text>
             </TouchableOpacity>
@@ -1583,6 +1762,106 @@ export default function App() {
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
+
+      {/* Bluetooth Devices Drawer */}
+      {showBluetoothDrawer && (
+        <Modal
+          visible={showBluetoothDrawer}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowBluetoothDrawer(false)}
+        >
+          <Pressable
+            style={styles.networkDrawerOverlay}
+            onPress={() => setShowBluetoothDrawer(false)}
+          >
+            <Pressable
+              style={styles.networkDrawerContent}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.networkDrawerContentArea}>
+                {/* Header */}
+                <View style={styles.networkDrawerHeader}>
+                  <Text style={styles.networkDrawerTitle}>
+                    Bluetooth Devices
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setShowBluetoothDrawer(false)}
+                  >
+                    <Text style={styles.networkDrawerClose}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Device List */}
+                <ScrollView style={styles.networkList}>
+                  {pairedDevices.length === 0 ? (
+                    <View style={styles.emptyBluetoothList}>
+                      <Text style={styles.emptyBluetoothText}>
+                        No paired Bluetooth devices found
+                      </Text>
+                      <Text style={styles.emptyBluetoothSubtext}>
+                        Connect to a Ledger device to see it here
+                      </Text>
+                    </View>
+                  ) : (
+                    pairedDevices.map((device) => (
+                      <View key={device.id} style={styles.bluetoothDeviceItem}>
+                        <View style={styles.bluetoothDeviceInfo}>
+                          <Text style={styles.bluetoothDeviceName}>
+                            {device.name}
+                          </Text>
+                          <Text style={styles.bluetoothDeviceAddress}>
+                            {device.address}
+                          </Text>
+                          {device.isConnected && (
+                            <Text style={styles.bluetoothDeviceConnected}>
+                              Connected
+                            </Text>
+                          )}
+                        </View>
+                        <View style={styles.bluetoothDeviceButtons}>
+                          <TouchableOpacity
+                            style={styles.bluetoothDeviceConnectButton}
+                            onPress={async () => {
+                              setShowBluetoothDrawer(false);
+                              setShowAccountDrawer(true);
+                              setLedgerDeviceId(device.id);
+                              // Re-connect to this device
+                              await connectToLedger(device);
+                            }}
+                          >
+                            <Text style={styles.bluetoothDeviceConnectText}>
+                              Connect
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.bluetoothDeviceDeleteButton}
+                            onPress={() => forgetBluetoothDevice(device.id)}
+                          >
+                            <Text style={styles.bluetoothDeviceDeleteText}>
+                              Forget
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))
+                  )}
+                </ScrollView>
+
+                {/* Refresh Button */}
+                <TouchableOpacity
+                  style={styles.bluetoothRefreshButton}
+                  onPress={fetchPairedBluetoothDevices}
+                >
+                  <Text style={styles.bluetoothRefreshButtonText}>
+                    Refresh List
+                  </Text>
+                </TouchableOpacity>
               </View>
             </Pressable>
           </Pressable>
@@ -1789,6 +2068,20 @@ export default function App() {
                   style={styles.settingsMenuItem}
                   onPress={() => {
                     setShowSettingsDrawer(false);
+                    setShowBluetoothDrawer(true);
+                    fetchPairedBluetoothDevices();
+                  }}
+                >
+                  <Text style={styles.settingsMenuItemText}>
+                    Bluetooth Devices
+                  </Text>
+                  <Text style={styles.settingsMenuItemArrow}>›</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.settingsMenuItem}
+                  onPress={() => {
+                    setShowSettingsDrawer(false);
                     Alert.alert(
                       "Rename Wallet",
                       "Rename wallet functionality would open here"
@@ -1941,7 +2234,7 @@ export default function App() {
               <View style={styles.receiveQRContainer}>
                 <View style={styles.receiveQRWrapper}>
                   <QRCode
-                    value={selectedWallet.publicKey}
+                    value={selectedWallet?.publicKey || "No wallet"}
                     size={200}
                     backgroundColor="white"
                     color="black"
@@ -1953,7 +2246,7 @@ export default function App() {
               <View style={styles.receiveAddressContainer}>
                 <Text style={styles.receiveAddressLabel}>Your Address</Text>
                 <Text style={styles.receiveAddressText} numberOfLines={1}>
-                  {selectedWallet.publicKey}
+                  {selectedWallet?.publicKey || "No wallet selected"}
                 </Text>
               </View>
 
@@ -2951,6 +3244,86 @@ const styles = StyleSheet.create({
   networkItemCheck: {
     fontSize: 20,
     color: "#4A90E2",
+  },
+  // Bluetooth Drawer Styles
+  emptyBluetoothList: {
+    paddingVertical: 40,
+    alignItems: "center",
+  },
+  emptyBluetoothText: {
+    fontSize: 16,
+    color: "#888888",
+    marginBottom: 8,
+  },
+  emptyBluetoothSubtext: {
+    fontSize: 14,
+    color: "#666666",
+  },
+  bluetoothDeviceItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#2A2A2A",
+    justifyContent: "space-between",
+  },
+  bluetoothDeviceInfo: {
+    flex: 1,
+  },
+  bluetoothDeviceName: {
+    fontSize: 16,
+    color: "#FFFFFF",
+    marginBottom: 4,
+  },
+  bluetoothDeviceAddress: {
+    fontSize: 12,
+    color: "#888888",
+    marginBottom: 4,
+  },
+  bluetoothDeviceConnected: {
+    fontSize: 12,
+    color: "#4A90E2",
+  },
+  bluetoothDeviceButtons: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  bluetoothDeviceConnectButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "#4A90E2",
+    borderRadius: 8,
+  },
+  bluetoothDeviceConnectText: {
+    fontSize: 13,
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+  bluetoothDeviceDeleteButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "#FF3B30",
+    borderRadius: 8,
+  },
+  bluetoothDeviceDeleteText: {
+    fontSize: 13,
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+  bluetoothRefreshButton: {
+    marginTop: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    paddingVertical: 12,
+    backgroundColor: "#4A90E2",
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  bluetoothRefreshButtonText: {
+    fontSize: 16,
+    color: "#FFFFFF",
+    fontWeight: "600",
   },
   bottomSheetContent: {
     flex: 1,

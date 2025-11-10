@@ -22,7 +22,9 @@ import {
 } from "./BalanceSummary";
 import { BalancesTable } from "./BalancesTable";
 import type { ResponseBalanceSummary, ResponseTokenBalance } from "./utils";
+import { gql } from "../../apollo";
 import type { ProviderId } from "../../apollo/graphql";
+import { usePolledSuspenseQuery } from "../../hooks";
 import type { DataComponentScreenProps } from "../common";
 
 export {
@@ -33,7 +35,52 @@ export {
 export { BalancesTable } from "./BalancesTable";
 export type { ResponseBalanceSummary, ResponseTokenBalance };
 
-const DEFAULT_POLLING_INTERVAL_SECONDS = 1;
+const DEFAULT_POLLING_INTERVAL_SECONDS = 60;
+
+// GraphQL query for Solana token balances from Backpack API
+export const GET_TOKEN_BALANCES_QUERY = gql(`
+  query GetTokenBalances($address: String!, $providerId: ProviderID!) {
+    wallet(address: $address, providerId: $providerId) {
+      id
+      balances {
+        id
+        aggregate {
+          id
+          percentChange
+          value
+          valueChange
+        }
+        tokens {
+          edges {
+            node {
+              id
+              address
+              amount
+              decimals
+              displayAmount
+              marketData {
+                id
+                percentChange
+                price
+                value
+                valueChange
+              }
+              token
+              tokenListEntry {
+                id
+                address
+                decimals
+                logo
+                name
+                symbol
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`);
 
 export type TokenBalancesProps = DataComponentScreenProps & {
   address: string;
@@ -87,260 +134,103 @@ function _TokenBalances({
   );
 
   // Get connection URL to detect which network we're on
-  // Always use Blockchain.X1 because the network toggle changes X1's RPC URL,
-  // not a separate Solana blockchain config
   const connectionUrl = useBlockchainConnectionUrl(Blockchain.X1);
   const apiUrl = useRecoilValue(backendApiUrl);
 
-  const [rawBalances, setRawBalances] = useState<ResponseTokenBalance[]>([]);
+  // Detect if this is a Solana network or X1 network
+  const isSolanaNetwork = connectionUrl?.includes("solana") || false;
+  const isX1Network = connectionUrl?.includes("x1.xyz") || false;
 
-  useEffect(() => {
-    const fetchBalances = async () => {
-      try {
-        console.log(
-          "🔵 [TokenBalances] ========== FETCH BALANCES START =========="
-        );
-        console.log("🔵 [TokenBalances] Input providerId:", providerId);
-        console.log("🔵 [TokenBalances] ConnectionURL:", connectionUrl);
-
-        // Determine the correct providerId based on the connection URL
-        // Since we treat Solana networks as RPC alternatives for X1 wallets,
-        // we need to detect the network from the URL, not the blockchain type
-        let finalProviderId = providerId;
-
-        if (connectionUrl) {
-          console.log("🔵 [TokenBalances] Checking connection URL...");
-          console.log(
-            "🔵 [TokenBalances] URL includes 'solana.com'?",
-            connectionUrl.includes("solana.com")
-          );
-          console.log(
-            "🔵 [TokenBalances] URL includes 'solana-mainnet.quiknode.pro'?",
-            connectionUrl.includes("solana-mainnet.quiknode.pro")
-          );
-          console.log(
-            "🔵 [TokenBalances] URL includes 'solana'?",
-            connectionUrl.includes("solana")
-          );
-          console.log(
-            "🔵 [TokenBalances] URL includes 'x1.xyz'?",
-            connectionUrl.includes("x1.xyz")
-          );
-
-          // Check for Solana networks first (including QuickNode)
-          if (connectionUrl.includes("solana")) {
-            console.log("🟢 [TokenBalances] Detected SOLANA network!");
-            // Check mainnet first (must come before testnet check)
-            if (
-              connectionUrl.includes("mainnet") ||
-              connectionUrl.includes("solana-mainnet")
-            ) {
-              finalProviderId = "SOLANA-mainnet" as ProviderId;
-              console.log("🟢 [TokenBalances] Set to SOLANA-mainnet");
-            } else if (connectionUrl.includes("devnet")) {
-              finalProviderId = "SOLANA-devnet" as ProviderId;
-              console.log("🟢 [TokenBalances] Set to SOLANA-devnet");
-            } else if (connectionUrl.includes("testnet")) {
-              finalProviderId = "SOLANA-testnet" as ProviderId;
-              console.log("🟢 [TokenBalances] Set to SOLANA-testnet");
-            }
-          }
-          // Check for X1 networks
-          else if (connectionUrl.includes("x1.xyz")) {
-            console.log("🟡 [TokenBalances] Detected X1 network!");
-            if (connectionUrl.includes("testnet")) {
-              finalProviderId = "X1-testnet" as ProviderId;
-              console.log("🟡 [TokenBalances] Set to X1-testnet");
-            } else if (connectionUrl.includes("mainnet")) {
-              finalProviderId = "X1-mainnet" as ProviderId;
-              console.log("🟡 [TokenBalances] Set to X1-mainnet");
-            }
-          }
-        }
-
-        console.log("🔵 [TokenBalances] Final providerId:", finalProviderId);
-
-        const url = `${apiUrl}/wallet/${address}?providerId=${finalProviderId}`;
-        console.log("🌐 [TokenBalances] Fetching from:", url);
-
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log("✅ [TokenBalances] JSON Response:", data);
-
-        // Detect if we're on a Solana network by checking the connection URL
-        const isSolanaNetwork = connectionUrl?.includes("solana") || false;
-        console.log("🔵 [TokenBalances] isSolanaNetwork:", isSolanaNetwork);
-        const nativeMintAddress = "11111111111111111111111111111111";
-
-        // Transform JSON server response to token format
-        const transformedTokens = data.tokens.map(
-          (token: any, index: number) => {
-            console.log(`🔵 [TokenBalances] Processing token ${index}:`, token);
-
-            // Check if this is the native token (SOL/XNT)
-            const isNativeToken = token.mint === nativeMintAddress;
-            console.log(
-              `🔵 [TokenBalances] Token ${index} - isNativeToken:`,
-              isNativeToken
-            );
-            console.log(
-              `🔵 [TokenBalances] Token ${index} - mint:`,
-              token.mint
-            );
-            console.log(
-              `🔵 [TokenBalances] Token ${index} - expected mint:`,
-              nativeMintAddress
-            );
-
-            // Determine display values based on network
-            let displaySymbol = token.symbol;
-            let displayName = token.name;
-            let displayLogo = token.logo;
-
-            console.log(
-              `🔵 [TokenBalances] Token ${index} - Original symbol:`,
-              displaySymbol
-            );
-            console.log(
-              `🔵 [TokenBalances] Token ${index} - Original name:`,
-              displayName
-            );
-            console.log(
-              `🔵 [TokenBalances] Token ${index} - Original logo:`,
-              displayLogo
-            );
-
-            if (isNativeToken) {
-              console.log(
-                `🔵 [TokenBalances] Token ${index} - Is native token, checking network...`
-              );
-              if (isSolanaNetwork) {
-                console.log(
-                  `🟢 [TokenBalances] Token ${index} - SOLANA network detected, setting SOL values`
-                );
-                // On Solana networks, show SOL
-                displaySymbol = "SOL";
-                displayName = "Solana Native Token";
-                displayLogo = "solana.png";
-              } else {
-                console.log(
-                  `🟡 [TokenBalances] Token ${index} - X1 network detected, setting XNT values`
-                );
-                // On X1 networks, show XNT
-                displaySymbol = "XNT";
-                displayName = token.name;
-                displayLogo = "x1.png";
-              }
-            }
-
-            console.log(
-              `🔵 [TokenBalances] Token ${index} - Final symbol:`,
-              displaySymbol
-            );
-            console.log(
-              `🔵 [TokenBalances] Token ${index} - Final name:`,
-              displayName
-            );
-            console.log(
-              `🔵 [TokenBalances] Token ${index} - Final logo:`,
-              displayLogo
-            );
-
-            return {
-              id: token.mint,
-              address: token.mint,
-              amount: Math.floor(
-                token.balance * Math.pow(10, token.decimals)
-              ).toString(),
-              decimals: token.decimals,
-              displayAmount: token.balance.toString(),
-              token: token.mint,
-              tokenListEntry: {
-                id: displaySymbol.toLowerCase(),
-                address: token.mint,
-                decimals: token.decimals,
-                logo: displayLogo,
-                name: displayName,
-                symbol: displaySymbol,
-              },
-              marketData: {
-                id: `${displaySymbol.toLowerCase()}-market`,
-                price: token.price,
-                value: token.valueUSD,
-                percentChange: 0,
-                valueChange: 0,
-              },
-            };
-          }
-        );
-
-        setRawBalances(transformedTokens);
-      } catch (error) {
-        console.error("❌ [TokenBalances] Fetch error:", error);
-        setRawBalances([]);
+  // Determine the correct providerId based on connection URL
+  let finalProviderId = providerId;
+  if (connectionUrl) {
+    if (connectionUrl.includes("solana")) {
+      if (
+        connectionUrl.includes("mainnet") ||
+        connectionUrl.includes("solana-mainnet")
+      ) {
+        finalProviderId = "SOLANA-mainnet" as ProviderId;
+      } else if (connectionUrl.includes("devnet")) {
+        finalProviderId = "SOLANA-devnet" as ProviderId;
+      } else if (connectionUrl.includes("testnet")) {
+        finalProviderId = "SOLANA-testnet" as ProviderId;
       }
-    };
-
-    fetchBalances();
-
-    // Poll for updates
-    const pollInterval =
-      pollingIntervalSeconds ?? DEFAULT_POLLING_INTERVAL_SECONDS;
-    if (typeof pollInterval === "number") {
-      const interval = setInterval(fetchBalances, pollInterval * 1000);
-      return () => clearInterval(interval);
+    } else if (connectionUrl.includes("x1.xyz")) {
+      if (connectionUrl.includes("testnet")) {
+        finalProviderId = "X1-testnet" as ProviderId;
+      } else if (connectionUrl.includes("mainnet")) {
+        finalProviderId = "X1-mainnet" as ProviderId;
+      }
     }
-    return undefined;
-  }, [address, providerId, pollingIntervalSeconds, connectionUrl, apiUrl]);
+  }
 
-  /**
-   * Memoized value of the individual wallet token balances that
-   * returned from the REST API. Also calculates the
-   * monetary value and value change to be omitted from the total balance
-   * aggregation based on the user's hidden token settings.
-   */
+  // For Solana networks: Use GraphQL
+  // For X1 networks: Use REST API (x1-json-server)
+  return isSolanaNetwork ? (
+    <SolanaTokenBalances
+      address={address}
+      fetchPolicy={fetchPolicy}
+      onItemClick={onItemClick}
+      pollingIntervalSeconds={pollingIntervalSeconds}
+      providerId={finalProviderId}
+      summaryStyle={summaryStyle}
+      tableFooterComponent={tableFooterComponent}
+      widgets={widgets}
+      hidden={hidden}
+    />
+  ) : (
+    <X1TokenBalances
+      address={address}
+      pollingIntervalSeconds={pollingIntervalSeconds}
+      onItemClick={onItemClick}
+      providerId={finalProviderId}
+      summaryStyle={summaryStyle}
+      tableFooterComponent={tableFooterComponent}
+      widgets={widgets}
+      hidden={hidden}
+      connectionUrl={connectionUrl}
+      apiUrl={apiUrl}
+    />
+  );
+}
+
+// Solana token balances using GraphQL (official Backpack API)
+function SolanaTokenBalances({
+  address,
+  fetchPolicy,
+  onItemClick,
+  pollingIntervalSeconds,
+  providerId,
+  summaryStyle,
+  tableFooterComponent,
+  widgets,
+  hidden,
+}: Omit<TokenBalancesProps, "tableLoaderComponent"> & {
+  hidden: string[] | null;
+}) {
+  const { data } = usePolledSuspenseQuery<
+    import("../../apollo/graphql").GetTokenBalancesQuery,
+    import("../../apollo/graphql").GetTokenBalancesQueryVariables,
+    any
+  >(
+    pollingIntervalSeconds ?? DEFAULT_POLLING_INTERVAL_SECONDS,
+    GET_TOKEN_BALANCES_QUERY,
+    {
+      fetchPolicy,
+      errorPolicy: "all",
+      variables: {
+        address,
+        providerId,
+      },
+    }
+  );
+
   const { balances, omissions } = useMemo<{
     balances: ResponseTokenBalance[];
     omissions: { value: number; valueChange: number };
   }>(() => {
-    let balances = rawBalances;
-
-    // Override native token price to $1.00 for X1 blockchain (XNT)
-    // For Solana, use the market price from the server
-    const isX1Network = connectionUrl?.includes("x1.xyz") || false;
-    const nativeMintAddress = "11111111111111111111111111111111"; // Native token address for SVM chains
-
-    if (isX1Network) {
-      balances = balances.map((balance) => {
-        // Check if this is the native XNT token
-        if (
-          balance.token === nativeMintAddress &&
-          balance.tokenListEntry?.symbol === "XNT"
-        ) {
-          const amount = parseFloat(balance.displayAmount || "0");
-          const fixedPrice = 1.0;
-          const fixedValue = amount * fixedPrice;
-
-          return {
-            ...balance,
-            marketData: balance.marketData
-              ? {
-                  ...balance.marketData,
-                  price: fixedPrice,
-                  value: fixedValue,
-                  percentChange: 0, // No change for fixed price
-                  valueChange: 0,
-                }
-              : null,
-          };
-        }
-        return balance;
-      });
-    }
+    let balances =
+      data?.wallet?.balances?.tokens?.edges.map((e) => e.node) ?? [];
 
     const omissions = { value: 0, valueChange: 0 };
     if (hidden && hidden.length > 0) {
@@ -355,12 +245,157 @@ function _TokenBalances({
     }
 
     return { balances, omissions };
-  }, [rawBalances, hidden, providerId, connectionUrl]);
+  }, [data, hidden]);
 
-  /**
-   * Memoized value of the inner balance summary aggregate
-   * calculated from the token balances.
-   */
+  const aggregate: ResponseBalanceSummary = useMemo(() => {
+    const baseAggregate = data?.wallet?.balances?.aggregate;
+    const aggregate: ResponseBalanceSummary = {
+      id: baseAggregate?.id ?? "",
+      percentChange: baseAggregate?.percentChange ?? 0,
+      value: (baseAggregate?.value ?? 0) - omissions.value,
+      valueChange: (baseAggregate?.valueChange ?? 0) - omissions.valueChange,
+    };
+    return aggregate;
+  }, [data, omissions]);
+
+  return (
+    <YStack alignItems="center" gap={20} marginVertical={16}>
+      <BalanceSummary style={summaryStyle} {...aggregate} />
+      {widgets}
+      <BalancesTable
+        balances={balances}
+        footerComponent={tableFooterComponent}
+        onItemClick={onItemClick}
+      />
+    </YStack>
+  );
+}
+
+// X1 token balances using REST API (x1-json-server)
+function X1TokenBalances({
+  address,
+  pollingIntervalSeconds,
+  onItemClick,
+  providerId,
+  summaryStyle,
+  tableFooterComponent,
+  widgets,
+  hidden,
+  connectionUrl,
+  apiUrl,
+}: Omit<TokenBalancesProps, "tableLoaderComponent" | "fetchPolicy"> & {
+  hidden: string[] | null;
+  connectionUrl: string | null;
+  apiUrl: string;
+}) {
+  const [rawBalances, setRawBalances] = useState<ResponseTokenBalance[]>([]);
+
+  useEffect(() => {
+    const fetchBalances = async () => {
+      try {
+        const url = `${apiUrl}/wallet/${address}?providerId=${providerId}`;
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const nativeMintAddress = "11111111111111111111111111111111";
+
+        // Transform JSON server response to token format
+        const transformedTokens = data.tokens.map((token: any) => ({
+          id: token.mint,
+          address: token.mint,
+          amount: Math.floor(
+            token.balance * Math.pow(10, token.decimals)
+          ).toString(),
+          decimals: token.decimals,
+          displayAmount: token.balance.toString(),
+          token: token.mint,
+          tokenListEntry: {
+            id: token.symbol.toLowerCase(),
+            address: token.mint,
+            decimals: token.decimals,
+            logo: token.logo,
+            name: token.name,
+            symbol: token.symbol,
+          },
+          marketData: {
+            id: `${token.symbol.toLowerCase()}-market`,
+            price: token.price,
+            value: token.valueUSD,
+            percentChange: 0,
+            valueChange: 0,
+          },
+        }));
+
+        setRawBalances(transformedTokens);
+      } catch (error) {
+        console.error("❌ [X1TokenBalances] Fetch error:", error);
+        setRawBalances([]);
+      }
+    };
+
+    fetchBalances();
+
+    // Poll for updates
+    const pollInterval =
+      pollingIntervalSeconds ?? DEFAULT_POLLING_INTERVAL_SECONDS;
+    if (typeof pollInterval === "number") {
+      const interval = setInterval(fetchBalances, pollInterval * 1000);
+      return () => clearInterval(interval);
+    }
+    return undefined;
+  }, [address, providerId, pollingIntervalSeconds, apiUrl]);
+
+  const { balances, omissions } = useMemo<{
+    balances: ResponseTokenBalance[];
+    omissions: { value: number; valueChange: number };
+  }>(() => {
+    let balances = rawBalances;
+
+    // Override native token price to $1.00 for X1 blockchain (XNT)
+    const nativeMintAddress = "11111111111111111111111111111111";
+    balances = balances.map((balance) => {
+      if (
+        balance.token === nativeMintAddress &&
+        balance.tokenListEntry?.symbol === "XNT"
+      ) {
+        const amount = parseFloat(balance.displayAmount || "0");
+        const fixedPrice = 1.0;
+        const fixedValue = amount * fixedPrice;
+
+        return {
+          ...balance,
+          marketData: balance.marketData
+            ? {
+                ...balance.marketData,
+                price: fixedPrice,
+                value: fixedValue,
+                percentChange: 0,
+                valueChange: 0,
+              }
+            : null,
+        };
+      }
+      return balance;
+    });
+
+    const omissions = { value: 0, valueChange: 0 };
+    if (hidden && hidden.length > 0) {
+      balances = balances.filter((b) => {
+        if (hidden.includes(b.token)) {
+          omissions.value += b.marketData?.value ?? 0;
+          omissions.valueChange += b.marketData?.valueChange ?? 0;
+          return false;
+        }
+        return true;
+      });
+    }
+
+    return { balances, omissions };
+  }, [rawBalances, hidden]);
+
   const aggregate: ResponseBalanceSummary = useMemo(() => {
     const totalValue = balances.reduce(
       (sum, b) => sum + (b.marketData?.value ?? 0),
@@ -371,12 +406,13 @@ function _TokenBalances({
       0
     );
 
-    return {
+    const aggregate: ResponseBalanceSummary = {
       id: "",
       percentChange: totalValue > 0 ? (totalValueChange / totalValue) * 100 : 0,
       value: totalValue,
       valueChange: totalValueChange,
     };
+    return aggregate;
   }, [balances]);
 
   return (

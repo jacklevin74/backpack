@@ -170,6 +170,7 @@ export default function App() {
   const [ledgerScanning, setLedgerScanning] = useState(false);
   const [ledgerAccounts, setLedgerAccounts] = useState([]);
   const [ledgerConnecting, setLedgerConnecting] = useState(false);
+  const bleManagerRef = useRef(null);
 
   // Send and Receive states
   const [showReceiveDrawer, setShowReceiveDrawer] = useState(false);
@@ -199,6 +200,28 @@ export default function App() {
       console.log = originalLog;
     };
   }, [addDebugLog]);
+
+  // Initialize BleManager for Ledger support
+  useEffect(() => {
+    try {
+      if (!bleManagerRef.current) {
+        bleManagerRef.current = new BleManager();
+        console.log("BleManager initialized successfully");
+      }
+    } catch (error) {
+      console.error("Failed to initialize BleManager:", error);
+    }
+
+    return () => {
+      if (bleManagerRef.current) {
+        try {
+          bleManagerRef.current.destroy();
+        } catch (e) {
+          console.log("Error destroying BleManager:", e);
+        }
+      }
+    };
+  }, []);
 
   // Get native token info based on current network
   const getNativeTokenInfo = useCallback(() => {
@@ -547,26 +570,88 @@ export default function App() {
   const handleShowLedger = async () => {
     setShowAddWalletModal(false);
 
-    Alert.alert(
-      "Ledger Support",
-      "Ledger Bluetooth support is currently in development.\n\nTo use your Ledger wallet:\n\n1. Connect Ledger to your computer\n2. Open Solana app on Ledger\n3. Use Ledger Live or Solana CLI to get your public key\n4. Use 'Import Wallet' to add the public key\n\nNote: Your Ledger private keys stay secure on the device. Only the public key is imported for viewing balances.",
-      [
-        { text: "Import Manually", onPress: handleShowImportWallet },
-        {
-          text: "Cancel",
-          style: "cancel",
-          onPress: () => setShowAddWalletModal(true),
-        },
-      ]
-    );
+    // Request Bluetooth permissions first
+    const hasPermission = await requestBluetoothPermissions();
+    if (!hasPermission) {
+      Alert.alert(
+        "Permissions Required",
+        "Bluetooth permissions are required to connect to Ledger.",
+        [{ text: "OK", onPress: () => setShowAddWalletModal(true) }]
+      );
+      return;
+    }
+
+    // Show the Ledger modal and start scanning
+    setShowLedgerModal(true);
+    scanForLedger();
   };
 
-  // Ledger Bluetooth scanning - disabled for now due to library compatibility issues
+  // Ledger Bluetooth scanning using official TransportBLE API
   const scanForLedger = async () => {
-    Alert.alert(
-      "Not Available",
-      "Ledger Bluetooth scanning is not available yet. Please import your Ledger public key manually."
-    );
+    try {
+      setLedgerScanning(true);
+      setLedgerAccounts([]);
+      console.log("Starting Ledger Bluetooth scan...");
+
+      // Check if BleManager is initialized
+      if (!bleManagerRef.current) {
+        console.log("BleManager not initialized, creating new instance...");
+        bleManagerRef.current = new BleManager();
+      }
+
+      // Check Bluetooth state
+      const state = await bleManagerRef.current.state();
+      console.log("Bluetooth state:", state);
+
+      if (state !== "PoweredOn") {
+        setLedgerScanning(false);
+        Alert.alert(
+          "Bluetooth Not Available",
+          "Please enable Bluetooth to connect to Ledger devices."
+        );
+        return;
+      }
+
+      const subscription = TransportBLE.listen({
+        complete: () => {
+          console.log("Ledger scan complete");
+          setLedgerScanning(false);
+        },
+        next: (e) => {
+          console.log("Ledger device event:", e.type, e);
+          if (e.type === "add") {
+            const device = e.descriptor;
+            console.log("Found Ledger device:", device);
+            // Auto-connect to the first device found
+            subscription.unsubscribe();
+            setLedgerScanning(false);
+            connectToLedger(device);
+          }
+        },
+        error: (error) => {
+          console.error("Ledger scan error:", error);
+          setLedgerScanning(false);
+          Alert.alert(
+            "Scan Error",
+            error.message ||
+              "Failed to scan for Ledger devices. Make sure Bluetooth is enabled and the Solana app is open on your Ledger Nano X."
+          );
+        },
+      });
+
+      // Stop scanning after 30 seconds
+      setTimeout(() => {
+        if (subscription) {
+          subscription.unsubscribe();
+          setLedgerScanning(false);
+          console.log("Ledger scan timeout");
+        }
+      }, 30000);
+    } catch (error) {
+      setLedgerScanning(false);
+      console.error("Error starting Ledger scan:", error);
+      Alert.alert("Error", error.message || "Failed to start Ledger scan");
+    }
   };
 
   const connectToLedger = async (device) => {

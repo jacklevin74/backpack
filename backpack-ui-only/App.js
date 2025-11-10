@@ -1941,7 +1941,7 @@ export default function App() {
               <View style={styles.receiveQRContainer}>
                 <View style={styles.receiveQRWrapper}>
                   <QRCode
-                    value={selectedWallet.address}
+                    value={selectedWallet.publicKey}
                     size={200}
                     backgroundColor="white"
                     color="black"
@@ -1953,14 +1953,14 @@ export default function App() {
               <View style={styles.receiveAddressContainer}>
                 <Text style={styles.receiveAddressLabel}>Your Address</Text>
                 <Text style={styles.receiveAddressText} numberOfLines={1}>
-                  {selectedWallet.address}
+                  {selectedWallet.publicKey}
                 </Text>
               </View>
 
               {/* Copy Button */}
               <TouchableOpacity
                 style={styles.receiveCopyButton}
-                onPress={() => copyToClipboard(selectedWallet.address)}
+                onPress={() => copyToClipboard(selectedWallet.publicKey)}
               >
                 <Text style={styles.receiveCopyButtonText}>Copy Address</Text>
               </TouchableOpacity>

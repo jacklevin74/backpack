@@ -185,7 +185,6 @@ export default function App() {
   const [showPrivateKey, setShowPrivateKey] = useState(false);
   const [showChangeNameModal, setShowChangeNameModal] = useState(false);
   const [showViewPrivateKeyModal, setShowViewPrivateKeyModal] = useState(false);
-  const [showLedgerModal, setShowLedgerModal] = useState(false);
   const [addressCopied, setAddressCopied] = useState(false);
   const [copiedWalletId, setCopiedWalletId] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -482,6 +481,7 @@ export default function App() {
   useEffect(() => {
     if (!selectedWallet) return;
     checkBalance();
+    checkTransactions();
   }, [selectedWallet?.publicKey, currentNetwork]);
 
   // Auto-refresh balance every 3 seconds
@@ -2476,91 +2476,106 @@ export default function App() {
       </BottomSheet>
 
       {/* Activity Drawer */}
+      {/* Activity Bottom Sheet */}
       <BottomSheet
         ref={activitySheetRef}
         index={-1}
-        snapPoints={snapPoints}
+        snapPoints={["75%"]}
         enablePanDownToClose={true}
-        backdropComponent={renderBackdrop}
-        backgroundStyle={{ backgroundColor: "#000000" }}
-        handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+        backdropComponent={(props) => (
+          <BottomSheetBackdrop
+            {...props}
+            opacity={0.5}
+            enableTouchThrough={false}
+            appearsOnIndex={0}
+            disappearsOnIndex={-1}
+            style={[
+              { backgroundColor: "rgba(0, 0, 0, 1)" },
+              StyleSheet.absoluteFillObject,
+            ]}
+          />
+        )}
+        backgroundStyle={{ backgroundColor: "#1A1B23" }}
+        handleIndicatorStyle={{ backgroundColor: "#4E5056" }}
       >
-        <BottomSheetView style={styles.bottomSheetContent}>
+        {/* Activity List with BottomSheetScrollView */}
+        <BottomSheetScrollView
+          contentContainerStyle={styles.sheetScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Header */}
-          <View style={styles.bottomSheetHeader}>
+          <View style={styles.sheetHeader}>
             <TouchableOpacity onPress={() => checkTransactions()}>
-              <Text style={styles.bottomSheetClose}>↻</Text>
+              <Text style={styles.sheetHeaderButton}>↻</Text>
             </TouchableOpacity>
-            <Text style={styles.bottomSheetTitle}>Activity</Text>
+            <Text style={styles.sheetTitle}>Activity</Text>
             <TouchableOpacity onPress={() => activitySheetRef.current?.close()}>
-              <Text style={styles.bottomSheetClose}>✕</Text>
+              <Text style={styles.sheetHeaderButton}>✕</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Activity List */}
-          <ScrollView
-            style={styles.settingsMenuList}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.transactionsList}>
-              {transactions.map((tx) => (
-                <TouchableOpacity
-                  key={tx.id}
-                  style={styles.activityCard}
-                  onPress={() => openExplorer(tx.signature)}
-                >
-                  {/* Token logo */}
-                  <Image
-                    source={
-                      tx.token === "XNT"
-                        ? require("./assets/x1.png")
-                        : require("./assets/solana.png")
-                    }
-                    style={styles.activityCardLogo}
-                  />
-
-                  <View style={styles.activityCardContent}>
-                    {/* Header with title and time */}
-                    <View style={styles.activityCardHeader}>
-                      <Text style={styles.activityCardTitle}>
-                        {tx.type === "received" ? "Received" : "Sent"}{" "}
-                        {tx.token}
-                      </Text>
-                      <Text style={styles.activityCardTime}>
-                        {tx.timestamp}
-                      </Text>
-                    </View>
-
-                    {/* Amount row */}
-                    <View style={styles.activityCardRow}>
-                      <Text style={styles.activityCardLabel}>Amount</Text>
-                      <Text
-                        style={[
-                          styles.activityCardValue,
-                          {
-                            color:
-                              tx.type === "received" ? "#00D084" : "#FF6B6B",
-                          },
-                        ]}
-                      >
-                        {tx.type === "received" ? "+" : "-"}
-                        {tx.amount} {tx.token}
-                      </Text>
-                    </View>
-
-                    {/* Fee row */}
-                    <View style={styles.activityCardRow}>
-                      <Text style={styles.activityCardLabel}>Fee</Text>
-                      <Text style={styles.activityCardValue}>
-                        {tx.fee || "0.000001650"} {tx.token}
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
+          {/* Transactions List */}
+          {transactions.length === 0 ? (
+            <View style={styles.emptyStateContainer}>
+              <Text style={styles.emptyStateText}>No transactions yet</Text>
+              <Text style={styles.emptyStateSubtext}>
+                Your transaction history will appear here
+              </Text>
             </View>
-          </ScrollView>
-        </BottomSheetView>
+          ) : (
+            transactions.map((tx) => (
+              <TouchableOpacity
+                key={tx.id}
+                style={styles.activityCard}
+                onPress={() => openExplorer(tx.signature)}
+              >
+                {/* Token logo */}
+                <Image
+                  source={
+                    tx.token === "XNT"
+                      ? require("./assets/x1.png")
+                      : require("./assets/solana.png")
+                  }
+                  style={styles.activityCardLogo}
+                />
+
+                <View style={styles.activityCardContent}>
+                  {/* Header with title and time */}
+                  <View style={styles.activityCardHeader}>
+                    <Text style={styles.activityCardTitle}>
+                      {tx.type === "received" ? "Received" : "Sent"} {tx.token}
+                    </Text>
+                    <Text style={styles.activityCardTime}>{tx.timestamp}</Text>
+                  </View>
+
+                  {/* Amount row */}
+                  <View style={styles.activityCardRow}>
+                    <Text style={styles.activityCardLabel}>Amount</Text>
+                    <Text
+                      style={[
+                        styles.activityCardValue,
+                        {
+                          color: tx.type === "received" ? "#00D084" : "#FF6B6B",
+                        },
+                      ]}
+                    >
+                      {tx.type === "received" ? "+" : "-"}
+                      {tx.amount} {tx.token}
+                    </Text>
+                  </View>
+
+                  {/* Fee row */}
+                  <View style={styles.activityCardRow}>
+                    <Text style={styles.activityCardLabel}>Fee</Text>
+                    <Text style={styles.activityCardValue}>
+                      {tx.fee || "0.000001650"} {tx.token}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </BottomSheetScrollView>
       </BottomSheet>
 
       {/* Add Wallet Modal - Choice */}
@@ -3027,7 +3042,7 @@ export default function App() {
           ) : Array.isArray(ledgerAccounts) && ledgerAccounts.length > 0 ? (
             <>
               <Text style={styles.ledgerAccountsTitle}>Select an account:</Text>
-              <BottomSheetScrollView style={styles.ledgerAccountsList}>
+              <ScrollView style={styles.ledgerAccountsList}>
                 {ledgerAccounts.map((account) => (
                   <TouchableOpacity
                     key={`ledger-${account.index}`}
@@ -3054,7 +3069,7 @@ export default function App() {
                     </View>
                   </TouchableOpacity>
                 ))}
-              </BottomSheetScrollView>
+              </ScrollView>
             </>
           ) : (
             <View style={styles.ledgerStatus}>
@@ -3168,6 +3183,23 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 13,
     fontWeight: "500",
+  },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 60,
+  },
+  emptyStateText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  emptyStateSubtext: {
+    color: "#999999",
+    fontSize: 14,
+    textAlign: "center",
   },
   badge: {
     width: 32,

@@ -14,7 +14,12 @@ import {
 import { RetryLink } from "@apollo/client/link/retry";
 import { LocalStorageWrapper, persistCacheSync } from "apollo3-cache-persist";
 
-import { BACKEND_API_URL, X1_JSON_SERVER_URL, BACKPACK_GRAPHQL_API_URL } from "../constants";
+import {
+  BACKEND_API_URL,
+  getGraphQLApiUrl,
+  USE_X1_JSON_SERVER_FOR_SOLANA,
+  X1_JSON_SERVER_URL,
+} from "../constants";
 
 const cache = new InMemoryCache({
   addTypename: true,
@@ -144,59 +149,84 @@ export const cacheOnErrorApolloLinkHandler: RequestHandler = (
 };
 
 /**
- * X1 Interceptor Link - Routes X1 queries to local JSON server
+ * X1/Solana Interceptor Link - Routes queries to X1 JSON server based on configuration
+ * - X1 queries: ALWAYS go to X1 JSON server
+ * - Solana queries: Go to X1 JSON server if USE_X1_JSON_SERVER_FOR_SOLANA is true (old behavior)
  */
 export const x1InterceptorLink = new ApolloLink((operation, forward) => {
   const { variables } = operation;
 
-  console.log("🔍 [X1Interceptor] Checking operation:", {
+  console.log("🔍 [Interceptor] Checking operation:", {
     operationName: operation.operationName,
     variables,
     providerId: variables?.providerId,
+    useX1ForSolana: USE_X1_JSON_SERVER_FOR_SOLANA,
   });
 
-  // Check if this is an X1 query by looking at the providerId variable
-  const providerId = variables?.providerId || '';
-  const isX1Query = providerId === "X1" || providerId === "X1-testnet" || providerId === "X1-mainnet";
+  // Check the providerId to determine routing
+  const providerId = variables?.providerId || "";
+  const isX1Query =
+    providerId === "X1" ||
+    providerId === "X1-testnet" ||
+    providerId === "X1-mainnet";
+  const isSolanaQuery =
+    providerId === "SOLANA" ||
+    providerId === "solana" ||
+    providerId.includes("SOLANA");
 
-  if (!isX1Query) {
-    console.log("⏭️ [X1Interceptor] Not X1 query, passing through to backend");
-    // Not an X1 query, pass through to regular GraphQL endpoint
+  // Route to X1 JSON Server if:
+  // 1. It's an X1 query (always)
+  // 2. It's a Solana query AND the toggle is enabled (old behavior)
+  const shouldUseX1JsonServer =
+    isX1Query || (isSolanaQuery && USE_X1_JSON_SERVER_FOR_SOLANA);
+
+  if (!shouldUseX1JsonServer) {
+    console.log("⏭️ [Interceptor] Passing through to Backpack GraphQL API");
+    // Pass through to Backpack GraphQL API
     return forward(operation);
   }
 
+  const networkType = isX1Query ? "X1" : "Solana";
   console.log(
-    "🔵 [X1Interceptor] X1 Query Intercepted:",
+    `🔵 [Interceptor] ${networkType} Query Intercepted:`,
     operation.operationName,
     "providerId:",
-    providerId
+    providerId,
+    "→ X1 JSON Server"
   );
 
-  // Handle X1 queries by fetching from JSON server
+  // Handle queries by fetching from X1 JSON server
   return new Observable((observer) => {
     const address = variables?.address;
 
     if (!address) {
-      console.error("❌ [X1Interceptor] Missing address in X1 query");
-      observer.error(new Error("X1 query missing address"));
+      console.error(`❌ [Interceptor] Missing address in ${networkType} query`);
+      observer.error(new Error(`${networkType} query missing address`));
       return;
     }
 
-    // Use the providerId directly - it already contains network info (X1, X1-testnet, or X1-mainnet)
+    // Use the providerId directly - it contains network info
     const url = `${X1_JSON_SERVER_URL}/wallet/${address}?providerId=${providerId}`;
-    console.log("🌐 [X1Interceptor] Fetching from JSON server:", url, `(providerId: ${providerId})`);
+    console.log(
+      `🌐 [Interceptor] Fetching ${networkType} from JSON server:`,
+      url,
+      `(providerId: ${providerId})`
+    );
 
-    // Fetch balance from JSON server
+    // Fetch balance from X1 JSON server
     fetch(url)
       .then((res) => {
         console.log(
-          "📡 [X1Interceptor] JSON server response status:",
+          `📡 [Interceptor] ${networkType} JSON server response status:`,
           res.status
         );
         return res.json();
       })
       .then((data) => {
-        console.log("✅ [X1Interceptor] JSON Server Response:", data);
+        console.log(
+          `✅ [Interceptor] ${networkType} JSON Server Response:`,
+          data
+        );
 
         // Calculate lamports from balance
         const lamports = Math.floor(data.balance * 1e9);
@@ -245,11 +275,11 @@ export const x1InterceptorLink = new ApolloLink((operation, forward) => {
         };
 
         console.log(
-          "📦 [X1Interceptor] Transformed GraphQL data:",
+          `📦 [Interceptor] ${networkType} Transformed GraphQL data:`,
           graphqlData
         );
         console.log(
-          "📦 [X1Interceptor] Token edges count:",
+          `📦 [Interceptor] ${networkType} Token edges count:`,
           graphqlData.wallet.balances.tokens.edges.length
         );
 
@@ -257,7 +287,10 @@ export const x1InterceptorLink = new ApolloLink((operation, forward) => {
         observer.complete();
       })
       .catch((error) => {
-        console.error("❌ [X1Interceptor] JSON Server Error:", error);
+        console.error(
+          `❌ [Interceptor] ${networkType} JSON Server Error:`,
+          error
+        );
         observer.error(error);
       });
   });
@@ -275,8 +308,10 @@ export function createApolloClient(
   clientVersion: string,
   headers?: Record<string, string>
 ): ApolloClient<NormalizedCacheObject> {
+  const graphqlApiUrl = getGraphQLApiUrl();
+
   const httpLink = createHttpLink({
-    uri: BACKPACK_GRAPHQL_API_URL,  // Use official Backpack GraphQL API
+    uri: graphqlApiUrl, // Use configured GraphQL API (Backpack or custom)
     headers,
   });
 
@@ -285,7 +320,7 @@ export function createApolloClient(
     console.log("🚀 GraphQL Query:", operation.operationName);
     console.log("📋 Query:", operation.query.loc?.source.body);
     console.log("🔧 Variables:", JSON.stringify(operation.variables, null, 2));
-    console.log("🌐 GraphQL URL:", BACKPACK_GRAPHQL_API_URL);
+    console.log("🌐 GraphQL URL:", graphqlApiUrl);
     return forward(operation).map((response) => {
       console.log("✅ Response for", operation.operationName, ":", response);
       return response;

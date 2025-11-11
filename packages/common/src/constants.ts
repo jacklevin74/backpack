@@ -441,8 +441,26 @@ export const BACKEND_API_URL_PROD = "http://162.250.126.66:4000";
 export const BACKEND_API_URL_DEV = "http://localhost:4000";
 export const BACKEND_API_URL = BACKEND_API_URL_PROD; // Default for build - use production
 export const X1_JSON_SERVER_URL = "http://162.250.126.66:4000";
+
+// GraphQL API Configuration
 // Official Backpack GraphQL API endpoint for Solana token data
-export const BACKPACK_GRAPHQL_API_URL = "https://backpack-api.xnfts.dev/v2/graphql";
+export const BACKPACK_GRAPHQL_API_URL =
+  "https://backpack-api.xnfts.dev/v2/graphql";
+
+// Toggle: Set to true to use X1 JSON Server for Solana queries (old behavior, pre-PR #2)
+//         Set to false to use official Backpack GraphQL API for Solana queries (new behavior, PR #2)
+export const USE_X1_JSON_SERVER_FOR_SOLANA = false;
+
+// Get the active GraphQL API URL based on the toggle
+// Note: X1 network queries ALWAYS go to X1 JSON Server regardless of this setting
+export const getGraphQLApiUrl = (): string => {
+  if (USE_X1_JSON_SERVER_FOR_SOLANA) {
+    // Old behavior: Route Solana queries to X1 JSON Server
+    return X1_JSON_SERVER_URL;
+  }
+  // New behavior: Route Solana queries to Backpack GraphQL API
+  return BACKPACK_GRAPHQL_API_URL;
+};
 export const MESSAGING_COMMUNICATION_PUSH = "MESSAGING_COMMUNICATION_PUSH";
 export const MESSAGING_COMMUNICATION_FETCH = "MESSAGINyarG_COMMUNICATION_FETCH";
 export const MESSAGING_COMMUNICATION_FETCH_RESPONSE =

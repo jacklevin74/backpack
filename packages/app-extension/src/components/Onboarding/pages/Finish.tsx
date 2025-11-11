@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { openPopupWindow } from "@coral-xyz/common";
 import { useOnboarding } from "@coral-xyz/recoil";
 import { Loader } from "@coral-xyz/tamagui";
 import { useAsyncEffect } from "use-async-effect";
@@ -32,8 +31,8 @@ export const Finish = ({ isAddingAccount }: { isAddingAccount?: boolean }) => {
   return !loading ? (
     <SetupComplete
       onClose={() => {
-        window.open("https://x1.xyz", "_blank");
-        openPopupWindow("popup.html");
+        // Close the onboarding window - user can access extension from toolbar
+        window.close();
       }}
     />
   ) : (

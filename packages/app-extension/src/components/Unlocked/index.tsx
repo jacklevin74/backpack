@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useMemo } from "react";
 import { ApolloProvider } from "@apollo/client";
 import { BACKPACK_CONFIG_VERSION, createApolloClient } from "@coral-xyz/common";
 import { Loading } from "@coral-xyz/react-common";
@@ -35,10 +35,17 @@ function Bootstrap() {
 
 function WithApollo({ children }: { children: any }) {
   const headers = useApolloClientHeaders();
-  const apolloClient = createApolloClient(
-    "backpack-extension",
-    BACKPACK_CONFIG_VERSION,
-    headers
+
+  // Memoize Apollo Client to prevent recreation on every render
+  // Only recreate when headers actually change
+  const apolloClient = useMemo(
+    () => createApolloClient(
+      "backpack-extension",
+      BACKPACK_CONFIG_VERSION,
+      headers
+    ),
+    [headers]
   );
+
   return <ApolloProvider client={apolloClient}>{children}</ApolloProvider>;
 }

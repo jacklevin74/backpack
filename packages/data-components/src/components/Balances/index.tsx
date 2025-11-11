@@ -215,7 +215,7 @@ function SolanaTokenBalances({
 }: Omit<TokenBalancesProps, "tableLoaderComponent"> & {
   hidden: string[] | null;
 }) {
-  const { data } = usePolledSuspenseQuery<
+  const { data, error } = usePolledSuspenseQuery<
     import("../../apollo/graphql").GetTokenBalancesQuery,
     import("../../apollo/graphql").GetTokenBalancesQueryVariables,
     any
@@ -231,6 +231,13 @@ function SolanaTokenBalances({
       },
     }
   );
+
+  // Log GraphQL errors for debugging
+  useEffect(() => {
+    if (error) {
+      console.error("❌ [SolanaTokenBalances] GraphQL Error:", error);
+    }
+  }, [error]);
 
   const { balances, omissions } = useMemo<{
     balances: ResponseTokenBalance[];

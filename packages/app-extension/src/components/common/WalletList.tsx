@@ -217,7 +217,7 @@ function WalletButton({
             <>
               <div
                 style={{
-                  width: "19px",
+                  width: "25px",
                   marginLeft: "6px",
                   marginRight: "6px",
                   display: "flex",
@@ -237,7 +237,7 @@ function WalletButton({
                   noSkeleton
                   src={iconUrl}
                   style={{
-                    width: "19px",
+                    width: "25px",
                   }}
                 />
               </div>
@@ -921,11 +921,11 @@ function WalletList({
                 opacity: 0.8,
               }}
             >
-              <YStack justifyContent="center" alignItems="center" width={19}>
+              <YStack justifyContent="center" alignItems="center" width={25}>
                 <NetworkIcon
                   blockchain={wallet.blockchain}
                   style={{
-                    maxWidth: "19px",
+                    maxWidth: "25px",
                     marginLeft: "auto",
                     marginRight: "auto",
                   }}

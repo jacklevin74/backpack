@@ -3,6 +3,7 @@ import { Blockchain } from "@coral-xyz/common";
 import {
   blockchainConfigAtom,
   blockchainConnectionUrl,
+  useActiveWallet,
   useBackgroundClient,
 } from "@coral-xyz/recoil";
 import { useTheme } from "@coral-xyz/tamagui";
@@ -17,7 +18,12 @@ const SOLANA_MAINNET_URL =
 export function NetworkToggle() {
   const theme = useTheme();
   const background = useBackgroundClient();
-  const currentUrl = useRecoilValue(blockchainConnectionUrl(Blockchain.X1));
+  const activeWallet = useActiveWallet();
+
+  // Use the active wallet's blockchain to read the current connection URL
+  // This fixes bug where Solana wallets always showed X1 network
+  const activeBlockchain = activeWallet?.blockchain || Blockchain.X1;
+  const currentUrl = useRecoilValue(blockchainConnectionUrl(activeBlockchain));
   const [isOpen, setIsOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -48,12 +54,14 @@ export function NetworkToggle() {
     setSwitching(true);
     try {
       const newUrl = toX1 ? X1_MAINNET_URL : SOLANA_MAINNET_URL;
+      // Use the active wallet's blockchain when changing network
+      // This ensures the correct blockchain config is updated
       await changeNetwork(
         background,
-        Blockchain.X1,
+        activeBlockchain,
         newUrl,
         undefined,
-        Blockchain.X1
+        activeBlockchain
       );
     } catch (err) {
       console.error("Error switching network:", err);
@@ -98,14 +106,16 @@ export function NetworkToggle() {
             }}
           />
         )}
-        {!isActive ? <span
-          style={{
+        {!isActive ? (
+          <span
+            style={{
               fontSize: "14px",
               color: theme.baseTextMedEmphasis.val,
             }}
           >
-          {isX1 ? "X1" : "Solana"}
-        </span> : null}
+            {isX1 ? "X1" : "Solana"}
+          </span>
+        ) : null}
       </div>
     );
   };
@@ -136,8 +146,9 @@ export function NetworkToggle() {
       </div>
 
       {/* Dropdown Menu */}
-      {isOpen ? <div
-        style={{
+      {isOpen ? (
+        <div
+          style={{
             position: "absolute",
             top: "calc(100% + 4px)",
             left: 0,
@@ -149,8 +160,9 @@ export function NetworkToggle() {
             minWidth: "120px",
           }}
         >
-        <NetworkIcon network={isX1Network ? "solana" : "x1"} />
-      </div> : null}
+          <NetworkIcon network={isX1Network ? "solana" : "x1"} />
+        </div>
+      ) : null}
     </div>
   );
 }

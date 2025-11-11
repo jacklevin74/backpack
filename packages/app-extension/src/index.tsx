@@ -21,6 +21,7 @@ import { config as tamaguiConfig, TamaguiProvider } from "@coral-xyz/tamagui";
 import { RecoilRoot } from "recoil";
 import { v4 } from "uuid";
 
+import { PopupLoadingSkeleton } from "./components/common/LoadingSkeleton";
 import { OptClickToComponent } from "./utils/click-to-component";
 
 import "./index.css";
@@ -105,7 +106,13 @@ root.render(
           set(notificationListenerAtom, notificationBroadcastListener);
         }}
       >
-        <Suspense fallback={null}>
+        <Suspense
+          fallback={
+            <TamaguiProvider config={tamaguiConfig} defaultTheme="dark">
+              <PopupLoadingSkeleton />
+            </TamaguiProvider>
+          }
+        >
           <TamaguiProvider config={tamaguiConfig} defaultTheme="dark">
             <RequireUserUnlocked
               onReset={() => {

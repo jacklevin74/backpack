@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { lazy, Suspense } from "react";
 import { ApolloProvider } from "@apollo/client";
 import { BACKPACK_CONFIG_VERSION, createApolloClient } from "@coral-xyz/common";
 import { Loading } from "@coral-xyz/react-common";
@@ -10,6 +10,7 @@ import {
 
 import { Router } from "../common/Layout/Router";
 
+// Create these once at module level to avoid recreating on every render
 const reactQueryClient = new ReactQueryClient();
 
 export function Unlocked() {
@@ -26,6 +27,8 @@ export function Unlocked() {
 }
 
 function Bootstrap() {
+  // Load bootstrap data - this will suspend if not ready
+  // but with our caching improvements, it should be fast
   useBootstrapFast();
   return null;
 }

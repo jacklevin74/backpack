@@ -1,7 +1,11 @@
 /* eslint-disable react/jsx-no-useless-fragment */
 /* eslint-disable react-hooks/exhaustive-deps */
 import { type ComponentPropsWithoutRef, useMemo, useState } from "react";
-import { Blockchain, formatTitleCase, formatWalletAddress } from "@coral-xyz/common";
+import {
+  Blockchain,
+  formatTitleCase,
+  formatWalletAddress,
+} from "@coral-xyz/common";
 import { useTranslation } from "@coral-xyz/i18n";
 import {
   HardwareIcon,
@@ -115,13 +119,18 @@ function WalletButton({
 }) {
   const classes = useStyles();
   const theme = useTheme();
-  const connectionUrl = useRecoilValue(blockchainConnectionUrl(wallet.blockchain));
+  const connectionUrl = useRecoilValue(
+    blockchainConnectionUrl(wallet.blockchain)
+  );
 
   // Determine which logo to show based on connection URL
   // When on Solana networks, show Solana logo; otherwise show blockchain logo
   const iconUrl = (() => {
-    if (connectionUrl?.includes('solana.com') || connectionUrl?.includes('solana-mainnet.quiknode.pro')) {
-      return './solana.png';
+    if (
+      connectionUrl?.includes("solana.com") ||
+      connectionUrl?.includes("solana-mainnet.quiknode.pro")
+    ) {
+      return "./solana.png";
     }
     return getBlockchainLogo(wallet.blockchain);
   })();
@@ -360,14 +369,18 @@ function AllWalletsList({
 }) {
   const activeWallet = useActiveWallet();
   const enabledBlockchains = useRecoilValue(enabledBlockchainsAtom);
-  // Always show X1 wallets only
-  const blockchainFilter = Blockchain.X1;
+
+  // Show both X1 and Solana wallets since they share the same SVM architecture
+  // and users can switch between networks using the network toggle
+  const blockchainFilter = [Blockchain.X1, Blockchain.SOLANA];
+  // When adding new wallet, default to X1
+  const defaultAddBlockchain = Blockchain.X1;
 
   const wallets = useAllWallets()
     .filter(
       (w) =>
         enabledBlockchains.includes(w.blockchain) &&
-        w.blockchain === blockchainFilter
+        blockchainFilter.includes(w.blockchain)
     )
     .filter(filter ? filter : () => true);
 
@@ -384,7 +397,7 @@ function AllWalletsList({
   );
 
   const onClickAdd = () => {
-    onAdd(blockchainFilter);
+    onAdd(defaultAddBlockchain);
   };
 
   return (
@@ -436,20 +449,28 @@ function X1LogoHeader() {
   // Determine which logo to show based on connection URL
   // When on Solana networks, show Solana logo; otherwise show X1 logo
   const blockchainLogo = (() => {
-    if (connectionUrl?.includes('solana.com') || connectionUrl?.includes('solana-mainnet.quiknode.pro')) {
-      return './solana.png';
+    if (
+      connectionUrl?.includes("solana.com") ||
+      connectionUrl?.includes("solana-mainnet.quiknode.pro")
+    ) {
+      return "./solana.png";
     }
     return getBlockchainLogo(Blockchain.X1);
   })();
 
   return (
-    <XStack display="flex" paddingHorizontal="$4" paddingVertical="$2" justifyContent="center">
+    <XStack
+      display="flex"
+      paddingHorizontal="$4"
+      paddingVertical="$2"
+      justifyContent="center"
+    >
       <img
         src={blockchainLogo}
         style={{
           maxWidth: "32px",
           maxHeight: "32px",
-          opacity: 0.5
+          opacity: 0.5,
         }}
       />
     </XStack>

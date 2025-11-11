@@ -54,12 +54,25 @@ function TestnetBanner() {
       return developerMode ? "X1 MAINNET • DEVELOPER MODE" : "X1 MAINNET";
     }
     // Check Solana URLs (including QuickNode)
-    else if (connectionUrl === "https://api.mainnet-beta.solana.com" || connectionUrl?.includes("solana-mainnet.quiknode.pro")) {
-      return developerMode ? "SOLANA MAINNET • DEVELOPER MODE" : "SOLANA MAINNET";
-    } else if (connectionUrl === "https://api.devnet.solana.com" || connectionUrl?.includes("solana-devnet")) {
+    else if (
+      connectionUrl === "https://api.mainnet-beta.solana.com" ||
+      connectionUrl?.includes("solana-mainnet.quiknode.pro")
+    ) {
+      return developerMode
+        ? "SOLANA MAINNET • DEVELOPER MODE"
+        : "SOLANA MAINNET";
+    } else if (
+      connectionUrl === "https://api.devnet.solana.com" ||
+      connectionUrl?.includes("solana-devnet")
+    ) {
       return developerMode ? "SOLANA DEVNET • DEVELOPER MODE" : "SOLANA DEVNET";
-    } else if (connectionUrl === "https://api.testnet.solana.com" || connectionUrl?.includes("solana-testnet")) {
-      return developerMode ? "SOLANA TESTNET • DEVELOPER MODE" : "SOLANA TESTNET";
+    } else if (
+      connectionUrl === "https://api.testnet.solana.com" ||
+      connectionUrl?.includes("solana-testnet")
+    ) {
+      return developerMode
+        ? "SOLANA TESTNET • DEVELOPER MODE"
+        : "SOLANA TESTNET";
     }
     return null;
   };
@@ -107,9 +120,11 @@ function FullApp() {
   logger.debug("full app");
   const background = useBackgroundClient();
   useEffect(() => {
-    (async () => {
-      await Promise.all([refreshFeatureGates(background)]);
-    })();
+    // Refresh feature gates in background without blocking UI render
+    // With caching, this will be instant on subsequent loads
+    refreshFeatureGates(background).catch((err) => {
+      console.warn("Failed to refresh feature gates:", err);
+    });
   }, [background]);
 
   return <Unlocked />;

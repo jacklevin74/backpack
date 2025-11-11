@@ -30,6 +30,7 @@ import {
   NativeModules,
   RefreshControl,
 } from "react-native";
+import NetInfo from "@react-native-community/netinfo";
 import {
   Keypair,
   Connection,
@@ -188,6 +189,7 @@ export default function App() {
   const [addressCopied, setAddressCopied] = useState(false);
   const [copiedWalletId, setCopiedWalletId] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [hasCheckedNetwork, setHasCheckedNetwork] = useState(false);
 
   // Ledger states
   const [ledgerScanning, setLedgerScanning] = useState(false);
@@ -259,6 +261,43 @@ export default function App() {
   useEffect(() => {
     loadWalletsFromStorage();
   }, []);
+
+  // Check network connectivity after 5 seconds
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (hasCheckedNetwork) return;
+
+      try {
+        const netInfoState = await NetInfo.fetch();
+
+        if (!netInfoState.isConnected || !netInfoState.isInternetReachable) {
+          Alert.alert(
+            "No Network Connection",
+            "Please open Settings and connect to WiFi to use this app.",
+            [
+              {
+                text: "Open Settings",
+                onPress: () => {
+                  if (Platform.OS === "android") {
+                    Linking.openSettings();
+                  } else {
+                    Linking.openURL("app-settings:");
+                  }
+                },
+              },
+              { text: "Cancel", style: "cancel" },
+            ]
+          );
+        }
+        setHasCheckedNetwork(true);
+      } catch (error) {
+        console.log("Network check error:", error);
+        setHasCheckedNetwork(true);
+      }
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [hasCheckedNetwork]);
 
   // Override console.log to capture logs
   useEffect(() => {
@@ -3151,7 +3190,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   activityCard: {
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "#0a0a0a",
     borderRadius: 8,
     padding: 16,
     marginHorizontal: 0,

@@ -142,6 +142,19 @@
   </div>
 
   <div class="section">
+    <h2>Test Memo Signing (Ledger-compatible)</h2>
+    <label for="testMessage">Test Message:</label>
+    <textarea
+      id="testMessage"
+      rows="3"
+      placeholder="Enter test message"
+    >Testing Ledger memo signature!</textarea>
+
+    <button id="testSignBtn" onclick="testSignMemo()" disabled>Test Sign with Memo</button>
+    <div id="testSignStatus"></div>
+  </div>
+
+  <div class="section">
     <h2>Transaction History</h2>
     <div id="txHistory" style="font-family: 'Monaco', 'Courier New', monospace; font-size: 12px;"></div>
   </div>
@@ -238,6 +251,7 @@
         // Enable buttons
         document.getElementById('sendBtn').disabled = false;
         document.getElementById('signBtn').disabled = false;
+        document.getElementById('testSignBtn').disabled = false;
 
         addToHistory('success', 'Wallet Connected', `Address: ${publicKey.slice(0, 8)}...${publicKey.slice(-8)}`);
       } catch (error) {
@@ -377,6 +391,51 @@
         statusEl.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
         console.error('Signing error:', error);
         addToHistory('error', 'Signing Failed', error.message);
+      }
+    }
+
+    async function testSignMemo() {
+      const statusEl = document.getElementById('testSignStatus');
+      const message = document.getElementById('testMessage').value;
+
+      if (!wallet) {
+        statusEl.innerHTML = '<div class="status error">❌ Please connect wallet first</div>';
+        return;
+      }
+
+      if (!message) {
+        statusEl.innerHTML = '<div class="status error">❌ Please enter a test message</div>';
+        return;
+      }
+
+      try {
+        statusEl.innerHTML = '<div class="status info">🔄 Testing memo signature (Ledger-compatible)...</div>';
+
+        console.log('[testSignMemo] Calling wallet.testSignMemo...');
+        const encodedMessage = new TextEncoder().encode(message);
+        const result = await wallet.testSignMemo(encodedMessage);
+
+        console.log('[testSignMemo] Got result:', result);
+
+        statusEl.innerHTML = `
+          <div class="status success">
+            ✅ Test signature created!<br/>
+            <strong>Method:</strong> ${result.method}<br/>
+            <strong>Message Length:</strong> ${result.messageLength} bytes<br/>
+            ${result.transactionSize ? `<strong>TX Size:</strong> ${result.transactionSize} bytes<br/>` : ''}
+            <strong>Signature:</strong><br/>
+            <code style="word-break: break-all; font-size: 11px;">${result.signature}</code><br/>
+            <div style="margin-top: 10px; color: #fbbf24; font-size: 12px;">
+              ℹ️ ${result.note}
+            </div>
+          </div>
+        `;
+
+        addToHistory('success', 'Test Memo Signed', message.slice(0, 50) + (message.length > 50 ? '...' : ''));
+      } catch (error) {
+        statusEl.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+        console.error('Test signing error:', error);
+        addToHistory('error', 'Test Signing Failed', error.message);
       }
     }
 

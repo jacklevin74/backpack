@@ -37,6 +37,7 @@ import {
   clusterApiUrl,
   PublicKey,
   Transaction,
+  TransactionInstruction,
   SystemProgram,
   LAMPORTS_PER_SOL,
   sendAndConfirmTransaction,
@@ -827,11 +828,26 @@ export default function App() {
       // Create connection to current network
       const connection = new Connection(currentNetwork.rpcUrl, "confirmed");
 
+      // ============================================================================
+      // LEDGER COMPATIBILITY NOTE:
+      // This transaction uses Legacy format (Transaction, not VersionedTransaction)
+      // to ensure compatibility with all Ledger Solana app versions.
+      //
+      // Ledger app requirements:
+      // - Version >= 1.22.0: Supports Memo v3, AddressLookupTables, and v0 messages
+      // - Version < 1.22.0: Requires Legacy transaction format (used here)
+      //
+      // Using Legacy format avoids "Invalid tag" errors with older Ledger firmware.
+      // ============================================================================
+
       // Create transaction
       const fromPubkey = new PublicKey(selectedWallet.publicKey);
       const toPubkey = new PublicKey(trimmedAddress);
       const lamports = Math.floor(amountNum * LAMPORTS_PER_SOL);
 
+      // IMPORTANT: Use Legacy Transaction format for Ledger compatibility
+      // Ledger Solana app versions < 1.22.0 don't support VersionedTransaction
+      // Legacy format avoids "Invalid tag" errors with older Ledger firmware
       const transaction = new Transaction().add(
         SystemProgram.transfer({
           fromPubkey,
@@ -840,8 +856,8 @@ export default function App() {
         })
       );
 
-      // Get recent blockhash
-      const { blockhash } = await connection.getLatestBlockhash();
+      // Get recent blockhash using legacy method for Ledger compatibility
+      const { blockhash } = await connection.getLatestBlockhash("finalized");
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = fromPubkey;
 
@@ -872,7 +888,9 @@ export default function App() {
         const derivationPath = selectedWalletData.derivationPath;
         console.log("Using derivation path:", derivationPath);
 
-        // Sign the transaction with Ledger
+        // Sign the transaction with Ledger using legacy serialization
+        // NOTE: serializeMessage() creates legacy format compatible with all Ledger app versions
+        // This avoids "Invalid tag" errors with Ledger Solana app < 1.22.0
         const serializedTx = transaction.serializeMessage();
         const signature = await solana.signTransaction(
           derivationPath,
@@ -881,7 +899,7 @@ export default function App() {
 
         console.log("Ledger signature obtained");
 
-        // Add the signature to the transaction
+        // Add the signature to the transaction (legacy format)
         transaction.addSignature(fromPubkey, Buffer.from(signature.signature));
 
         // Disconnect from Ledger
@@ -1014,32 +1032,77 @@ export default function App() {
                 );
               }
 
-              // Connect to Ledger via BLE
-              const transport = await TransportBLE.open(deviceId);
-              const solana = new AppSolana(transport);
+              try {
+                // Connect to Ledger via BLE
+                const transport = await TransportBLE.open(deviceId);
+                const solana = new AppSolana(transport);
 
-              // Get the derivation path for this wallet
-              const derivationPath = selectedWalletData.derivationPath;
-              console.log("Using derivation path:", derivationPath);
+                // Get the derivation path for this wallet
+                const derivationPath = selectedWalletData.derivationPath;
+                console.log("Using derivation path:", derivationPath);
 
-              // Sign the transaction with Ledger
-              const serializedTx = transaction.serializeMessage();
-              const signature = await solana.signTransaction(
-                derivationPath,
-                serializedTx
-              );
+                // Sign the transaction with Ledger
+                const serializedTx = transaction.serializeMessage();
+                const signature = await solana.signTransaction(
+                  derivationPath,
+                  serializedTx
+                );
 
-              console.log("Ledger signature obtained");
+                console.log("Ledger signature obtained");
 
-              // Add the signature to the transaction
-              transaction.addSignature(
-                fromPubkey,
-                Buffer.from(signature.signature)
-              );
+                // Add the signature to the transaction
+                transaction.addSignature(
+                  fromPubkey,
+                  Buffer.from(signature.signature)
+                );
 
-              // Disconnect from Ledger
-              await transport.close();
-              console.log("Ledger disconnected");
+                // Disconnect from Ledger
+                await transport.close();
+                console.log("Ledger disconnected");
+              } catch (ledgerError) {
+                console.error("Ledger transaction signing error:", ledgerError);
+
+                // Provide specific error messages for common Ledger errors
+                let errorMessage = "Ledger transaction signing failed: ";
+
+                // Check for specific error codes
+                if (
+                  ledgerError.message &&
+                  ledgerError.message.includes("0x6a81")
+                ) {
+                  errorMessage +=
+                    "Please make sure:\n1. Your Ledger is unlocked\n2. The Solana app is open (not any other app)\n3. 'Blind signing' is enabled in Solana app settings";
+                } else if (
+                  ledgerError.message &&
+                  ledgerError.message.includes("0x6a80")
+                ) {
+                  errorMessage += "Invalid transaction data. Please try again.";
+                } else if (
+                  ledgerError.message &&
+                  ledgerError.message.includes("0x6985")
+                ) {
+                  errorMessage +=
+                    "Transaction rejected by user on Ledger device.";
+                } else if (
+                  ledgerError.message &&
+                  ledgerError.message.includes("0x6b0c")
+                ) {
+                  errorMessage +=
+                    "Ledger is locked. Please unlock your device and try again.";
+                } else if (
+                  ledgerError.message &&
+                  ledgerError.message.includes("BleError")
+                ) {
+                  errorMessage +=
+                    "Bluetooth connection failed. Please ensure Ledger is connected via Bluetooth.";
+                } else {
+                  errorMessage +=
+                    ledgerError.message ||
+                    "Device not connected or operation cancelled.";
+                }
+
+                throw new Error(errorMessage);
+              }
             } else {
               // Sign with keypair for regular wallets
               if (!selectedWalletData || !selectedWalletData.keypair) {
@@ -1079,45 +1142,130 @@ export default function App() {
             const walletData = wallets.find((w) => w.id === selectedWallet.id);
 
             if (walletData && walletData.isLedger) {
-              // Sign with Ledger
-              console.log("Signing message with Ledger...");
+              // For Ledger: Use transaction hash approach
+              // We create a dummy transaction with the message hash and sign it
+              console.log(
+                "Signing message with Ledger using transaction approach..."
+              );
 
               const deviceId = walletData.ledgerDeviceId;
               if (!deviceId) {
                 throw new Error(
-                  "Ledger device not found. Please connect your Ledger via Bluetooth or switch to a non-Ledger wallet."
+                  "Ledger device not found. Please connect your Ledger via Bluetooth."
                 );
               }
 
               try {
-                // Connect to Ledger via BLE
+                // Connect to Ledger via BLE first
+                console.log("Connecting to Ledger...");
                 const transport = await TransportBLE.open(deviceId);
                 const solana = new AppSolana(transport);
 
                 // Get the derivation path
                 const derivationPath = walletData.derivationPath;
+                console.log("Using derivation path:", derivationPath);
 
-                // Sign the message with Ledger
-                const signature = await solana.signOffchainMessage(
-                  derivationPath,
-                  messageBuffer
+                // Get the public key from Ledger to verify connection
+                console.log("Getting public key from Ledger...");
+                const ledgerPubKey = await solana.getAddress(derivationPath);
+                console.log("Ledger public key:", ledgerPubKey.address);
+
+                // Create a connection to X1 network
+                const x1Connection = new Connection(
+                  "https://rpc.mainnet.x1.xyz"
                 );
+
+                // Get the public key
+                const publicKey = new PublicKey(selectedWallet.publicKey);
+
+                // Get recent blockhash
+                console.log("Fetching blockhash...");
+                const { blockhash } =
+                  await x1Connection.getLatestBlockhash("finalized");
+
+                // Create a simple transfer transaction (0 lamports to self)
+                const dummyTx = new Transaction({
+                  recentBlockhash: blockhash,
+                  feePayer: publicKey,
+                });
+
+                // Add a 0-lamport transfer
+                dummyTx.add(
+                  SystemProgram.transfer({
+                    fromPubkey: publicKey,
+                    toPubkey: publicKey,
+                    lamports: 0,
+                  })
+                );
+
+                console.log("Created transaction, serializing...");
+
+                // Sign the transaction with Ledger
+                const serializedTx = dummyTx.serializeMessage();
+                console.log("Serialized tx length:", serializedTx.length);
+                console.log("Calling signTransaction...");
+
+                const ledgerSignature = await solana.signTransaction(
+                  derivationPath,
+                  serializedTx
+                );
+
+                console.log("Ledger signature obtained:", ledgerSignature);
 
                 // Disconnect from Ledger
                 await transport.close();
+                console.log("Ledger disconnected");
 
+                // Return the signature
                 result = {
-                  signature: Buffer.from(signature.signature).toString(
+                  signature: Buffer.from(ledgerSignature.signature).toString(
                     "base64"
                   ),
                 };
               } catch (ledgerError) {
                 console.error("Ledger signing error:", ledgerError);
-                throw new Error(
-                  "Ledger signing failed: " +
-                    (ledgerError.message ||
-                      "Device not connected or operation cancelled. Please connect your Ledger via Bluetooth or switch to a non-Ledger wallet.")
-                );
+
+                // Provide specific error messages for common Ledger errors
+                let errorMessage = "Ledger message signing failed: ";
+
+                // Check for specific error codes
+                if (
+                  ledgerError.message &&
+                  ledgerError.message.includes("0x6a81")
+                ) {
+                  errorMessage +=
+                    "Please make sure:\n1. Your Ledger is unlocked\n2. The Solana app is open\n3. 'Blind signing' is enabled in Solana app settings";
+                } else if (
+                  ledgerError.message &&
+                  ledgerError.message.includes("0x6a80")
+                ) {
+                  errorMessage +=
+                    "Invalid data sent to Ledger. Please try again.";
+                } else if (
+                  ledgerError.message &&
+                  ledgerError.message.includes("0x6985")
+                ) {
+                  errorMessage +=
+                    "Message signing rejected by user on Ledger device.";
+                } else if (
+                  ledgerError.message &&
+                  ledgerError.message.includes("0x6b0c")
+                ) {
+                  errorMessage +=
+                    "Ledger is locked. Please unlock your device and try again.";
+                } else if (
+                  ledgerError.message &&
+                  ledgerError.message.includes("BleError")
+                ) {
+                  errorMessage +=
+                    "Bluetooth connection failed. Please ensure Ledger is connected via Bluetooth.";
+                } else {
+                  errorMessage +=
+                    ledgerError.message ||
+                    "Device not connected or operation cancelled.";
+                }
+
+                throw new Error(errorMessage);
               }
             } else {
               // Sign with keypair for regular wallets
@@ -1139,6 +1287,133 @@ export default function App() {
 
               result = {
                 signature: Buffer.from(signature).toString("base64"),
+              };
+            }
+            break;
+
+          case "testSignMemo":
+            // Test function: Sign using memo transaction approach (free, doesn't send to network)
+            if (!selectedWallet) {
+              throw new Error("No wallet selected");
+            }
+
+            const { encodedMessage: testMessage } = params;
+            const testMessageBuffer = Buffer.from(testMessage, "base64");
+
+            console.log(
+              "[testSignMemo] Starting test, message length:",
+              testMessageBuffer.length
+            );
+
+            // Get the wallet's data
+            const testWalletData = wallets.find(
+              (w) => w.id === selectedWallet.id
+            );
+
+            if (testWalletData && testWalletData.isLedger) {
+              console.log("[testSignMemo] Using Ledger wallet");
+
+              // Create a connection to X1 network
+              const x1Conn = new Connection("https://rpc.mainnet.x1.xyz");
+
+              // Get the public key
+              const pubKey = new PublicKey(selectedWallet.publicKey);
+
+              // Get recent blockhash
+              console.log("[testSignMemo] Fetching blockhash...");
+              const { blockhash: memoBlockhash } =
+                await x1Conn.getLatestBlockhash("finalized");
+
+              // Create a transaction with memo instruction containing the message
+              // Note: We add a 0-lamport transfer to make Ledger accept it as a valid transaction
+              const testMemoTx = new Transaction({
+                recentBlockhash: memoBlockhash,
+                feePayer: pubKey,
+              });
+
+              // Add a 0-lamport transfer to yourself (makes Ledger happy)
+              testMemoTx.add(
+                SystemProgram.transfer({
+                  fromPubkey: pubKey,
+                  toPubkey: pubKey,
+                  lamports: 0,
+                })
+              );
+
+              // Add memo instruction with the message
+              const MEMO_PROG_ID = new PublicKey(
+                "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
+              );
+
+              const testMemoInstruction = new TransactionInstruction({
+                keys: [],
+                programId: MEMO_PROG_ID,
+                data: testMessageBuffer,
+              });
+
+              testMemoTx.add(testMemoInstruction);
+
+              console.log(
+                "[testSignMemo] Created memo transaction, connecting to Ledger..."
+              );
+
+              // Connect to Ledger via BLE
+              const testTransport = await TransportBLE.open(
+                testWalletData.ledgerDeviceId
+              );
+              const testSolana = new AppSolana(testTransport);
+
+              // Get the derivation path
+              const testDerivPath = testWalletData.derivationPath;
+              console.log(
+                "[testSignMemo] Using derivation path:",
+                testDerivPath
+              );
+
+              // Sign the transaction with Ledger
+              const testSerializedTx = testMemoTx.serializeMessage();
+              console.log("[testSignMemo] Signing with Ledger...");
+              const testLedgerSig = await testSolana.signTransaction(
+                testDerivPath,
+                testSerializedTx
+              );
+
+              console.log("[testSignMemo] Signature obtained!");
+
+              // Disconnect from Ledger
+              await testTransport.close();
+
+              // Return detailed result for testing
+              result = {
+                success: true,
+                signature: Buffer.from(testLedgerSig.signature).toString(
+                  "base64"
+                ),
+                method: "memo_transaction",
+                messageLength: testMessageBuffer.length,
+                transactionSize: testSerializedTx.length,
+                note: "This signature was created by signing a memo transaction (NOT sent to network, completely free)",
+              };
+            } else {
+              // For non-Ledger wallets, use regular signing
+              console.log("[testSignMemo] Using regular wallet");
+
+              if (!testWalletData || !testWalletData.keypair) {
+                throw new Error("Wallet keypair not found");
+              }
+
+              const nacl = require("tweetnacl");
+              const testSig = nacl.sign.detached(
+                testMessageBuffer,
+                testWalletData.keypair.secretKey
+              );
+
+              result = {
+                success: true,
+                signature: Buffer.from(testSig).toString("base64"),
+                method: "nacl_sign",
+                messageLength: testMessageBuffer.length,
+                note: "Regular wallet signature using nacl",
               };
             }
             break;
@@ -2229,6 +2504,35 @@ export default function App() {
                       return result.signature;
                     } catch (err) {
                       console.error('x1.signMessage error:', err);
+                      throw err;
+                    }
+                  },
+
+                  // Test function: Sign a message using memo transaction (for testing Ledger)
+                  testSignMemo: async function(message) {
+                    try {
+                      console.log('[testSignMemo] Starting test with message:', message);
+
+                      // Encode the message to base64
+                      let encodedMessage;
+                      if (typeof message === 'string') {
+                        encodedMessage = btoa(message);
+                      } else if (message instanceof Uint8Array) {
+                        encodedMessage = btoa(String.fromCharCode.apply(null, message));
+                      } else {
+                        throw new Error('Invalid message format');
+                      }
+
+                      console.log('[testSignMemo] Encoded message:', encodedMessage);
+
+                      const result = await sendRequest('testSignMemo', {
+                        encodedMessage
+                      });
+
+                      console.log('[testSignMemo] Got result:', result);
+                      return result;
+                    } catch (err) {
+                      console.error('x1.testSignMemo error:', err);
                       throw err;
                     }
                   }

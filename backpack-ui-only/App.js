@@ -60,7 +60,7 @@ import { WebView } from "react-native-webview";
 const { LedgerUsb } = NativeModules;
 
 // Network configurations
-const API_SERVER = "http://162.250.126.66:4000";
+const API_SERVER = "http://192.168.1.61:4000";
 const DEMO_WALLET_ADDRESS = "29dSqUTTH5okWAr3oLkQWrV968FQxgVqPCSqMqRLj8K2";
 
 // Mock wallets data
@@ -216,12 +216,11 @@ export default function App() {
   const [sendError, setSendError] = useState("");
 
   // Browser/WebView states
-  const [browserUrl, setBrowserUrl] = useState(
-    "http://162.250.126.66:4000/test"
-  );
+  const [browserUrl, setBrowserUrl] = useState("http://192.168.1.61:4000/test");
   const [browserInputUrl, setBrowserInputUrl] = useState(
-    "http://162.250.126.66:4000/test"
+    "http://192.168.1.61:4000/test"
   );
+  const [showTestBrowser, setShowTestBrowser] = useState(false);
   const webViewRef = useRef(null);
 
   // Bottom sheet refs
@@ -248,8 +247,15 @@ export default function App() {
   // Wallet storage functions
   const saveWalletsToStorage = async (walletsToSave) => {
     try {
-      await AsyncStorage.setItem("@wallets", JSON.stringify(walletsToSave));
-      console.log("Wallets saved to storage:", walletsToSave.length);
+      // Remove keypair objects before saving (they can't be JSON serialized)
+      // We only save secretKey and reconstruct keypair when loading
+      const walletsForStorage = walletsToSave.map((wallet) => {
+        const { keypair, ...walletWithoutKeypair } = wallet;
+        return walletWithoutKeypair;
+      });
+
+      await AsyncStorage.setItem("@wallets", JSON.stringify(walletsForStorage));
+      console.log("Wallets saved to storage:", walletsForStorage.length);
     } catch (error) {
       console.error("Error saving wallets:", error);
     }
@@ -261,9 +267,53 @@ export default function App() {
       if (storedWallets) {
         const parsed = JSON.parse(storedWallets);
         console.log("Loaded wallets from storage:", parsed.length);
-        setWallets(parsed);
-        if (parsed.length > 0 && !selectedWallet) {
-          setSelectedWallet(parsed[0]);
+
+        // Reconstruct keypairs from stored secret keys
+        const walletsWithKeypairs = parsed.map((wallet) => {
+          if (wallet.secretKey && !wallet.isLedger) {
+            try {
+              const secretKeyArray = new Uint8Array(wallet.secretKey);
+              const keypair = Keypair.fromSecretKey(secretKeyArray);
+              return { ...wallet, keypair };
+            } catch (err) {
+              console.error(
+                "Error reconstructing keypair for wallet:",
+                wallet.id,
+                err
+              );
+              return wallet;
+            }
+          }
+          return wallet;
+        });
+
+        setWallets(walletsWithKeypairs);
+
+        // Load the last selected wallet from storage
+        try {
+          const storedSelectedWalletId =
+            await AsyncStorage.getItem("@selectedWalletId");
+          if (storedSelectedWalletId) {
+            const selectedWalletFromStorage = walletsWithKeypairs.find(
+              (w) => w.id === storedSelectedWalletId
+            );
+            if (selectedWalletFromStorage) {
+              setSelectedWallet(selectedWalletFromStorage);
+              console.log(
+                "Restored selected wallet:",
+                selectedWalletFromStorage.name
+              );
+            } else if (walletsWithKeypairs.length > 0) {
+              setSelectedWallet(walletsWithKeypairs[0]);
+            }
+          } else if (walletsWithKeypairs.length > 0) {
+            setSelectedWallet(walletsWithKeypairs[0]);
+          }
+        } catch (err) {
+          console.error("Error loading selected wallet:", err);
+          if (walletsWithKeypairs.length > 0) {
+            setSelectedWallet(walletsWithKeypairs[0]);
+          }
         }
       }
     } catch (error) {
@@ -275,6 +325,19 @@ export default function App() {
   useEffect(() => {
     loadWalletsFromStorage();
   }, []);
+
+  // Save selected wallet ID to storage whenever it changes
+  useEffect(() => {
+    if (selectedWallet) {
+      AsyncStorage.setItem("@selectedWalletId", String(selectedWallet.id))
+        .then(() => {
+          console.log("Saved selected wallet ID:", selectedWallet.id);
+        })
+        .catch((err) => {
+          console.error("Error saving selected wallet ID:", err);
+        });
+    }
+  }, [selectedWallet]);
 
   // Check network connectivity after 5 seconds
   useEffect(() => {
@@ -900,6 +963,17 @@ export default function App() {
             if (!selectedWallet) {
               throw new Error("No wallet selected");
             }
+
+            // Debug: Check wallet capabilities
+            const walletInfo = wallets.find((w) => w.id === selectedWallet.id);
+            console.log("Selected wallet info:", {
+              id: walletInfo?.id,
+              name: walletInfo?.name,
+              publicKey: walletInfo?.publicKey,
+              isLedger: walletInfo?.isLedger,
+              hasKeypair: !!walletInfo?.keypair,
+            });
+
             result = {
               publicKey: selectedWallet.publicKey,
             };
@@ -1011,29 +1085,40 @@ export default function App() {
               const deviceId = walletData.ledgerDeviceId;
               if (!deviceId) {
                 throw new Error(
-                  "Ledger device ID not found. Please reconnect your Ledger."
+                  "Ledger device not found. Please connect your Ledger via Bluetooth or switch to a non-Ledger wallet."
                 );
               }
 
-              // Connect to Ledger via BLE
-              const transport = await TransportBLE.open(deviceId);
-              const solana = new AppSolana(transport);
+              try {
+                // Connect to Ledger via BLE
+                const transport = await TransportBLE.open(deviceId);
+                const solana = new AppSolana(transport);
 
-              // Get the derivation path
-              const derivationPath = walletData.derivationPath;
+                // Get the derivation path
+                const derivationPath = walletData.derivationPath;
 
-              // Sign the message with Ledger
-              const signature = await solana.signOffchainMessage(
-                derivationPath,
-                messageBuffer
-              );
+                // Sign the message with Ledger
+                const signature = await solana.signOffchainMessage(
+                  derivationPath,
+                  messageBuffer
+                );
 
-              // Disconnect from Ledger
-              await transport.close();
+                // Disconnect from Ledger
+                await transport.close();
 
-              result = {
-                signature: Buffer.from(signature.signature).toString("base64"),
-              };
+                result = {
+                  signature: Buffer.from(signature.signature).toString(
+                    "base64"
+                  ),
+                };
+              } catch (ledgerError) {
+                console.error("Ledger signing error:", ledgerError);
+                throw new Error(
+                  "Ledger signing failed: " +
+                    (ledgerError.message ||
+                      "Device not connected or operation cancelled. Please connect your Ledger via Bluetooth or switch to a non-Ledger wallet.")
+                );
+              }
             } else {
               // Sign with keypair for regular wallets
               if (!walletData || !walletData.keypair) {
@@ -1043,7 +1128,14 @@ export default function App() {
               }
 
               const keypair = walletData.keypair;
-              const signature = keypair.sign(messageBuffer);
+
+              // Use nacl to sign the message with the secret key
+              // Solana Keypair.sign() is for transactions, not arbitrary messages
+              const nacl = require("tweetnacl");
+              const signature = nacl.sign.detached(
+                messageBuffer,
+                keypair.secretKey
+              );
 
               result = {
                 signature: Buffer.from(signature).toString("base64"),
@@ -1060,11 +1152,14 @@ export default function App() {
       }
 
       // Send response back to WebView
-      const response = JSON.stringify({ id, result, error });
+      const responseObj = { id, result, error };
+      console.log("Sending response to WebView:", responseObj);
+      const response = JSON.stringify(responseObj);
       const jsCode = `
         window.postMessage(${response}, '*');
         true;
       `;
+      console.log("Injecting JavaScript:", jsCode);
       webViewRef.current?.injectJavaScript(jsCode);
     } catch (err) {
       console.error("Error parsing WebView message:", err);
@@ -1142,6 +1237,8 @@ export default function App() {
         address: `${publicKeyStr.slice(0, 4)}...${publicKeyStr.slice(-4)}`,
         publicKey: publicKeyStr,
         selected: false,
+        secretKey: Array.from(keypair.secretKey), // Store as array for JSON serialization
+        keypair: keypair, // Keep in memory for immediate use
       };
 
       const updatedWallets = [...wallets, newWallet];
@@ -1179,6 +1276,8 @@ export default function App() {
         address: `${publicKeyStr.slice(0, 4)}...${publicKeyStr.slice(-4)}`,
         publicKey: publicKeyStr,
         selected: false,
+        secretKey: Array.from(keypair.secretKey), // Store as array for JSON serialization
+        keypair: keypair, // Keep in memory for immediate use
       };
 
       const updatedWallets = [...wallets, newWallet];
@@ -1931,6 +2030,219 @@ export default function App() {
     Linking.openURL(url);
   };
 
+  // Test Browser Page
+  if (showTestBrowser) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }}>
+        <StatusBar hidden={true} />
+        {/* Header */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            padding: 15,
+            backgroundColor: "#1a1a1a",
+            borderBottomWidth: 1,
+            borderBottomColor: "#333",
+          }}
+        >
+          <TouchableOpacity
+            onPress={() => setShowTestBrowser(false)}
+            style={{ marginRight: 15 }}
+          >
+            <Text style={{ color: "#fff", fontSize: 24 }}>←</Text>
+          </TouchableOpacity>
+          <Text
+            style={{ color: "#fff", fontSize: 18, fontWeight: "bold", flex: 1 }}
+          >
+            Browser
+          </Text>
+        </View>
+
+        {/* URL Bar */}
+        <View
+          style={{
+            flexDirection: "row",
+            padding: 10,
+            backgroundColor: "#1a1a1a",
+            borderBottomWidth: 1,
+            borderBottomColor: "#333",
+          }}
+        >
+          <TextInput
+            style={{
+              flex: 1,
+              backgroundColor: "#2a2a2a",
+              color: "#fff",
+              padding: 10,
+              borderRadius: 5,
+              marginRight: 10,
+            }}
+            value={browserInputUrl}
+            onChangeText={setBrowserInputUrl}
+            placeholder="Enter URL (e.g., http://192.168.1.61:4000/test)"
+            placeholderTextColor="#666"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <TouchableOpacity
+            onPress={() => {
+              let url = browserInputUrl.trim();
+              if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                url = "http://" + url;
+              }
+              console.log("Loading URL:", url);
+              setBrowserUrl(url);
+            }}
+            style={{
+              backgroundColor: "#4a90e2",
+              paddingHorizontal: 20,
+              paddingVertical: 10,
+              borderRadius: 5,
+              justifyContent: "center",
+            }}
+          >
+            <Text style={{ color: "#fff", fontWeight: "bold" }}>Go</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* WebView */}
+        <View style={{ flex: 1 }}>
+          <WebView
+            ref={webViewRef}
+            source={{ uri: browserUrl }}
+            style={{ flex: 1 }}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            onMessage={handleWebViewMessage}
+            onLoadStart={() => console.log("WebView loading:", browserUrl)}
+            onLoad={() => console.log("WebView loaded successfully")}
+            onError={(e) => console.error("WebView error:", e.nativeEvent)}
+            injectedJavaScriptBeforeContentLoaded={`
+              (function() {
+                // Create a promise-based request system
+                let requestId = 0;
+                const pendingRequests = {};
+
+                // Listen for responses from React Native
+                window.addEventListener('message', (event) => {
+                  try {
+                    const response = typeof event.data === 'string'
+                      ? JSON.parse(event.data)
+                      : event.data;
+
+                    if (response.id && pendingRequests[response.id]) {
+                      const { resolve, reject } = pendingRequests[response.id];
+
+                      if (response.error) {
+                        reject(new Error(response.error));
+                      } else {
+                        resolve(response.result);
+                      }
+
+                      delete pendingRequests[response.id];
+                    }
+                  } catch (err) {
+                    console.error('Error processing message:', err);
+                  }
+                });
+
+                // Helper function to send requests to React Native
+                function sendRequest(method, params = {}) {
+                  return new Promise((resolve, reject) => {
+                    const id = ++requestId;
+                    pendingRequests[id] = { resolve, reject };
+
+                    const message = JSON.stringify({ id, method, params });
+                    window.ReactNativeWebView.postMessage(message);
+
+                    // Timeout after 30 seconds
+                    setTimeout(() => {
+                      if (pendingRequests[id]) {
+                        delete pendingRequests[id];
+                        reject(new Error('Request timeout'));
+                      }
+                    }, 30000);
+                  });
+                }
+
+                // Create the window.x1 API
+                window.x1 = {
+                  // Connect to the wallet and get public key
+                  connect: async function() {
+                    try {
+                      const result = await sendRequest('connect');
+                      return result.publicKey;
+                    } catch (err) {
+                      console.error('x1.connect error:', err);
+                      throw err;
+                    }
+                  },
+
+                  // Sign and send a transaction
+                  signAndSendTransaction: async function(transaction, options = {}) {
+                    try {
+                      // Serialize the transaction to base64
+                      let txData;
+                      if (transaction.serialize) {
+                        // If it's a Transaction object
+                        txData = transaction.serialize({
+                          requireAllSignatures: false,
+                          verifySignatures: false
+                        }).toString('base64');
+                      } else if (transaction instanceof Uint8Array) {
+                        // If it's already serialized
+                        txData = btoa(String.fromCharCode.apply(null, transaction));
+                      } else {
+                        throw new Error('Invalid transaction format');
+                      }
+
+                      const result = await sendRequest('signAndSendTransaction', {
+                        transaction: txData,
+                        options
+                      });
+
+                      return result;
+                    } catch (err) {
+                      console.error('x1.signAndSendTransaction error:', err);
+                      throw err;
+                    }
+                  },
+
+                  // Sign a message
+                  signMessage: async function(message) {
+                    try {
+                      // Encode the message to base64
+                      let encodedMessage;
+                      if (typeof message === 'string') {
+                        encodedMessage = btoa(message);
+                      } else if (message instanceof Uint8Array) {
+                        encodedMessage = btoa(String.fromCharCode.apply(null, message));
+                      } else {
+                        throw new Error('Invalid message format');
+                      }
+
+                      const result = await sendRequest('signMessage', {
+                        encodedMessage
+                      });
+
+                      return result.signature;
+                    } catch (err) {
+                      console.error('x1.signMessage error:', err);
+                      throw err;
+                    }
+                  }
+                };
+
+                console.log('window.x1 API initialized');
+              })();
+            `}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.container}>
@@ -2102,8 +2414,8 @@ export default function App() {
               <TouchableOpacity
                 style={styles.actionCircle}
                 onPress={() => {
-                  console.log("Browser button pressed, expanding sheet");
-                  browserSheetRef.current?.expand();
+                  console.log("Browser button pressed, opening test page");
+                  setShowTestBrowser(true);
                 }}
               >
                 <View style={styles.actionCircleBg}>

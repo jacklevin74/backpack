@@ -175,6 +175,7 @@
     }
 
     let wallet = null;
+    let walletPublicKey = null;
     let connection = null;
     const X1_RPC_URL = 'https://rpc.mainnet.x1.xyz';
 
@@ -207,7 +208,12 @@
         const response = await window.x1.connect();
         wallet = window.x1;
 
-        const publicKey = response.publicKey.toString();
+        // Handle both string and object responses
+        const publicKey = typeof response === 'string' ? response :
+                         (response.publicKey?.toString ? response.publicKey.toString() : response.publicKey);
+
+        // Store the public key
+        walletPublicKey = new solanaWeb3.PublicKey(publicKey);
 
         // Get balance
         const balanceLamports = await connection.getBalance(new solanaWeb3.PublicKey(publicKey));
@@ -260,14 +266,14 @@
       try {
         statusEl.innerHTML = '<div class="status info">🔄 Building transaction...</div>';
 
-        const fromPubkey = wallet.publicKey;
+        const fromPubkey = walletPublicKey;
         const toPubkey = new solanaWeb3.PublicKey(recipient);
         const lamports = Math.floor(amount * 1e9);
 
         // Get recent blockhash with finalized commitment
         const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
 
-        // Create transaction
+        // Create transaction with fee payer
         const transaction = new solanaWeb3.Transaction({
           recentBlockhash: blockhash,
           feePayer: fromPubkey,

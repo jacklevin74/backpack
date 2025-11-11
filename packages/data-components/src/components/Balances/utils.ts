@@ -1,8 +1,11 @@
 import type { GetTokenBalancesQuery } from "../../apollo/graphql";
 
-export type ResponseBalanceSummary = NonNullable<
-  NonNullable<GetTokenBalancesQuery["wallet"]>["balances"]
->["aggregate"];
+export type ResponseBalanceSummary = {
+  id: string;
+  percentChange: number;
+  value: number;
+  valueChange: number;
+};
 
 export type ResponseTokenBalance = NonNullable<
   NonNullable<

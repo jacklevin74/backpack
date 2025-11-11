@@ -58,8 +58,9 @@ export function TokenBalances() {
   const swapEnabled = blockchain === Blockchain.SOLANA && !isDevnet;
 
   // Use SOLANA or X1 as providerId based on the connection URL
+  // Note: Backpack GraphQL API accepts "SOLANA" without network suffix
   const providerId = isSolanaNetwork
-    ? "SOLANA-mainnet"
+    ? "SOLANA"
     : (blockchain.toUpperCase() as ProviderId);
 
   return (

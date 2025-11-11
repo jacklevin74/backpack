@@ -441,6 +441,8 @@ export const BACKEND_API_URL_PROD = "http://162.250.126.66:4000";
 export const BACKEND_API_URL_DEV = "http://localhost:4000";
 export const BACKEND_API_URL = BACKEND_API_URL_PROD; // Default for build - use production
 export const X1_JSON_SERVER_URL = "http://162.250.126.66:4000";
+// Official Backpack GraphQL API endpoint for Solana token data
+export const BACKPACK_GRAPHQL_API_URL = "https://backpack-api.xnfts.dev/v2/graphql";
 export const MESSAGING_COMMUNICATION_PUSH = "MESSAGING_COMMUNICATION_PUSH";
 export const MESSAGING_COMMUNICATION_FETCH = "MESSAGINyarG_COMMUNICATION_FETCH";
 export const MESSAGING_COMMUNICATION_FETCH_RESPONSE =

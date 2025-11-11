@@ -14,7 +14,7 @@ import {
 import { RetryLink } from "@apollo/client/link/retry";
 import { LocalStorageWrapper, persistCacheSync } from "apollo3-cache-persist";
 
-import { BACKEND_API_URL, X1_JSON_SERVER_URL } from "../constants";
+import { BACKEND_API_URL, X1_JSON_SERVER_URL, BACKPACK_GRAPHQL_API_URL } from "../constants";
 
 const cache = new InMemoryCache({
   addTypename: true,
@@ -276,7 +276,7 @@ export function createApolloClient(
   headers?: Record<string, string>
 ): ApolloClient<NormalizedCacheObject> {
   const httpLink = createHttpLink({
-    uri: `${BACKEND_API_URL}/`,
+    uri: BACKPACK_GRAPHQL_API_URL,  // Use official Backpack GraphQL API
     headers,
   });
 
@@ -285,7 +285,7 @@ export function createApolloClient(
     console.log("🚀 GraphQL Query:", operation.operationName);
     console.log("📋 Query:", operation.query.loc?.source.body);
     console.log("🔧 Variables:", JSON.stringify(operation.variables, null, 2));
-    console.log("🌐 URL:", BACKEND_API_URL);
+    console.log("🌐 GraphQL URL:", BACKPACK_GRAPHQL_API_URL);
     return forward(operation).map((response) => {
       console.log("✅ Response for", operation.operationName, ":", response);
       return response;

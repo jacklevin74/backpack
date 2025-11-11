@@ -1,6 +1,12 @@
 /* eslint-disable react/jsx-no-useless-fragment */
 /* eslint-disable react-hooks/exhaustive-deps */
-import { type ComponentPropsWithoutRef, useMemo, useState } from "react";
+import {
+  type ComponentPropsWithoutRef,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Blockchain,
   formatTitleCase,
@@ -48,6 +54,12 @@ import {
 } from "@mui/material";
 import { useNavigation } from "@react-navigation/native";
 import { useRecoilValue } from "recoil";
+
+import { changeNetwork } from "../Unlocked/Settings/Preferences/Blockchains/ConnectionSwitch";
+
+const X1_MAINNET_URL = "https://rpc.mainnet.x1.xyz";
+const SOLANA_MAINNET_URL =
+  "https://capable-autumn-thunder.solana-mainnet.quiknode.pro/3d4ed46b454fa0ca3df983502fdf15fe87145d9e/";
 
 import {
   Routes,
@@ -119,28 +131,69 @@ function WalletButton({
 }) {
   const classes = useStyles();
   const theme = useTheme();
+  const background = useBackgroundClient();
   const connectionUrl = useRecoilValue(
     blockchainConnectionUrl(wallet.blockchain)
   );
 
-  // Determine which logo to show based on connection URL
-  // When on Solana networks, show Solana logo; otherwise show blockchain logo
-  const iconUrl = (() => {
-    if (
-      connectionUrl?.includes("solana.com") ||
-      connectionUrl?.includes("solana-mainnet.quiknode.pro")
-    ) {
-      return "./solana.png";
+  const [isNetworkOpen, setIsNetworkOpen] = useState(false);
+  const [switching, setSwitching] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Determine if we're currently on X1 or Solana based on the connection URL
+  const isX1Network =
+    connectionUrl === X1_MAINNET_URL || !connectionUrl?.includes("solana");
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsNetworkOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleNetworkSwitch = async (toX1: boolean, e: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (switching) return;
+
+    setIsNetworkOpen(false);
+    setSwitching(true);
+    try {
+      const newUrl = toX1 ? X1_MAINNET_URL : SOLANA_MAINNET_URL;
+      await changeNetwork(
+        background,
+        wallet.blockchain,
+        newUrl,
+        undefined,
+        wallet.blockchain
+      );
+    } catch (err) {
+      console.error("Error switching network:", err);
+    } finally {
+      setSwitching(false);
     }
-    return getBlockchainLogo(wallet.blockchain);
-  })();
+  };
+
+  // Determine which logo to show based on connection URL
+  const iconUrl = isX1Network ? "./x1.png" : "./solana.png";
 
   return (
     <div
+      ref={dropdownRef}
       style={{
         flex: 1,
         display: "flex",
         justifyContent: "space-between",
+        position: "relative",
         ...style,
       }}
     >
@@ -159,7 +212,6 @@ function WalletButton({
             display: "flex",
             padding: "5px",
           }}
-          onClick={onClick}
         >
           {showIcon ? (
             <div
@@ -170,9 +222,16 @@ function WalletButton({
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "center",
+                cursor: switching ? "not-allowed" : "pointer",
+                opacity: switching ? 0.6 : 1,
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!switching) {
+                  setIsNetworkOpen(!isNetworkOpen);
+                }
               }}
             >
-              {" "}
               <ProxyImage
                 noSkeleton
                 src={iconUrl}
@@ -189,6 +248,7 @@ function WalletButton({
               flexDirection: "column",
               justifyContent: "center",
             }}
+            onClick={onClick}
           >
             <Typography
               style={{
@@ -206,6 +266,7 @@ function WalletButton({
               flexDirection: "column",
               justifyContent: "center",
             }}
+            onClick={onClick}
           >
             <ExpandMore
               style={{
@@ -217,6 +278,49 @@ function WalletButton({
         </div>
         <CopyButtonHeader />
       </MuiButton>
+
+      {/* Network Dropdown */}
+      {isNetworkOpen ? <div
+        style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            left: 0,
+            backgroundColor: theme.baseBackgroundL1.val,
+            borderRadius: "12px",
+            border: `solid 1px ${theme.baseBorderMed.val}`,
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+            zIndex: 1000,
+            minWidth: "120px",
+          }}
+        >
+        <div
+          style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "6px 10px",
+              cursor: "pointer",
+            }}
+          onClick={(e) => handleNetworkSwitch(!isX1Network, e)}
+          >
+          <img
+            src={isX1Network ? "./solana.png" : "./x1.png"}
+            alt={isX1Network ? "Solana" : "X1"}
+            style={{
+                width: "20px",
+                height: "20px",
+              }}
+            />
+          <span
+            style={{
+                fontSize: "14px",
+                color: theme.baseTextMedEmphasis.val,
+              }}
+            >
+            {isX1Network ? "Solana" : "X1"}
+          </span>
+        </div>
+      </div> : null}
     </div>
   );
 }

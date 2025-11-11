@@ -8,10 +8,8 @@ import { CommonActions } from "@react-navigation/native";
 import type { StackNavigationOptions } from "@react-navigation/stack";
 
 import { CloseButton } from "../../components/common/Layout/Drawer";
-import { NetworkToggle } from "../../components/common/NetworkToggle";
 import { WalletDrawerButton } from "../../components/common/WalletList";
 import { SettingsButton } from "../../components/Unlocked/Settings";
-import { AvatarPopoverButton } from "../../components/Unlocked/Settings/AvatarPopover";
 
 import { Routes as WalletsNavigatorRoutes } from "./WalletsNavigator";
 
@@ -191,15 +189,9 @@ export function rootNavHeaderOptions({ navigation }: { navigation: any }): any {
   return {
     title: "",
     headerTitleAlign: "center",
-    headerTitle: () => (
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <ActiveWalletDrawerButton navigation={navigation} />
-        <NetworkToggle />
-      </div>
-    ),
     headerLeft: () => (
       <NavButtonContainer>
-        <AvatarPopoverButton />
+        <ActiveWalletDrawerButton navigation={navigation} />
       </NavButtonContainer>
     ),
     headerRight: () => (

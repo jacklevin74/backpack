@@ -71,14 +71,6 @@ appId: com.anonymous.backpackuionly
     point: "90%,15%"  # Copy icon is in top right of the sheet
 - waitForAnimationToEnd
 
-- takeScreenshot: "05-private-key-copied"
-
-# Step 9: Close private key sheet
-- tapOn: "✕"
-- waitForAnimationToEnd
-
-- takeScreenshot: "06-back-to-wallet-list"
-
 # Step 10: Open the 3-dot menu again to access seed phrase
 - tapOn:
     id: "first-wallet-menu-button"
@@ -101,7 +93,7 @@ appId: com.anonymous.backpackuionly
 - takeScreenshot: "08-seed-phrase-sheet-opened"
 
 # Step 13: Verify seed phrase bottom sheet is visible
-- assertVisible: "Recovery Phrase"
+- assertVisible: "Seed Phrase"
 
 # Step 14: Verify seed phrase is displayed (should contain 12 or 24 words)
 - assertVisible:

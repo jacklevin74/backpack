@@ -33,3 +33,10 @@ src/generated-config.ts
 
 localhost.pem
 localhost-key.pem
+
+# Playwright
+test-results/
+playwright-report/
+e2e/.playwright-user-data/
+e2e/screenshots/
+e2e/videos/

@@ -73,5 +73,45 @@ appId: com.anonymous.backpackuionly
 
 - takeScreenshot: "05-private-key-copied"
 
-# Test complete - private key sheet verified!
-# Private key can be displayed and copied successfully
+# Step 9: Close private key sheet
+- tapOn: "✕"
+- waitForAnimationToEnd
+
+- takeScreenshot: "06-back-to-wallet-list"
+
+# Step 10: Open the 3-dot menu again to access seed phrase
+- tapOn:
+    id: "first-wallet-menu-button"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "07-menu-reopened"
+
+# Step 11: Verify the edit wallet sheet opened
+- assertVisible: "Edit Wallet"
+- assertVisible: "Show Seed Phrase"
+
+# Step 12: Tap "Show Seed Phrase" button
+- tapOn:
+    id: "show-seed-phrase-button"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd  # Extra wait for sheet to fully open
+
+- takeScreenshot: "08-seed-phrase-sheet-opened"
+
+# Step 13: Verify seed phrase bottom sheet is visible
+- assertVisible: "Recovery Phrase"
+
+# Step 14: Verify seed phrase is displayed (should contain 12 or 24 words)
+- assertVisible:
+    text: "[a-z]+ [a-z]+ [a-z]+"  # Match at least 3 words
+
+# Step 15: Tap copy button (the ⧉ icon) to copy seed phrase
+- tapOn:
+    point: "90%,15%"  # Copy icon is in top right of the sheet
+- waitForAnimationToEnd
+
+- takeScreenshot: "09-seed-phrase-copied"
+
+# Test complete - both private key and seed phrase verified!

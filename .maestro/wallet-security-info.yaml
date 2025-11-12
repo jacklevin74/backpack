@@ -79,7 +79,7 @@ appId: com.anonymous.backpackuionly
 
 - takeScreenshot: "06-back-to-wallet-list"
 
-# Step 10: Verify we're back at wallet list
+# Step 10: Verify we're back at home screen (wallet list should be visible)
 - assertVisible: "Wallets"
 
 # Step 11: Open the 3-dot menu again to access seed phrase
@@ -99,11 +99,12 @@ appId: com.anonymous.backpackuionly
     id: "show-seed-phrase-button"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
+- waitForAnimationToEnd  # Extra wait for sheet to fully open
 
 - takeScreenshot: "08-seed-phrase-sheet-opened"
 
 # Step 14: Verify seed phrase bottom sheet is visible
-- assertVisible: "Seed Phrase"
+- assertVisible: "Recovery Phrase"
 
 # Step 15: Verify seed phrase is displayed (should contain 12 or 24 words)
 # We'll check for common BIP39 words pattern
@@ -123,14 +124,16 @@ appId: com.anonymous.backpackuionly
 
 - takeScreenshot: "10-back-to-wallet-list-again"
 
-# Step 18: Verify we're back at the wallet list
-- assertVisible: "Wallets"
-
-# Step 19: Close the wallet list
+# Step 18: Close the wallet list to go back to home screen
 - tapOn:
     point: "50%,90%"
 - waitForAnimationToEnd
 
-- takeScreenshot: "11-test-complete"
+- takeScreenshot: "11-back-to-home"
+
+# Step 19: Verify we're back at the home screen
+- assertVisible: "XNT"  # Home screen shows token symbol
+
+- takeScreenshot: "12-test-complete"
 
 # Test complete - private key and seed phrase dialogs verified!

@@ -13,18 +13,22 @@ This document explains how to test wallet creation flows for the Backpack extens
 3. ✅ Extension API injection (`window.x1`, `window.ethereum`)
 4. ✅ Extension storage/state
 5. ✅ Onboarding page auto-opens
-6. ⚠️  Popup direct navigation (limited by Playwright)
+6. ⚠️ Popup direct navigation (limited by Playwright)
 
 ## Test Files
 
 ### `wallet-creation.spec.ts`
+
 Basic wallet creation tests:
+
 - Options page testing
 - Popup URL attempts
 - Storage verification
 
 ### `wallet-creation-advanced.spec.ts`
+
 Advanced tests using Chrome DevTools Protocol (CDP):
+
 - CDP session creation
 - Target detection
 - API injection verification
@@ -33,7 +37,9 @@ Advanced tests using Chrome DevTools Protocol (CDP):
 ## Key Discoveries
 
 ### 1. Auto-Onboarding Page
+
 When the extension loads fresh, it automatically opens:
+
 ```
 chrome-extension://{id}/options.html?onboarding=true
 ```
@@ -53,6 +59,7 @@ The extension successfully injects wallet APIs into web pages:
 ### 3. Extension Targets
 
 CDP can detect these extension components:
+
 - Service worker: `background.js`
 - Onboarding page: `options.html?onboarding=true`
 - Popup: `popup.html` (exists but can't navigate directly)
@@ -77,16 +84,19 @@ Since Playwright can't fully automate extension popup interactions, use this man
 ### Steps:
 
 1. **Run a test to get the extension ID**:
+
    ```bash
    yarn playwright test e2e/extension-basic.spec.ts
    ```
 
 2. **Copy the extension popup URL** from output:
+
    ```
    chrome-extension://jhlbmmmflolgejnkfiggbcikbjbniidi/popup.html
    ```
 
 3. **Open in Chrome**:
+
    - Paste URL in Chrome address bar
    - Or click the extension icon in toolbar
 
@@ -106,12 +116,12 @@ Instead of testing the popup UI, test the injected wallet APIs:
 
 ```typescript
 const page = await context.newPage();
-await page.goto('https://example.com');
+await page.goto("https://example.com");
 
 const hasAPI = await page.evaluate(() => {
   return {
-    hasX1: typeof (window as any).x1 !== 'undefined',
-    hasEthereum: typeof (window as any).ethereum !== 'undefined',
+    hasX1: typeof (window as any).x1 !== "undefined",
+    hasEthereum: typeof (window as any).ethereum !== "undefined",
   };
 });
 
@@ -143,7 +153,7 @@ Test wallet on real dApp pages:
 
 ```typescript
 const dappPage = await context.newPage();
-await dappPage.goto('https://your-dapp.com');
+await dappPage.goto("https://your-dapp.com");
 
 // Test connection flow
 await dappPage.click('button:has-text("Connect Wallet")');
@@ -164,10 +174,12 @@ Tests automatically save screenshots to `e2e/screenshots/`:
 ### Playwright Limitations with Extensions
 
 1. **Cannot directly navigate to `chrome-extension://` URLs**
+
    - Attempting `page.goto('chrome-extension://...')` fails
    - Error: "Target page, context or browser has been closed"
 
 2. **Cannot programmatically click extension icon**
+
    - No direct API to trigger extension popup
    - Must use manual testing or workarounds
 
@@ -186,6 +198,7 @@ Tests automatically save screenshots to `e2e/screenshots/`:
 ## Best Practices
 
 ### ✅ DO:
+
 - Test extension API injection
 - Verify service worker registration
 - Check storage state
@@ -194,6 +207,7 @@ Tests automatically save screenshots to `e2e/screenshots/`:
 - Document manual test procedures
 
 ### ❌ DON'T:
+
 - Rely solely on popup UI automation
 - Expect full automation without workarounds
 - Ignore manual testing workflows
@@ -202,25 +216,25 @@ Tests automatically save screenshots to `e2e/screenshots/`:
 ## Example: Full Wallet Creation Test Flow
 
 ```typescript
-test('complete wallet creation flow', async () => {
+test("complete wallet creation flow", async () => {
   // 1. Load extension
   const context = await chromium.launchPersistentContext(userDataDir, {
     args: [`--load-extension=${pathToExtension}`],
   });
 
   // 2. Get extension ID
-  const extensionId = context.serviceWorkers()[0].url().split('/')[2];
+  const extensionId = context.serviceWorkers()[0].url().split("/")[2];
 
   // 3. Open onboarding (auto-opened or manual)
   const onboardingUrl = `chrome-extension://${extensionId}/options.html?onboarding=true`;
-  console.log('Manual step: Open', onboardingUrl);
+  console.log("Manual step: Open", onboardingUrl);
 
   // 4. Test API injection
   const page = await context.newPage();
-  await page.goto('https://example.com');
+  await page.goto("https://example.com");
 
-  const apiInjected = await page.evaluate(() =>
-    typeof (window as any).x1 !== 'undefined'
+  const apiInjected = await page.evaluate(
+    () => typeof (window as any).x1 !== "undefined"
   );
 
   expect(apiInjected).toBe(true);
@@ -250,6 +264,7 @@ To improve extension testing:
 ## Support
 
 For issues with these tests:
+
 1. Check screenshots in `e2e/screenshots/`
 2. Run with `--headed` to watch browser
 3. Enable `--debug` for step-by-step execution

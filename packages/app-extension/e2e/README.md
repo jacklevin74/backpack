@@ -5,6 +5,7 @@ This directory contains Playwright tests for the Backpack browser extension.
 ## Overview
 
 Playwright tests allow you to:
+
 - ✅ Verify the extension loads correctly
 - ✅ Check that service workers are registered
 - ✅ Test extension interactions with web pages
@@ -14,6 +15,7 @@ Playwright tests allow you to:
 ## Setup
 
 1. Install dependencies (already done):
+
    ```bash
    yarn add -D @playwright/test
    yarn playwright install chromium
@@ -27,21 +29,25 @@ Playwright tests allow you to:
 ## Running Tests
 
 ### Run all tests
+
 ```bash
 yarn e2e:playwright
 ```
 
 ### Run specific test file
+
 ```bash
 yarn playwright test e2e/extension-basic.spec.ts
 ```
 
 ### Run with UI mode (interactive)
+
 ```bash
 yarn e2e:playwright:ui
 ```
 
 ### Run with debugger
+
 ```bash
 yarn e2e:playwright:debug
 ```
@@ -49,33 +55,38 @@ yarn e2e:playwright:debug
 ## Test Files
 
 ### `extension-basic.spec.ts`
+
 Basic tests that verify:
+
 - Extension loads successfully
 - Service worker is registered
 - Extension ID is generated correctly
 - Extension can interact with web pages
 
 ### `extension-popup.spec.ts` (experimental)
+
 Attempts to test the extension popup directly. Note: Playwright has limitations with opening extension popups directly.
 
 ## How It Works
 
 1. **Extension Loading**: Tests use `chromium.launchPersistentContext()` with special Chrome flags:
+
    ```typescript
    const context = await chromium.launchPersistentContext(userDataDir, {
      headless: false,
      args: [
        `--disable-extensions-except=${pathToExtension}`,
        `--load-extension=${pathToExtension}`,
-       '--no-sandbox',
+       "--no-sandbox",
      ],
    });
    ```
 
 2. **Getting Extension ID**: The extension ID is extracted from the service worker URL:
+
    ```typescript
    const serviceWorkers = context.serviceWorkers();
-   const extensionId = serviceWorkers[0].url().split('/')[2];
+   const extensionId = serviceWorkers[0].url().split("/")[2];
    ```
 
 3. **Screenshots**: Tests automatically save screenshots to `e2e/screenshots/`
@@ -113,22 +124,26 @@ You can manually open the popup at: chrome-extension://jhlbmmmflolgejnkfiggbcikb
 ## Screenshots
 
 Screenshots are saved to `e2e/screenshots/`:
+
 - `extensions-page.png` - Chrome extensions management page
 - `example-page.png` - Test webpage with extension loaded
 
 ## Debugging
 
 1. **Visual Mode**: Run with `--headed` to see the browser:
+
    ```bash
    yarn playwright test --headed
    ```
 
 2. **Slow Motion**: Add delays between actions:
+
    ```bash
    yarn playwright test --headed --slow-mo=1000
    ```
 
 3. **Playwright Inspector**: Debug step-by-step:
+
    ```bash
    yarn e2e:playwright:debug
    ```
@@ -143,35 +158,34 @@ Screenshots are saved to `e2e/screenshots/`:
 Create a new file in `e2e/`:
 
 ```typescript
-import { test, expect, chromium } from '@playwright/test';
-import path from 'path';
+import { test, expect, chromium } from "@playwright/test";
+import path from "path";
 
-test('my new test', async () => {
-  const pathToExtension = path.join(__dirname, '../build');
-  const userDataDir = path.join(__dirname, '../.playwright-user-data');
+test("my new test", async () => {
+  const pathToExtension = path.join(__dirname, "../build");
+  const userDataDir = path.join(__dirname, "../.playwright-user-data");
 
   const context = await chromium.launchPersistentContext(userDataDir, {
     headless: false,
     args: [
       `--disable-extensions-except=${pathToExtension}`,
       `--load-extension=${pathToExtension}`,
-      '--no-sandbox',
+      "--no-sandbox",
     ],
   });
 
   try {
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise((resolve) => setTimeout(resolve, 3000));
 
     const serviceWorkers = context.serviceWorkers();
-    const extensionId = serviceWorkers[0].url().split('/')[2];
+    const extensionId = serviceWorkers[0].url().split("/")[2];
 
     // Your test logic here
     const page = await context.newPage();
-    await page.goto('https://example.com');
+    await page.goto("https://example.com");
 
     // Make assertions
     expect(await page.title()).toBeTruthy();
-
   } finally {
     await context.close();
   }
@@ -195,14 +209,14 @@ Add to your GitHub Actions workflow:
 
 ## Comparison with Jest/Puppeteer
 
-| Feature | Playwright | Jest/Puppeteer |
-|---------|-----------|----------------|
-| Speed | Fast | Fast |
-| API | Modern, cleaner | Older |
-| Extension support | Good | Good |
-| Auto-wait | Built-in | Manual |
-| Debugging | Excellent UI | Command-line |
-| Screenshots | Automatic | Manual |
+| Feature           | Playwright      | Jest/Puppeteer |
+| ----------------- | --------------- | -------------- |
+| Speed             | Fast            | Fast           |
+| API               | Modern, cleaner | Older          |
+| Extension support | Good            | Good           |
+| Auto-wait         | Built-in        | Manual         |
+| Debugging         | Excellent UI    | Command-line   |
+| Screenshots       | Automatic       | Manual         |
 
 ## Tips
 

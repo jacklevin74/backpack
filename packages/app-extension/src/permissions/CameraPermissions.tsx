@@ -34,7 +34,7 @@ export const CameraPermissions = () => {
       <PermissionsContent
         marginTop={35}
         title="Allow Camera"
-        subtitle1="Please allow Backpack access to your camera."
+        subtitle1="Please allow X1 Wallet access to your camera."
         subtitle2="This is required to share your video during a call."
         icon={<CameraOn fill="#8F929E" />}
         backgroundColor="#DFE0E6"
@@ -46,7 +46,7 @@ export const CameraPermissions = () => {
     return (
       <PermissionsContent
         title="Access Blocked"
-        subtitle1="To give Backpack camera and microphone access,"
+        subtitle1="To give X1 Wallet camera and microphone access,"
         subtitle2="check your browser or device settings"
         icon={<CameraOff />}
         backgroundColor="#DFE0E6"

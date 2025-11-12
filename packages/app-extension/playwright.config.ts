@@ -1,12 +1,12 @@
-import { defineConfig, devices } from '@playwright/test';
-import path from 'path';
+import { defineConfig, devices } from "@playwright/test";
+import path from "path";
 
 /**
  * Playwright configuration for testing Chrome extension
  * See https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
-  testDir: './e2e',
+  testDir: "./e2e",
 
   // Maximum time one test can run
   timeout: 30 * 1000,
@@ -24,27 +24,27 @@ export default defineConfig({
   workers: 1,
 
   // Reporter to use
-  reporter: 'html',
+  reporter: "html",
 
   use: {
     // Base URL for page.goto()
-    baseURL: 'http://localhost:3333',
+    baseURL: "http://localhost:3333",
 
     // Collect trace when retrying the failed test
-    trace: 'on-first-retry',
+    trace: "on-first-retry",
 
     // Screenshots on failure
-    screenshot: 'only-on-failure',
+    screenshot: "only-on-failure",
 
     // Video recording
-    video: 'on', // Options: 'on', 'off', 'retain-on-failure', 'on-first-retry'
+    video: "on", // Options: 'on', 'off', 'retain-on-failure', 'on-first-retry'
   },
 
   projects: [
     {
-      name: 'chromium-extension',
+      name: "chromium-extension",
       use: {
-        ...devices['Desktop Chrome'],
+        ...devices["Desktop Chrome"],
       },
     },
   ],

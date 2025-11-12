@@ -48,7 +48,7 @@ export const LedgerPermissions = () => {
         <YStack>
           {isDone ? (
             <PrimaryButton
-              label="Open Backpack"
+              label="Open X1 Wallet"
               onPress={() => {
                 void openPopupWindow("popup.html");
               }}

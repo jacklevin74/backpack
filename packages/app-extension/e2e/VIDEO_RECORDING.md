@@ -44,9 +44,9 @@ use: {
 ```typescript
 const context = await chromium.launchPersistentContext(userDataDir, {
   recordVideo: {
-    dir: 'test-results/videos',
-    size: { width: 1280, height: 720 }
-  }
+    dir: "test-results/videos",
+    size: { width: 1280, height: 720 },
+  },
 });
 ```
 
@@ -87,6 +87,7 @@ recordVideo: {
 ## Current Setup
 
 ### Videos are recorded at:
+
 - **Resolution**: 1280x720 (HD)
 - **Format**: WebM
 - **Location**: `test-results/videos/`
@@ -104,6 +105,7 @@ test-results/videos/
 ## What Gets Recorded
 
 ### ✅ Recorded in Videos:
+
 - Browser window content
 - Extension pages (chrome://extensions)
 - Web pages with extension interactions
@@ -112,6 +114,7 @@ test-results/videos/
 - All visible UI interactions
 
 ### ❌ NOT Recorded:
+
 - Extension popup clicks (Playwright limitation)
 - Browser chrome/toolbar
 - Multiple windows simultaneously (one video per page)
@@ -119,6 +122,7 @@ test-results/videos/
 ## Viewing Videos
 
 ### On Linux:
+
 ```bash
 # Using VLC
 vlc test-results/videos/*.webm
@@ -131,11 +135,13 @@ firefox test-results/videos/017c6f408cd1037814c4d137ff54bb96.webm
 ```
 
 ### On macOS:
+
 ```bash
 open test-results/videos/017c6f408cd1037814c4d137ff54bb96.webm
 ```
 
 ### On Windows:
+
 ```bash
 start test-results/videos/017c6f408cd1037814c4d137ff54bb96.webm
 ```
@@ -157,8 +163,8 @@ Videos are named by hash, so check test output to match videos to tests:
 await page.waitForTimeout(1000);
 
 // Wait after actions to see results
-await page.click('button');
-await page.waitForTimeout(2000);  // See what happens
+await page.click("button");
+await page.waitForTimeout(2000); // See what happens
 ```
 
 ### 3. Only Record When Needed
@@ -191,6 +197,7 @@ yarn playwright show-report
 ```
 
 The report will show:
+
 - Test results
 - Screenshots
 - **Videos** (embedded and playable)
@@ -199,27 +206,27 @@ The report will show:
 ## Example: Recording Wallet Creation Flow
 
 ```typescript
-test('wallet creation with video', async () => {
+test("wallet creation with video", async () => {
   const context = await chromium.launchPersistentContext(userDataDir, {
-    headless: false,  // Must be false for videos
+    headless: false, // Must be false for videos
     recordVideo: {
-      dir: 'test-results/videos',
-      size: { width: 1280, height: 720 }
-    }
+      dir: "test-results/videos",
+      size: { width: 1280, height: 720 },
+    },
   });
 
   const page = await context.newPage();
 
   // Your test steps here...
-  await page.goto('chrome-extension://ID/popup.html');
+  await page.goto("chrome-extension://ID/popup.html");
   await page.waitForTimeout(2000);
 
   // Get video path
   const videoPath = await page.video()?.path();
-  console.log('Video saved at:', videoPath);
+  console.log("Video saved at:", videoPath);
 
   await page.close();
-  await context.close();  // Finalizes the video
+  await context.close(); // Finalizes the video
 });
 ```
 
@@ -248,11 +255,13 @@ test('wallet creation with video', async () => {
 Videos use hash-based names. To find your video:
 
 1. **Check test output** for the path:
+
    ```
    🎬 Video will be saved at: .../017c6f40....webm
    ```
 
 2. **Or check test-results**:
+
    ```bash
    ls -lt test-results/videos/  # Sorted by time
    ```
@@ -296,27 +305,27 @@ test:
 
 From our tests:
 
-| Test | Duration | Video Size | Resolution |
-|------|----------|------------|------------|
-| Extension load | 5.1s | 16 KB | 1280x720 |
-| API injection | 10s | 182 KB | 1280x720 |
-| Full demo | 14.6s | 258 KB | 1280x720 |
+| Test           | Duration | Video Size | Resolution |
+| -------------- | -------- | ---------- | ---------- |
+| Extension load | 5.1s     | 16 KB      | 1280x720   |
+| API injection  | 10s      | 182 KB     | 1280x720   |
+| Full demo      | 14.6s    | 258 KB     | 1280x720   |
 
 **Average**: ~14 KB per second of recording
 
 ## Advanced: Programmatic Video Access
 
 ```typescript
-test('access video info', async ({ page }) => {
+test("access video info", async ({ page }) => {
   // Get video object
   const video = page.video();
 
   // Get video path (after context closes)
   const path = await video?.path();
-  console.log('Video path:', path);
+  console.log("Video path:", path);
 
   // Save to custom location
-  await video?.saveAs('custom-path/my-test.webm');
+  await video?.saveAs("custom-path/my-test.webm");
 });
 ```
 
@@ -329,11 +338,13 @@ test('access video info', async ({ page }) => {
 ✅ **View in**: HTML report or any video player
 
 Run the demo:
+
 ```bash
 yarn playwright test e2e/video-recording-demo.spec.ts
 ```
 
 Your videos will be in:
+
 ```
 test-results/videos/
 ```

@@ -39,9 +39,9 @@ export const BackupInput = ({ onNext }: { onNext: () => void }) => {
     >
       <Box sx={{ margin: "24px 0" }}>
         <Box sx={{ margin: "0 24px" }}>
-          <Header text="Recover with Backpack Backup" />
+          <Header text="Recover with X1 Wallet Backup" />
           <SubtextParagraph style={{ marginBottom: "32px" }}>
-            Enter your backup. It will be used to restore your Backpack wallet.
+            Enter your backup. It will be used to restore your X1 Wallet.
           </SubtextParagraph>
         </Box>
         <Box sx={{ margin: "0 16px" }}>

@@ -1,31 +1,52 @@
 appId: com.anonymous.backpackuionly
 ---
-# Test: Network Switching - Updated with actual UI elements
-# This test verifies all networks are accessible
+# Test: Network Switching - Switch between X1 and Solana
+# This test verifies network switching works correctly by:
+# 1. Tapping Solana round button on top
+# 2. Verifying XNT changed to SOL
+# 3. Tapping X1 round button again
+# 4. Verifying SOL changed back to XNT
 
 - launchApp
 
-# Verify we're on X1 by default (shows X1 Native Token)
+# Wait for app to fully load and verify we start on X1
 - assertVisible: "X1 Native Token"
-- assertVisible: "XNT"
+- takeScreenshot: "01-initial-x1-network"
 
-# Tap the network dropdown (the down arrow next to wallet name)
+# Step 1: Tap the Solana round network button (right button)
 - tapOn:
-    point: "90%,10%"  # Top right area where network selector likely is
-
-# Wait for network list to appear
+    id: "solana-network-button"
+- waitForAnimationToEnd
 - waitForAnimationToEnd
 
-# Look for network options - we need to see what appears
-# This might need adjustment based on what you see
-- assertVisible: "Browser"  # Verify app is still responding
+- takeScreenshot: "02-switched-to-solana"
 
-# Take a screenshot to see the network selector
-- takeScreenshot: "network-selector-open"
+# Step 2: Verify XNT changed to SOL
+- assertVisible: "Solana"
 
-# Verify Send/Receive/Swap buttons are visible
-- assertVisible: "Send"
-- assertVisible: "Receive"
-- assertVisible: "Swap"
-- assertVisible: "Stake"
-- assertVisible: "Browser"
+# Verify the native token icon changed to Solana
+- assertVisible:
+    id: "native-token-icon-solana"
+
+# Verify X1 Native Token is no longer visible
+- assertNotVisible: "X1 Native Token"
+
+# Step 3: Tap the X1 round network button to switch back (left button)
+- tapOn:
+    id: "x1-network-button"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "03-switched-back-to-x1"
+
+# Step 4: Verify SOL changed back to XNT
+- assertVisible: "X1 Native Token"
+
+# Verify the native token icon changed back to X1
+- assertVisible:
+    id: "native-token-icon-x1"
+
+# Verify Solana text is no longer the main token
+- assertNotVisible: "Solana"
+
+# Test complete - network switching works!

@@ -1,5 +1,5 @@
-import { test, expect, chromium } from '@playwright/test';
-import path from 'path';
+import { test, expect, chromium } from "@playwright/test";
+import path from "path";
 
 /**
  * Complete Wallet Creation Flow
@@ -11,89 +11,102 @@ import path from 'path';
  * 4. Record video of the entire flow
  */
 
-test('complete wallet creation flow with all steps', async () => {
-  const pathToExtension = path.join(__dirname, '../build');
-  const userDataDir = path.join(__dirname, '../.playwright-user-data-full-flow');
+test("complete wallet creation flow with all steps", async () => {
+  const pathToExtension = path.join(__dirname, "../build");
+  const userDataDir = path.join(
+    __dirname,
+    "../.playwright-user-data-full-flow"
+  );
 
-  console.log('🚀 Complete Wallet Creation Flow Test\n');
-  console.log('This test will:');
+  console.log("🚀 Complete Wallet Creation Flow Test\n");
+  console.log("This test will:");
   console.log('  1. Click "Create a new wallet"');
-  console.log('  2. Fill in wallet name');
-  console.log('  3. Click through ALL onboarding steps');
-  console.log('  4. Complete wallet creation');
-  console.log('  5. Record everything\n');
+  console.log("  2. Fill in wallet name");
+  console.log("  3. Click through ALL onboarding steps");
+  console.log("  4. Complete wallet creation");
+  console.log("  5. Record everything\n");
 
   const context = await chromium.launchPersistentContext(userDataDir, {
     headless: false,
     args: [
       `--disable-extensions-except=${pathToExtension}`,
       `--load-extension=${pathToExtension}`,
-      '--no-sandbox',
+      "--no-sandbox",
     ],
     recordVideo: {
-      dir: 'test-results/videos',
-      size: { width: 1280, height: 720 }
-    }
+      dir: "test-results/videos",
+      size: { width: 1280, height: 720 },
+    },
   });
 
   // Increase test timeout to 2 minutes
   test.setTimeout(120000);
 
   try {
-    console.log('⏳ Loading extension...');
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    console.log("⏳ Loading extension...");
+    await new Promise((resolve) => setTimeout(resolve, 3000));
 
     const serviceWorkers = context.serviceWorkers();
-    const extensionId = serviceWorkers[0].url().split('/')[2];
+    const extensionId = serviceWorkers[0].url().split("/")[2];
     console.log(`✓ Extension loaded: ${extensionId}\n`);
 
     // Find the auto-opened onboarding page
-    let page = context.pages().find(p => p.url().includes('onboarding=true'));
+    let page = context.pages().find((p) => p.url().includes("onboarding=true"));
 
     if (!page) {
       page = await context.newPage();
-      await page.goto(`chrome-extension://${extensionId}/options.html?onboarding=true`);
+      await page.goto(
+        `chrome-extension://${extensionId}/options.html?onboarding=true`
+      );
     }
 
     await page.waitForTimeout(2000);
 
     // === STEP 1: Initial Welcome Screen ===
-    console.log('📍 STEP 1: Welcome Screen');
-    await page.screenshot({ path: 'e2e/screenshots/flow-01-welcome.png' });
+    console.log("📍 STEP 1: Welcome Screen");
+    await page.screenshot({ path: "e2e/screenshots/flow-01-welcome.png" });
 
-    const welcomeText = await page.locator('body').textContent();
+    const welcomeText = await page.locator("body").textContent();
     console.log(`   Text on screen: "${welcomeText?.substring(0, 100)}..."`);
 
     // Click "Create a new wallet"
     const createButton = page.locator('button:has-text("Create")').first();
     const buttonText = await createButton.textContent();
     console.log(`   Found button: "${buttonText}"`);
-    console.log('   🖱️  Clicking...');
+    console.log("   🖱️  Clicking...");
 
     await createButton.click();
     await page.waitForTimeout(2000);
-    console.log('   ✓ Clicked!\n');
+    console.log("   ✓ Clicked!\n");
 
     // === STEP 2: Wallet Name Input ===
-    console.log('📍 STEP 2: Name Your Account');
-    await page.screenshot({ path: 'e2e/screenshots/flow-02-name-input.png' });
+    console.log("📍 STEP 2: Name Your Account");
+    await page.screenshot({ path: "e2e/screenshots/flow-02-name-input.png" });
 
     // Look for input field
-    const nameInputs = await page.locator('input[type="text"], input:not([type])').all();
+    const nameInputs = await page
+      .locator('input[type="text"], input:not([type])')
+      .all();
     console.log(`   Found ${nameInputs.length} input field(s)`);
 
     if (nameInputs.length > 0) {
       const nameInput = nameInputs[0];
       console.log('   📝 Filling wallet name: "My Test Wallet"');
-      await nameInput.fill('My Test Wallet');
+      await nameInput.fill("My Test Wallet");
       await page.waitForTimeout(1000);
-      console.log('   ✓ Name entered\n');
+      console.log("   ✓ Name entered\n");
 
-      await page.screenshot({ path: 'e2e/screenshots/flow-02-name-filled.png' });
+      await page.screenshot({
+        path: "e2e/screenshots/flow-02-name-filled.png",
+      });
     }
 
     // Click "Next" or "Skip"
-    const nextButtons = await page.locator('button:has-text("Next"), button:has-text("Skip"), button:has-text("Continue")').all();
+    const nextButtons = await page
+      .locator(
+        'button:has-text("Next"), button:has-text("Skip"), button:has-text("Continue")'
+      )
+      .all();
     console.log(`   Found ${nextButtons.length} next/continue button(s)`);
 
     if (nextButtons.length > 0) {
@@ -102,30 +115,31 @@ test('complete wallet creation flow with all steps', async () => {
       console.log(`   🖱️  Clicking "${nextText?.trim()}"...`);
       await nextButton.click();
       await page.waitForTimeout(2000);
-      console.log('   ✓ Clicked!\n');
+      console.log("   ✓ Clicked!\n");
     }
 
     // === STEP 3: After clicking Next ===
-    console.log('📍 STEP 3: Next Screen');
-    await page.screenshot({ path: 'e2e/screenshots/flow-03-after-next.png' });
+    console.log("📍 STEP 3: Next Screen");
+    await page.screenshot({ path: "e2e/screenshots/flow-03-after-next.png" });
 
-    const step3Text = await page.locator('body').textContent();
+    const step3Text = await page.locator("body").textContent();
     console.log(`   Screen content: "${step3Text?.substring(0, 150)}..."\n`);
 
     // Check what we see
-    const hasSeedPhrase = step3Text?.toLowerCase().includes('seed') ||
-                         step3Text?.toLowerCase().includes('phrase') ||
-                         step3Text?.toLowerCase().includes('recovery');
-    const hasPassword = step3Text?.toLowerCase().includes('password');
-    const hasImport = step3Text?.toLowerCase().includes('import');
+    const hasSeedPhrase =
+      step3Text?.toLowerCase().includes("seed") ||
+      step3Text?.toLowerCase().includes("phrase") ||
+      step3Text?.toLowerCase().includes("recovery");
+    const hasPassword = step3Text?.toLowerCase().includes("password");
+    const hasImport = step3Text?.toLowerCase().includes("import");
 
-    console.log('   🔍 Content analysis:');
-    console.log(`      Seed/Recovery phrase: ${hasSeedPhrase ? 'YES' : 'NO'}`);
-    console.log(`      Password setup: ${hasPassword ? 'YES' : 'NO'}`);
-    console.log(`      Import mention: ${hasImport ? 'YES' : 'NO'}\n`);
+    console.log("   🔍 Content analysis:");
+    console.log(`      Seed/Recovery phrase: ${hasSeedPhrase ? "YES" : "NO"}`);
+    console.log(`      Password setup: ${hasPassword ? "YES" : "NO"}`);
+    console.log(`      Import mention: ${hasImport ? "YES" : "NO"}\n`);
 
     // === STEP 4: Continue clicking through ===
-    console.log('📍 STEP 4: Continuing through ALL steps...\n');
+    console.log("📍 STEP 4: Continuing through ALL steps...\n");
 
     let stepNumber = 1;
     let previousUrl = page.url();
@@ -136,11 +150,13 @@ test('complete wallet creation flow with all steps', async () => {
     while (stepNumber <= maxSteps) {
       await page.waitForTimeout(2000);
 
-      const currentText = await page.locator('body').textContent();
+      const currentText = await page.locator("body").textContent();
       const currentUrl = page.url();
 
       console.log(`   🔄 Step ${stepNumber}:`);
-      console.log(`      Current screen: "${currentText?.substring(0, 80)}..."`);
+      console.log(
+        `      Current screen: "${currentText?.substring(0, 80)}..."`
+      );
 
       // Look for clickable buttons with various text patterns
       const buttonSelectors = [
@@ -155,7 +171,7 @@ test('complete wallet creation flow with all steps', async () => {
         'button:has-text("Finish")',
         'button:has-text("Done")',
         'button:has-text("Create")',
-        'button',  // Fallback to any button
+        "button", // Fallback to any button
       ];
 
       let clicked = false;
@@ -171,15 +187,19 @@ test('complete wallet creation flow with all steps', async () => {
             const btnText = await btn.textContent();
 
             // Skip buttons we don't want to click
-            if (btnText?.toLowerCase().includes('import') ||
-                btnText?.toLowerCase().includes('back')) {
+            if (
+              btnText?.toLowerCase().includes("import") ||
+              btnText?.toLowerCase().includes("back")
+            ) {
               continue;
             }
 
             console.log(`      Found: "${btnText?.trim()}"`);
             console.log(`      🖱️  Clicking...`);
 
-            await page.screenshot({ path: `e2e/screenshots/flow-step-${stepNumber}.png` });
+            await page.screenshot({
+              path: `e2e/screenshots/flow-step-${stepNumber}.png`,
+            });
             await btn.click();
             await page.waitForTimeout(2000);
 
@@ -196,10 +216,11 @@ test('complete wallet creation flow with all steps', async () => {
         console.log(`      ⚠️  No clickable buttons found`);
 
         // Check if we've completed
-        const isComplete = currentText?.toLowerCase().includes('complete') ||
-                          currentText?.toLowerCase().includes('success') ||
-                          currentText?.toLowerCase().includes('congratulations') ||
-                          currentUrl.includes('complete');
+        const isComplete =
+          currentText?.toLowerCase().includes("complete") ||
+          currentText?.toLowerCase().includes("success") ||
+          currentText?.toLowerCase().includes("congratulations") ||
+          currentUrl.includes("complete");
 
         if (isComplete) {
           console.log(`      🎉 Wallet creation COMPLETED!\n`);
@@ -232,53 +253,60 @@ test('complete wallet creation flow with all steps', async () => {
     console.log(`📍 Completed ${stepNumber} steps in the flow\n`);
 
     // === FINAL SCREENSHOT ===
-    console.log('📍 FINAL: Checking completion status');
+    console.log("📍 FINAL: Checking completion status");
     await page.waitForTimeout(2000);
-    await page.screenshot({ path: 'e2e/screenshots/flow-99-final.png', fullPage: true });
+    await page.screenshot({
+      path: "e2e/screenshots/flow-99-final.png",
+      fullPage: true,
+    });
 
-    const finalText = await page.locator('body').textContent();
-    console.log(`\n   Final screen text: "${finalText?.substring(0, 200)}..."\n`);
+    const finalText = await page.locator("body").textContent();
+    console.log(
+      `\n   Final screen text: "${finalText?.substring(0, 200)}..."\n`
+    );
 
     // Check if we completed onboarding
-    const isComplete = finalText?.toLowerCase().includes('complete') ||
-                      finalText?.toLowerCase().includes('success') ||
-                      finalText?.toLowerCase().includes('done') ||
-                      page.url().includes('complete');
+    const isComplete =
+      finalText?.toLowerCase().includes("complete") ||
+      finalText?.toLowerCase().includes("success") ||
+      finalText?.toLowerCase().includes("done") ||
+      page.url().includes("complete");
 
     if (isComplete) {
-      console.log('🎉🎉🎉 WALLET CREATION COMPLETED! 🎉🎉🎉\n');
+      console.log("🎉🎉🎉 WALLET CREATION COMPLETED! 🎉🎉🎉\n");
     } else {
-      console.log('✓ Progressed through multiple wallet creation steps\n');
+      console.log("✓ Progressed through multiple wallet creation steps\n");
     }
 
     // List all screenshots created
-    console.log('📸 Screenshots saved:');
-    const fs = require('fs');
-    const screenshots = fs.readdirSync('e2e/screenshots').filter((f: string) => f.startsWith('flow-'));
+    console.log("📸 Screenshots saved:");
+    const fs = require("fs");
+    const screenshots = fs
+      .readdirSync("e2e/screenshots")
+      .filter((f: string) => f.startsWith("flow-"));
     screenshots.forEach((s: string) => console.log(`   - ${s}`));
 
     // Wait for video
-    console.log('\n⏳ Finalizing video recording...');
+    console.log("\n⏳ Finalizing video recording...");
     await page.waitForTimeout(3000);
 
     const videoPath = await page.video()?.path();
     console.log(`\n🎬 Video: ${videoPath}\n`);
 
     // Summary
-    console.log('═══════════════════════════════════════');
-    console.log('📊 TEST SUMMARY');
-    console.log('═══════════════════════════════════════');
+    console.log("═══════════════════════════════════════");
+    console.log("📊 TEST SUMMARY");
+    console.log("═══════════════════════════════════════");
     console.log(`✓ Extension loaded: ${extensionId}`);
     console.log(`✓ Onboarding page accessed`);
     console.log(`✓ "Create a new wallet" clicked`);
     console.log(`✓ Wallet name entered: "My Test Wallet"`);
     console.log(`✓ Continued through ${screenshots.length} steps`);
     console.log(`✓ Screenshots: ${screenshots.length} files`);
-    console.log(`✓ Video recorded: ${videoPath ? 'YES' : 'NO'}`);
-    console.log('═══════════════════════════════════════\n');
-
+    console.log(`✓ Video recorded: ${videoPath ? "YES" : "NO"}`);
+    console.log("═══════════════════════════════════════\n");
   } finally {
     await context.close();
-    console.log('✓ Test completed successfully\n');
+    console.log("✓ Test completed successfully\n");
   }
 });

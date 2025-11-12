@@ -60,7 +60,7 @@ export function SetupComplete() {
           />
           <_CallToAction
             icon={<XTwitterIcon style={{ height: 24 }} />}
-            title="@Backpack"
+            title="@X1Wallet"
             onClick={() => window.open(TWITTER_LINK, "_blank")}
           />
           <_CallToAction

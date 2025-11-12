@@ -207,6 +207,7 @@ export default function App() {
   const [showPrivateKey, setShowPrivateKey] = useState(false);
   const [showChangeNameModal, setShowChangeNameModal] = useState(false);
   const [showViewPrivateKeyModal, setShowViewPrivateKeyModal] = useState(false);
+  const [showViewSeedPhraseModal, setShowViewSeedPhraseModal] = useState(false);
   const [addressCopied, setAddressCopied] = useState(false);
   const [copiedWalletId, setCopiedWalletId] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -255,6 +256,8 @@ export default function App() {
   const ledgerSheetRef = useRef(null);
   const editWalletSheetRef = useRef(null);
   const browserSheetRef = useRef(null);
+  const privateKeySheetRef = useRef(null);
+  const seedPhraseSheetRef = useRef(null);
 
   const snapPoints = useMemo(() => ["50%", "90%"], []);
 
@@ -1579,6 +1582,7 @@ export default function App() {
         selected: false,
         secretKey: Array.from(keypair.secretKey), // Store as array for JSON serialization
         keypair: keypair, // Keep in memory for immediate use
+        mnemonic: importType === "mnemonic" ? importMnemonic.trim() : null, // Store mnemonic if imported via mnemonic
       };
 
       const updatedWallets = [...wallets, newWallet];
@@ -1618,6 +1622,7 @@ export default function App() {
         selected: false,
         secretKey: Array.from(keypair.secretKey), // Store as array for JSON serialization
         keypair: keypair, // Keep in memory for immediate use
+        mnemonic: newMnemonic, // Store the mnemonic for recovery
       };
 
       const updatedWallets = [...wallets, newWallet];
@@ -3841,6 +3846,34 @@ export default function App() {
             </TouchableOpacity>
 
             <TouchableOpacity
+              testID="show-private-key-button"
+              style={styles.settingsMenuItem}
+              onPress={() => {
+                editWalletSheetRef.current?.close();
+                setTimeout(() => {
+                  privateKeySheetRef.current?.expand();
+                }, 100);
+              }}
+            >
+              <Text style={styles.settingsMenuItemText}>Show Private Key</Text>
+              <Text style={styles.settingsMenuItemArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              testID="show-seed-phrase-button"
+              style={styles.settingsMenuItem}
+              onPress={() => {
+                editWalletSheetRef.current?.close();
+                setTimeout(() => {
+                  seedPhraseSheetRef.current?.expand();
+                }, 100);
+              }}
+            >
+              <Text style={styles.settingsMenuItemText}>Show Seed Phrase</Text>
+              <Text style={styles.settingsMenuItemArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               testID="delete-account-button"
               style={styles.settingsMenuItem}
               onPress={() => {
@@ -3984,49 +4017,122 @@ export default function App() {
         </Pressable>
       </Modal>
 
-      {/* View Private Key Modal */}
-      <Modal
-        visible={showViewPrivateKeyModal}
-        transparent={true}
-        animationType="slide"
+      {/* View Private Key Bottom Sheet */}
+      <BottomSheet
+        ref={privateKeySheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        enablePanDownToClose={true}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: "#000000" }}
+        handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
       >
-        <Pressable
-          style={styles.settingsDrawerOverlay}
-          onPress={() => {
-            setShowViewPrivateKeyModal(false);
-            editWalletSheetRef.current?.expand();
-          }}
-        >
-          <Pressable
-            style={styles.settingsDrawerContent}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <View style={styles.settingsDrawerContentArea}>
-              <View style={styles.settingsDrawerHeader}>
-                <TouchableOpacity
-                  onPress={() => {
-                    setShowViewPrivateKeyModal(false);
-                    editWalletSheetRef.current?.expand();
-                  }}
-                >
-                  <Text style={styles.settingsDrawerClose}>‹</Text>
-                </TouchableOpacity>
-                <Text style={styles.settingsDrawerTitle}>Private Key</Text>
-                <View style={{ width: 32 }} />
-              </View>
+        <BottomSheetView style={styles.bottomSheetContent}>
+          <View style={styles.bottomSheetHeader}>
+            <View style={{ width: 32 }} />
+            <Text style={styles.bottomSheetTitle}>Private Key</Text>
+            <TouchableOpacity
+              onPress={() => {
+                privateKeySheetRef.current?.close();
+              }}
+            >
+              <Text style={styles.bottomSheetClose}>✕</Text>
+            </TouchableOpacity>
+          </View>
 
-              {editingWallet && (
-                <View style={styles.privateKeyContainer}>
-                  <Text style={styles.privateKeyLabel}>Private Key:</Text>
-                  <Text style={styles.privateKeyText} selectable={true}>
-                    {editingWallet.privateKey || "Not available"}
-                  </Text>
-                </View>
+          {editingWallet && (
+            <View style={styles.privateKeyContainer}>
+              <View style={styles.privateKeyHeader}>
+                <Text style={styles.privateKeyLabel}>Private Key:</Text>
+                {editingWallet.secretKey && (
+                  <TouchableOpacity
+                    style={styles.bottomSheetCopyBtn}
+                    onPress={() => {
+                      Clipboard.setString(
+                        bs58.encode(new Uint8Array(editingWallet.secretKey))
+                      );
+                      ToastAndroid.show(
+                        "Private key copied!",
+                        ToastAndroid.SHORT
+                      );
+                    }}
+                  >
+                    <Text style={styles.bottomSheetCopyIcon}>⧉</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              {editingWallet.secretKey ? (
+                <Text style={styles.privateKeyText} selectable={true}>
+                  {bs58.encode(new Uint8Array(editingWallet.secretKey))}
+                </Text>
+              ) : (
+                <Text style={styles.privateKeyText}>
+                  Not available. This is a hardware wallet (Ledger).
+                </Text>
               )}
             </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+          )}
+        </BottomSheetView>
+      </BottomSheet>
+
+      {/* View Seed Phrase Bottom Sheet */}
+      <BottomSheet
+        ref={seedPhraseSheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        enablePanDownToClose={true}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: "#000000" }}
+        handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+      >
+        <BottomSheetView style={styles.bottomSheetContent}>
+          <View style={styles.bottomSheetHeader}>
+            <View style={{ width: 32 }} />
+            <Text style={styles.bottomSheetTitle}>Seed Phrase</Text>
+            <TouchableOpacity
+              onPress={() => {
+                seedPhraseSheetRef.current?.close();
+              }}
+            >
+              <Text style={styles.bottomSheetClose}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          {editingWallet && (
+            <View style={styles.privateKeyContainer}>
+              <View style={styles.privateKeyHeader}>
+                <Text style={styles.privateKeyLabel}>
+                  Seed Phrase (Recovery Phrase):
+                </Text>
+                {editingWallet.mnemonic && (
+                  <TouchableOpacity
+                    style={styles.bottomSheetCopyBtn}
+                    onPress={() => {
+                      Clipboard.setString(editingWallet.mnemonic);
+                      ToastAndroid.show(
+                        "Seed phrase copied!",
+                        ToastAndroid.SHORT
+                      );
+                    }}
+                  >
+                    <Text style={styles.bottomSheetCopyIcon}>⧉</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              {editingWallet.mnemonic ? (
+                <Text style={styles.seedPhraseText} selectable={true}>
+                  {editingWallet.mnemonic}
+                </Text>
+              ) : (
+                <Text style={styles.privateKeyText}>
+                  Not available. This wallet was not created with or imported
+                  using a seed phrase.
+                </Text>
+              )}
+            </View>
+          )}
+        </BottomSheetView>
+      </BottomSheet>
 
       {/* Ledger Connection Bottom Sheet */}
       <BottomSheet
@@ -5505,17 +5611,29 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#333333",
   },
+  privateKeyHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
   privateKeyLabel: {
     fontSize: 14,
     fontWeight: "500",
     color: "#999999",
-    marginBottom: 8,
   },
   privateKeyText: {
     fontSize: 12,
     fontFamily: "monospace",
     color: "#FFFFFF",
     lineHeight: 18,
+  },
+  seedPhraseText: {
+    fontSize: 14,
+    fontFamily: "monospace",
+    color: "#FFFFFF",
+    lineHeight: 24,
+    letterSpacing: 0.5,
   },
   importTypeToggle: {
     flexDirection: "row",

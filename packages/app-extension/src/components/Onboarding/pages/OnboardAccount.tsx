@@ -127,7 +127,7 @@ export const OnboardAccount = ({
       ? // X1 blockchain is auto-selected, skip blockchain selector
         [
           <PrivateKeyInput
-            blockchain={blockchain!}
+            blockchain={blockchain || Blockchain.X1}
             key="PrivateKeyInput"
             onNext={async (result: PrivateKeyWalletDescriptor) => {
               await handlePrivateKeyInput(result);
@@ -146,7 +146,7 @@ export const OnboardAccount = ({
                 autoSelect
                 newAccount
                 key="ImportWallets"
-                blockchain={blockchain!}
+                blockchain={blockchain || Blockchain.X1}
                 mnemonic={mnemonic!}
                 onNext={(walletDescriptors: Array<WalletDescriptor>) => {
                     setOnboardingData({

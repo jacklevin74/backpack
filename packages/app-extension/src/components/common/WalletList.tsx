@@ -699,7 +699,10 @@ export function WalletSettingsButton() {
   return (
     <YStack
       onPress={() => {
-        navigation.push(Routes.WalletAddBlockchainSelectScreen);
+        // Default to X1 blockchain - skip blockchain selection screen
+        navigation.push(Routes.WalletAddScreen, {
+          blockchain: Blockchain.X1,
+        });
       }}
       cursor="pointer"
     >

@@ -1,3 +1,4 @@
+import { Blockchain } from "@coral-xyz/common";
 import { Loader } from "@coral-xyz/tamagui";
 
 import { ImportMnemonic } from "../../../../components/Unlocked/Settings/AddConnectWallet/ImportMnemonic";
@@ -26,7 +27,14 @@ function Container({
     params: { blockchain },
   },
 }: SettingsScreenProps<Routes.WalletAddHardwareScreen>) {
+  // Default to X1 blockchain if not provided (consistent with extension approach)
+  const targetBlockchain = blockchain || Blockchain.X1;
+
   return (
-    <ImportMnemonic blockchain={blockchain} ledger inputMnemonic={false} />
+    <ImportMnemonic
+      blockchain={targetBlockchain}
+      ledger
+      inputMnemonic={false}
+    />
   );
 }

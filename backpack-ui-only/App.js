@@ -30,6 +30,7 @@ import {
   NativeModules,
   RefreshControl,
   ToastAndroid,
+  Keyboard,
 } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import {
@@ -796,6 +797,9 @@ export default function App() {
   };
 
   const handleSendSubmit = async () => {
+    // Dismiss keyboard when Send button is pressed
+    Keyboard.dismiss();
+
     if (!selectedWallet) {
       Alert.alert("Error", "No wallet selected");
       return;
@@ -2618,6 +2622,7 @@ export default function App() {
           {/* Wallet selector on the left */}
           <View style={styles.walletSelectorLeft}>
             <TouchableOpacity
+              testID="wallet-selector-button"
               style={styles.walletDropdownButton}
               onPress={showWalletSelector}
             >
@@ -2635,11 +2640,12 @@ export default function App() {
           {/* Network switch in the middle */}
           <View style={styles.quickSwitchContainer}>
             <TouchableOpacity
+              testID="x1-network-button"
               style={[
                 styles.quickSwitchButton,
                 currentNetwork.id === "X1" && styles.quickSwitchButtonActive,
               ]}
-              onPress={() => switchNetwork(NETWORKS[0])}
+              onPress={() => switchNetwork(NETWORKS.find((n) => n.id === "X1"))}
             >
               <Image
                 source={require("./assets/x1.png")}
@@ -2647,12 +2653,15 @@ export default function App() {
               />
             </TouchableOpacity>
             <TouchableOpacity
+              testID="solana-network-button"
               style={[
                 styles.quickSwitchButton,
                 currentNetwork.id === "SOLANA" &&
                   styles.quickSwitchButtonActive,
               ]}
-              onPress={() => switchNetwork(NETWORKS[1])}
+              onPress={() =>
+                switchNetwork(NETWORKS.find((n) => n.id === "SOLANA"))
+              }
             >
               <Image
                 source={require("./assets/solana.png")}
@@ -2799,6 +2808,7 @@ export default function App() {
                     <View style={styles.tokenLeft}>
                       <View style={styles.tokenIconLarge}>
                         <Image
+                          testID={`native-token-icon-${currentNetwork.id.toLowerCase()}`}
                           source={nativeToken.logo}
                           style={styles.x1LogoLarge}
                         />
@@ -2968,7 +2978,10 @@ export default function App() {
         backgroundStyle={{ backgroundColor: "#000000" }}
         handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
       >
-        <BottomSheetView style={styles.bottomSheetContent}>
+        <BottomSheetView
+          testID="wallet-list-sheet"
+          style={styles.bottomSheetContent}
+        >
           {/* Header */}
           <View style={styles.bottomSheetHeader}>
             <TouchableOpacity onPress={() => bottomSheetRef.current?.close()}>
@@ -2992,9 +3005,10 @@ export default function App() {
 
           {/* Wallets List */}
           <ScrollView style={styles.bottomSheetList}>
-            {wallets.map((wallet) => (
+            {wallets.map((wallet, index) => (
               <TouchableOpacity
                 key={wallet.id}
+                testID={`wallet-item-${wallet.id}`}
                 style={[
                   styles.bottomSheetWalletItem,
                   wallet.selected && styles.bottomSheetWalletItemSelected,
@@ -3017,6 +3031,11 @@ export default function App() {
                 </View>
                 <View style={styles.bottomSheetWalletRight}>
                   <TouchableOpacity
+                    testID={
+                      index === 0
+                        ? "first-wallet-copy-button"
+                        : `wallet-copy-button-${wallet.id}`
+                    }
                     style={styles.bottomSheetCopyBtn}
                     onPress={(e) => {
                       e.stopPropagation();
@@ -3030,6 +3049,11 @@ export default function App() {
                     <Text style={styles.bottomSheetCopyIcon}>⧉</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
+                    testID={
+                      index === 0
+                        ? "first-wallet-menu-button"
+                        : `wallet-menu-button-${wallet.id}`
+                    }
                     style={styles.bottomSheetEditBtn}
                     onPress={(e) => {
                       e.stopPropagation();
@@ -3361,7 +3385,6 @@ export default function App() {
               <Text style={styles.bottomSheetClose}>✕</Text>
             </TouchableOpacity>
             <View style={styles.bottomSheetTitleContainer}>
-              <Image source={currentNetwork.logo} style={styles.x1LogoSmall} />
               <Text style={styles.bottomSheetTitle}>
                 Send {getNativeTokenInfo().symbol}
               </Text>
@@ -3443,10 +3466,15 @@ export default function App() {
 
           {/* Address List */}
           <ScrollView style={styles.addressList}>
-            {wallets.map((wallet) => (
+            {wallets.map((wallet, index) => (
               <TouchableOpacity
                 key={wallet.id}
                 style={styles.addressItem}
+                testID={
+                  index === 0
+                    ? "first-address-selector-wallet"
+                    : `address-selector-wallet-${index}`
+                }
                 onPress={() => {
                   setSendAddress(wallet.publicKey);
                   addressSheetRef.current?.close();
@@ -3779,7 +3807,10 @@ export default function App() {
         backgroundStyle={{ backgroundColor: "#000000" }}
         handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
       >
-        <BottomSheetView style={styles.bottomSheetContent}>
+        <BottomSheetView
+          testID="edit-wallet-sheet"
+          style={styles.bottomSheetContent}
+        >
           <View style={styles.bottomSheetHeader}>
             <View style={{ width: 32 }} />
             <Text style={styles.bottomSheetTitle}>Edit Wallet</Text>
@@ -3796,6 +3827,7 @@ export default function App() {
           {/* Menu Items */}
           <ScrollView style={styles.settingsMenuList}>
             <TouchableOpacity
+              testID="change-account-name-button"
               style={styles.settingsMenuItem}
               onPress={() => {
                 editWalletSheetRef.current?.close();
@@ -3809,6 +3841,7 @@ export default function App() {
             </TouchableOpacity>
 
             <TouchableOpacity
+              testID="delete-account-button"
               style={styles.settingsMenuItem}
               onPress={() => {
                 Alert.alert(
@@ -3893,6 +3926,7 @@ export default function App() {
 
               <Text style={styles.inputLabel}>Account Name</Text>
               <TextInput
+                testID="account-name-input"
                 style={styles.walletNameInput}
                 placeholder="Wallet Name"
                 placeholderTextColor="#666666"

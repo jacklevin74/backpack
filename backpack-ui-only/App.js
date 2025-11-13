@@ -45,6 +45,7 @@ import {
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import * as bip39 from "bip39";
+import slip10 from "micro-key-producer/slip10.js";
 import { randomBytes, secretbox } from "tweetnacl";
 import bs58 from "bs58";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -188,6 +189,10 @@ export default function App() {
   const [currentNetwork, setCurrentNetwork] = useState(NETWORKS[0]);
   const [isOnline, setIsOnline] = useState(true);
 
+  // Master seed phrase for hierarchical deterministic wallet derivation
+  const [masterSeedPhrase, setMasterSeedPhrase] = useState(null);
+  const [walletDerivationIndex, setWalletDerivationIndex] = useState(0);
+
   // Network selector states
   const [showDebugDrawer, setShowDebugDrawer] = useState(false);
   const [debugLogs, setDebugLogs] = useState([]);
@@ -208,6 +213,13 @@ export default function App() {
   const [showChangeNameModal, setShowChangeNameModal] = useState(false);
   const [showViewPrivateKeyModal, setShowViewPrivateKeyModal] = useState(false);
   const [showViewSeedPhraseModal, setShowViewSeedPhraseModal] = useState(false);
+  const [showExportSeedPhraseModal, setShowExportSeedPhraseModal] =
+    useState(false);
+  const [showChangeSeedPhraseModal, setShowChangeSeedPhraseModal] =
+    useState(false);
+  const [newSeedPhraseInput, setNewSeedPhraseInput] = useState("");
+  const [changeSeedPhraseMode, setChangeSeedPhraseMode] = useState("enter"); // "enter" or "generate"
+  const [generatedNewSeed, setGeneratedNewSeed] = useState("");
   const [addressCopied, setAddressCopied] = useState(false);
   const [copiedWalletId, setCopiedWalletId] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -344,9 +356,54 @@ export default function App() {
     }
   };
 
-  // Load wallets on mount
+  // Save and load master seed phrase
+  const saveMasterSeedPhrase = async (seedPhrase) => {
+    try {
+      await AsyncStorage.setItem("@masterSeedPhrase", seedPhrase);
+      console.log("Master seed phrase saved");
+    } catch (error) {
+      console.error("Error saving master seed phrase:", error);
+    }
+  };
+
+  const loadMasterSeedPhrase = async () => {
+    try {
+      const stored = await AsyncStorage.getItem("@masterSeedPhrase");
+      if (stored) {
+        setMasterSeedPhrase(stored);
+        console.log("Master seed phrase loaded");
+      }
+    } catch (error) {
+      console.error("Error loading master seed phrase:", error);
+    }
+  };
+
+  const saveDerivationIndex = async (index) => {
+    try {
+      await AsyncStorage.setItem("@derivationIndex", String(index));
+      console.log("Derivation index saved:", index);
+    } catch (error) {
+      console.error("Error saving derivation index:", error);
+    }
+  };
+
+  const loadDerivationIndex = async () => {
+    try {
+      const stored = await AsyncStorage.getItem("@derivationIndex");
+      if (stored) {
+        setWalletDerivationIndex(parseInt(stored, 10));
+        console.log("Derivation index loaded:", stored);
+      }
+    } catch (error) {
+      console.error("Error loading derivation index:", error);
+    }
+  };
+
+  // Load wallets and master seed phrase on mount
   useEffect(() => {
     loadWalletsFromStorage();
+    loadMasterSeedPhrase();
+    loadDerivationIndex();
   }, []);
 
   // Save selected wallet ID to storage whenever it changes
@@ -1514,11 +1571,22 @@ export default function App() {
     setShowAddWalletModal(true);
   };
 
-  const handleCreateNewWallet = () => {
-    // Generate new mnemonic (12 words)
-    const mnemonic = bip39.generateMnemonic();
-    setNewMnemonic(mnemonic);
+  const handleCreateNewWallet = async () => {
     setShowAddWalletModal(false);
+
+    // If master seed phrase already exists, create wallet directly without showing seed phrase
+    if (masterSeedPhrase) {
+      console.log("Master seed phrase exists, creating wallet directly");
+      await handleConfirmCreateWallet();
+      return;
+    }
+
+    // First wallet - generate master seed phrase and show it for backup
+    const newMasterSeed = bip39.generateMnemonic();
+    setMasterSeedPhrase(newMasterSeed);
+    await saveMasterSeedPhrase(newMasterSeed);
+    setNewMnemonic(newMasterSeed);
+    console.log("Generated and saved new master seed phrase");
     setShowCreateWalletModal(true);
   };
 
@@ -1601,13 +1669,18 @@ export default function App() {
   };
 
   const handleConfirmCreateWallet = async () => {
-    // Copy seed phrase to clipboard before proceeding
-    Clipboard.setString(newMnemonic);
-    ToastAndroid.show("Seed phrase copied to clipboard", ToastAndroid.SHORT);
-
     try {
-      const seed = await bip39.mnemonicToSeed(newMnemonic);
-      const keypair = Keypair.fromSeed(seed.slice(0, 32));
+      // Use master seed phrase for derivation
+      const seedPhraseToUse = masterSeedPhrase || newMnemonic;
+      const seed = await bip39.mnemonicToSeed(seedPhraseToUse);
+
+      // Derive wallet using BIP44 path: m/44'/501'/<index>'/0'
+      const path = `m/44'/501'/${walletDerivationIndex}'/0'`;
+      console.log(`Deriving wallet at path: ${path}`);
+
+      const hdkey = slip10.fromMasterSeed(seed);
+      const derivedKey = hdkey.derive(path);
+      const keypair = Keypair.fromSeed(derivedKey.privateKey);
 
       // Check for duplicate wallet
       const publicKeyStr = keypair.publicKey.toString();
@@ -1626,18 +1699,116 @@ export default function App() {
         selected: false,
         secretKey: Array.from(keypair.secretKey), // Store as array for JSON serialization
         keypair: keypair, // Keep in memory for immediate use
-        mnemonic: newMnemonic, // Store the mnemonic for recovery
+        mnemonic: seedPhraseToUse, // Store the master mnemonic
+        derivationPath: path, // Store the derivation path used
       };
 
       const updatedWallets = [...wallets, newWallet];
       setWallets(updatedWallets);
       await saveWalletsToStorage(updatedWallets);
 
+      // Increment and save derivation index for next wallet
+      const nextIndex = walletDerivationIndex + 1;
+      setWalletDerivationIndex(nextIndex);
+      await saveDerivationIndex(nextIndex);
+      console.log(`Wallet created at ${path}, next index: ${nextIndex}`);
+
       setNewMnemonic("");
       setShowCreateWalletModal(false);
     } catch (error) {
       Alert.alert("Error", "Failed to create wallet: " + error.message);
+      console.error("Wallet creation error:", error);
     }
+  };
+
+  const handleCopyMasterSeedPhrase = () => {
+    if (masterSeedPhrase) {
+      Clipboard.setString(masterSeedPhrase);
+      ToastAndroid.show(
+        "Master seed phrase copied to clipboard",
+        ToastAndroid.SHORT
+      );
+    }
+  };
+
+  const handleGenerateNewSeedPhrase = () => {
+    const newSeed = bip39.generateMnemonic();
+    setGeneratedNewSeed(newSeed);
+    setChangeSeedPhraseMode("generate");
+    Clipboard.setString(newSeed);
+    ToastAndroid.show(
+      "New seed phrase generated and copied",
+      ToastAndroid.SHORT
+    );
+  };
+
+  const handleConfirmChangeSeedPhrase = async () => {
+    let seedToUse = "";
+
+    // Determine which seed phrase to use based on mode
+    if (changeSeedPhraseMode === "enter") {
+      // Validate entered seed phrase
+      if (!newSeedPhraseInput.trim()) {
+        Alert.alert("Error", "Please enter a seed phrase");
+        return;
+      }
+
+      if (!bip39.validateMnemonic(newSeedPhraseInput.trim())) {
+        Alert.alert(
+          "Error",
+          "Invalid seed phrase. Please check and try again."
+        );
+        return;
+      }
+      seedToUse = newSeedPhraseInput.trim();
+    } else {
+      // Use generated seed phrase
+      if (!generatedNewSeed) {
+        Alert.alert("Error", "Please generate a seed phrase first");
+        return;
+      }
+      seedToUse = generatedNewSeed;
+    }
+
+    // Warn user about existing wallets
+    Alert.alert(
+      "Change Seed Phrase",
+      "Changing your seed phrase will affect newly created wallets only. Existing wallets will remain unchanged. Do you want to continue?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Continue",
+          onPress: async () => {
+            try {
+              setMasterSeedPhrase(seedToUse);
+              await saveMasterSeedPhrase(seedToUse);
+
+              // Reset derivation index to 0 for new seed phrase
+              setWalletDerivationIndex(0);
+              await saveDerivationIndex(0);
+
+              console.log("Master seed phrase changed successfully");
+              ToastAndroid.show(
+                "Seed phrase changed successfully",
+                ToastAndroid.SHORT
+              );
+
+              // Reset modal state
+              setNewSeedPhraseInput("");
+              setGeneratedNewSeed("");
+              setChangeSeedPhraseMode("enter");
+              setShowChangeSeedPhraseModal(false);
+            } catch (error) {
+              Alert.alert(
+                "Error",
+                "Failed to change seed phrase: " + error.message
+              );
+              console.error("Change seed phrase error:", error);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const requestBluetoothPermissions = async () => {
@@ -3236,6 +3407,32 @@ export default function App() {
               style={styles.settingsMenuItem}
               onPress={() => {
                 settingsSheetRef.current?.close();
+                setShowExportSeedPhraseModal(true);
+              }}
+            >
+              <Text style={styles.settingsMenuItemText}>
+                Export Seed Phrase
+              </Text>
+              <Text style={styles.settingsMenuItemArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingsMenuItem}
+              onPress={() => {
+                settingsSheetRef.current?.close();
+                setShowChangeSeedPhraseModal(true);
+              }}
+            >
+              <Text style={styles.settingsMenuItemText}>
+                Change Seed Phrase
+              </Text>
+              <Text style={styles.settingsMenuItemArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingsMenuItem}
+              onPress={() => {
+                settingsSheetRef.current?.close();
                 if (Platform.OS === "android") {
                   Linking.sendIntent("android.settings.WIFI_SETTINGS");
                 } else {
@@ -3701,6 +3898,213 @@ export default function App() {
                 <Text style={styles.confirmButtonText}>
                   I've Saved My Seed Phrase
                 </Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Export Seed Phrase Modal */}
+      <Modal
+        visible={showExportSeedPhraseModal}
+        transparent={true}
+        animationType="slide"
+      >
+        <Pressable
+          style={styles.settingsDrawerOverlay}
+          onPress={() => setShowExportSeedPhraseModal(false)}
+        >
+          <Pressable
+            style={styles.settingsDrawerContent}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.settingsDrawerContentArea}>
+              <View style={styles.settingsDrawerHeader}>
+                <View style={{ width: 32 }} />
+                <Text style={styles.settingsDrawerTitle}>
+                  Export Seed Phrase
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowExportSeedPhraseModal(false)}
+                >
+                  <Text style={styles.settingsDrawerClose}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              {masterSeedPhrase ? (
+                <>
+                  <Text style={styles.seedPhraseTitle}>
+                    Your Master Seed Phrase
+                  </Text>
+                  <View style={styles.seedPhraseContainer}>
+                    <TouchableOpacity
+                      style={styles.seedPhraseCopyBtnInside}
+                      onPress={handleCopyMasterSeedPhrase}
+                    >
+                      <Text style={styles.seedPhraseCopyIconInside}>⧉</Text>
+                    </TouchableOpacity>
+                    <View style={styles.seedPhraseGrid}>
+                      {masterSeedPhrase.split(" ").map((word, index) => (
+                        <View key={index} style={styles.seedPhraseWord}>
+                          <Text style={styles.seedPhraseText}>
+                            {index + 1}. {word}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                  <Text style={styles.seedPhraseWarning}>
+                    Keep this seed phrase secure. All your HD wallets are
+                    derived from this master seed.
+                  </Text>
+                </>
+              ) : (
+                <Text style={styles.seedPhraseWarning}>
+                  No master seed phrase found. Create a new wallet to generate
+                  one.
+                </Text>
+              )}
+              <TouchableOpacity
+                style={styles.confirmButton}
+                onPress={() => setShowExportSeedPhraseModal(false)}
+              >
+                <Text style={styles.confirmButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Change Seed Phrase Modal */}
+      <Modal
+        visible={showChangeSeedPhraseModal}
+        transparent={true}
+        animationType="slide"
+      >
+        <Pressable
+          style={styles.settingsDrawerOverlay}
+          onPress={() => {
+            setShowChangeSeedPhraseModal(false);
+            setNewSeedPhraseInput("");
+            setGeneratedNewSeed("");
+            setChangeSeedPhraseMode("enter");
+          }}
+        >
+          <Pressable
+            style={styles.settingsDrawerContent}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.settingsDrawerContentArea}>
+              <View style={styles.settingsDrawerHeader}>
+                <View style={{ width: 32 }} />
+                <Text style={styles.settingsDrawerTitle}>
+                  Change Seed Phrase
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowChangeSeedPhraseModal(false);
+                    setNewSeedPhraseInput("");
+                    setGeneratedNewSeed("");
+                    setChangeSeedPhraseMode("enter");
+                  }}
+                >
+                  <Text style={styles.settingsDrawerClose}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Mode Selector */}
+              <View style={{ flexDirection: "row", marginBottom: 16, gap: 8 }}>
+                <TouchableOpacity
+                  style={[
+                    styles.modeButton,
+                    changeSeedPhraseMode === "enter" && styles.modeButtonActive,
+                  ]}
+                  onPress={() => setChangeSeedPhraseMode("enter")}
+                >
+                  <Text
+                    style={[
+                      styles.modeButtonText,
+                      changeSeedPhraseMode === "enter" &&
+                        styles.modeButtonTextActive,
+                    ]}
+                  >
+                    Enter Seed Phrase
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.modeButton,
+                    changeSeedPhraseMode === "generate" &&
+                      styles.modeButtonActive,
+                  ]}
+                  onPress={() => {
+                    setChangeSeedPhraseMode("generate");
+                    handleGenerateNewSeedPhrase();
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.modeButtonText,
+                      changeSeedPhraseMode === "generate" &&
+                        styles.modeButtonTextActive,
+                    ]}
+                  >
+                    Generate New
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Enter Mode */}
+              {changeSeedPhraseMode === "enter" ? (
+                <>
+                  <Text style={styles.seedPhraseTitle}>
+                    Enter New Seed Phrase
+                  </Text>
+                  <TextInput
+                    style={[styles.seedPhraseInput, { height: 120 }]}
+                    multiline
+                    placeholder="Enter your 12 or 24 word seed phrase"
+                    value={newSeedPhraseInput}
+                    onChangeText={setNewSeedPhraseInput}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </>
+              ) : (
+                <>
+                  {/* Generate Mode */}
+                  <Text style={styles.seedPhraseTitle}>
+                    Generated Seed Phrase
+                  </Text>
+                  <View style={styles.seedPhraseContainer}>
+                    <TouchableOpacity
+                      style={styles.seedPhraseCopyBtnInside}
+                      onPress={handleGenerateNewSeedPhrase}
+                    >
+                      <Text style={styles.seedPhraseCopyIconInside}>⟳</Text>
+                    </TouchableOpacity>
+                    <View style={styles.seedPhraseGrid}>
+                      {generatedNewSeed.split(" ").map((word, index) => (
+                        <View key={index} style={styles.seedPhraseWord}>
+                          <Text style={styles.seedPhraseText}>
+                            {index + 1}. {word}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                </>
+              )}
+
+              <Text style={styles.seedPhraseWarning}>
+                Warning: Changing your master seed phrase will only affect newly
+                created wallets. Existing wallets will remain unchanged and will
+                continue to use their original seed phrases.
+              </Text>
+              <TouchableOpacity
+                style={styles.confirmButton}
+                onPress={handleConfirmChangeSeedPhrase}
+              >
+                <Text style={styles.confirmButtonText}>Change Seed Phrase</Text>
               </TouchableOpacity>
             </View>
           </Pressable>
@@ -5590,6 +5994,27 @@ const styles = StyleSheet.create({
   confirmButtonText: {
     fontSize: 16,
     fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  modeButton: {
+    flex: 1,
+    backgroundColor: "#2A2A2A",
+    borderRadius: 8,
+    padding: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#3A3A3A",
+  },
+  modeButtonActive: {
+    backgroundColor: "#4A90E2",
+    borderColor: "#4A90E2",
+  },
+  modeButtonText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#999999",
+  },
+  modeButtonTextActive: {
     color: "#FFFFFF",
   },
   inputLabel: {

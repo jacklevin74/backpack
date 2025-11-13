@@ -10,6 +10,7 @@
     "postinstall": "sed -i 's/safePromise\\.reject(null, errorConverter\\.toJs(error))/safePromise.reject(error.errorCode.name(), errorConverter.toJs(error))/g' node_modules/@ledgerhq/react-native-hw-transport-ble/node_modules/react-native-ble-plx/android/src/main/java/com/bleplx/BlePlxModule.java 2>/dev/null || true; sed -i 's/promise\\.reject(code, message)/promise.reject(code == null ? \"UNKNOWN_ERROR\" : code, message)/g' node_modules/@ledgerhq/react-native-hw-transport-ble/node_modules/react-native-ble-plx/android/src/main/java/com/bleplx/utils/SafePromise.java 2>/dev/null || true; sed -i 's/promise\\.reject(code, e)/promise.reject(code == null ? \"UNKNOWN_ERROR\" : code, e)/g' node_modules/@ledgerhq/react-native-hw-transport-ble/node_modules/react-native-ble-plx/android/src/main/java/com/bleplx/utils/SafePromise.java 2>/dev/null || true; sed -i 's/promise\\.reject(code, message, e)/promise.reject(code == null ? \"UNKNOWN_ERROR\" : code, message, e)/g' node_modules/@ledgerhq/react-native-hw-transport-ble/node_modules/react-native-ble-plx/android/src/main/java/com/bleplx/utils/SafePromise.java 2>/dev/null || true"
   },
   "dependencies": {
+    "@craftzdog/react-native-buffer": "^6.1.1",
     "@gorhom/bottom-sheet": "^5.2.6",
     "@ledgerhq/hw-app-solana": "^7.6.0",
     "@ledgerhq/hw-transport-webusb": "^6.29.13",
@@ -25,11 +26,13 @@
     "expo": "~54.0.23",
     "expo-clipboard": "~8.0.7",
     "expo-status-bar": "~3.0.8",
+    "micro-key-producer": "^0.8.2",
     "react": "19.1.0",
     "react-native": "0.81.5",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-get-random-values": "~1.11.0",
     "react-native-qrcode-svg": "^6.3.20",
+    "react-native-quick-crypto": "^0.7.17",
     "react-native-reanimated": "~4.1.1",
     "react-native-svg": "15.12.1",
     "react-native-webview": "^13.16.0",

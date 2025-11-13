@@ -220,6 +220,9 @@ export default function App() {
   const [newSeedPhraseInput, setNewSeedPhraseInput] = useState("");
   const [changeSeedPhraseMode, setChangeSeedPhraseMode] = useState("enter"); // "enter" or "generate"
   const [generatedNewSeed, setGeneratedNewSeed] = useState("");
+  const [showSecurityDrawer, setShowSecurityDrawer] = useState(false);
+  const [seedPhraseRevealed, setSeedPhraseRevealed] = useState(false);
+  const [currentBottomTab, setCurrentBottomTab] = useState("portfolio"); // "portfolio", "swap", "browser"
   const [addressCopied, setAddressCopied] = useState(false);
   const [copiedWalletId, setCopiedWalletId] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -2964,19 +2967,6 @@ export default function App() {
                 </View>
                 <Text style={styles.actionCircleText}>Stake</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionCircle}
-                onPress={() => {
-                  console.log("Browser button pressed, opening test page");
-                  setShowTestBrowser(true);
-                }}
-              >
-                <View style={styles.actionCircleBg}>
-                  <Text style={styles.actionCircleIcon}>🌐</Text>
-                </View>
-                <Text style={styles.actionCircleText}>Browser</Text>
-              </TouchableOpacity>
             </View>
 
             {/* Token List */}
@@ -3014,6 +3004,82 @@ export default function App() {
             </View>
           </View>
         </ScrollView>
+
+        {/* Bottom Tab Bar */}
+        <View style={styles.bottomTabBar}>
+          <TouchableOpacity
+            style={styles.bottomTabItem}
+            onPress={() => {
+              setCurrentBottomTab("portfolio");
+              setShowTestBrowser(false);
+            }}
+          >
+            <Image
+              source={require("./assets/pie-chart-icon.png")}
+              style={[
+                styles.bottomTabIconImage,
+                currentBottomTab === "portfolio" &&
+                  styles.bottomTabIconImageActive,
+              ]}
+              resizeMode="contain"
+            />
+            <Text
+              style={[
+                styles.bottomTabText,
+                currentBottomTab === "portfolio" && styles.bottomTabTextActive,
+              ]}
+            >
+              Portfolio
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.bottomTabItem}
+            onPress={() => {
+              setCurrentBottomTab("swap");
+              handleSwap();
+            }}
+          >
+            <Image
+              source={require("./assets/swap.png")}
+              style={[
+                styles.bottomTabIconImage,
+                currentBottomTab === "swap" && styles.bottomTabIconImageActive,
+              ]}
+              resizeMode="contain"
+            />
+            <Text
+              style={[
+                styles.bottomTabText,
+                currentBottomTab === "swap" && styles.bottomTabTextActive,
+              ]}
+            >
+              Swap
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.bottomTabItem}
+            onPress={() => {
+              setCurrentBottomTab("browser");
+              setShowTestBrowser(true);
+            }}
+          >
+            <Image
+              source={require("./assets/browser.png")}
+              style={styles.bottomTabIconImage}
+              resizeMode="contain"
+            />
+            <Text
+              style={[
+                styles.bottomTabText,
+                currentBottomTab === "browser" && styles.bottomTabTextActive,
+              ]}
+            >
+              Browser
+            </Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
 
       {/* Network Selector Side Drawer */}
@@ -3407,25 +3473,10 @@ export default function App() {
               style={styles.settingsMenuItem}
               onPress={() => {
                 settingsSheetRef.current?.close();
-                setShowExportSeedPhraseModal(true);
+                setShowSecurityDrawer(true);
               }}
             >
-              <Text style={styles.settingsMenuItemText}>
-                Export Seed Phrase
-              </Text>
-              <Text style={styles.settingsMenuItemArrow}>›</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.settingsMenuItem}
-              onPress={() => {
-                settingsSheetRef.current?.close();
-                setShowChangeSeedPhraseModal(true);
-              }}
-            >
-              <Text style={styles.settingsMenuItemText}>
-                Change Seed Phrase
-              </Text>
+              <Text style={styles.settingsMenuItemText}>Manage Security</Text>
               <Text style={styles.settingsMenuItemArrow}>›</Text>
             </TouchableOpacity>
 
@@ -3449,12 +3500,12 @@ export default function App() {
               onPress={() => {
                 settingsSheetRef.current?.close();
                 Alert.alert(
-                  "About Backpack",
-                  "About Backpack info would open here"
+                  "About X1 Wallet",
+                  "About X1 Wallet info would open here"
                 );
               }}
             >
-              <Text style={styles.settingsMenuItemText}>About Backpack</Text>
+              <Text style={styles.settingsMenuItemText}>About X1 Wallet</Text>
               <Text style={styles.settingsMenuItemArrow}>›</Text>
             </TouchableOpacity>
 
@@ -3514,6 +3565,63 @@ export default function App() {
             </TouchableOpacity>
           </View>
         </SafeAreaView>
+      </Modal>
+
+      {/* Manage Security Drawer */}
+      <Modal
+        visible={showSecurityDrawer}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowSecurityDrawer(false)}
+      >
+        <Pressable
+          style={styles.settingsDrawerOverlay}
+          onPress={() => setShowSecurityDrawer(false)}
+        >
+          <Pressable
+            style={styles.settingsDrawerContent}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.settingsDrawerContentArea}>
+              <View style={styles.settingsDrawerHeader}>
+                <View style={{ width: 32 }} />
+                <Text style={styles.settingsDrawerTitle}>Manage Security</Text>
+                <TouchableOpacity onPress={() => setShowSecurityDrawer(false)}>
+                  <Text style={styles.settingsDrawerClose}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={{ flex: 1 }}>
+                <TouchableOpacity
+                  style={styles.settingsMenuItem}
+                  onPress={() => {
+                    setShowSecurityDrawer(false);
+                    setShowExportSeedPhraseModal(true);
+                    setSeedPhraseRevealed(false);
+                  }}
+                >
+                  <Text style={styles.settingsMenuItemText}>
+                    Export Seed Phrase
+                  </Text>
+                  <Text style={styles.settingsMenuItemArrow}>›</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.settingsMenuItem}
+                  onPress={() => {
+                    setShowSecurityDrawer(false);
+                    setShowChangeSeedPhraseModal(true);
+                  }}
+                >
+                  <Text style={styles.settingsMenuItemText}>
+                    Change Seed Phrase
+                  </Text>
+                  <Text style={styles.settingsMenuItemArrow}>›</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* Receive Drawer */}
@@ -6221,5 +6329,50 @@ const styles = StyleSheet.create({
   },
   webView: {
     flex: 1,
+  },
+  bottomTabBar: {
+    flexDirection: "row",
+    backgroundColor: "transparent",
+    borderTopWidth: 0,
+    paddingBottom: 10,
+    paddingTop: 0,
+    paddingHorizontal: 20,
+    justifyContent: "space-around",
+    alignItems: "flex-start",
+    height: 86,
+  },
+  bottomTabItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+  },
+  bottomTabIcon: {
+    fontSize: 22,
+    marginBottom: 4,
+    opacity: 0.5,
+  },
+  bottomTabIconActive: {
+    opacity: 1,
+  },
+  bottomTabIconImage: {
+    width: 25,
+    height: 25,
+    marginBottom: 4,
+    opacity: 0.5,
+    tintColor: "#888888",
+  },
+  bottomTabIconImageActive: {
+    opacity: 1,
+    tintColor: "#4A90E2",
+  },
+  bottomTabText: {
+    fontSize: 11,
+    color: "#888888",
+    fontWeight: "500",
+  },
+  bottomTabTextActive: {
+    color: "#4A90E2",
+    fontWeight: "600",
   },
 });

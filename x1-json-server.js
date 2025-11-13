@@ -33,10 +33,12 @@ const path = require("path");
 const PORT = 4000;
 const X1_MAINNET_RPC_URL = "https://rpc.mainnet.x1.xyz";
 const X1_TESTNET_RPC_URL = "https://rpc.testnet.x1.xyz";
+const X1_LOCALNET_RPC_URL = "http://127.0.0.1:8901";
 const SOLANA_MAINNET_RPC_URL =
   "https://capable-autumn-thunder.solana-mainnet.quiknode.pro/3d4ed46b454fa0ca3df983502fdf15fe87145d9e/";
 const SOLANA_DEVNET_RPC_URL = "https://api.devnet.solana.com";
 const SOLANA_TESTNET_RPC_URL = "https://api.testnet.solana.com";
+const SOLANA_LOCALNET_RPC_URL = "http://127.0.0.1:8899";
 const XNT_PRICE = 1.0; // $1 per XNT
 const DB_PATH = path.join(__dirname, "transactions.db");
 
@@ -514,7 +516,9 @@ async function getWalletData(address, network = "mainnet", blockchain = "x1") {
 
   if (blockchain === "solana") {
     // Solana blockchain
-    if (network === "devnet") {
+    if (network === "localnet") {
+      rpcUrl = SOLANA_LOCALNET_RPC_URL;
+    } else if (network === "devnet") {
       rpcUrl = SOLANA_DEVNET_RPC_URL;
     } else if (network === "testnet") {
       rpcUrl = SOLANA_TESTNET_RPC_URL;
@@ -525,7 +529,13 @@ async function getWalletData(address, network = "mainnet", blockchain = "x1") {
     tokenName = "Solana";
   } else {
     // X1 blockchain
-    rpcUrl = network === "testnet" ? X1_TESTNET_RPC_URL : X1_MAINNET_RPC_URL;
+    if (network === "localnet") {
+      rpcUrl = X1_LOCALNET_RPC_URL;
+    } else if (network === "testnet") {
+      rpcUrl = X1_TESTNET_RPC_URL;
+    } else {
+      rpcUrl = X1_MAINNET_RPC_URL;
+    }
     tokenSymbol = "XNT";
     tokenName = "X1 Native Token";
   }
@@ -1109,11 +1119,13 @@ const server = http.createServer((req, res) => {
   const providerId = query.providerId || "";
   const isX1Request =
     providerId === "X1" ||
+    providerId === "X1-localnet" ||
     providerId === "X1-testnet" ||
     providerId === "X1-mainnet";
 
   const isSolanaRequest =
     providerId === "SOLANA" ||
+    providerId === "SOLANA-localnet" ||
     providerId === "SOLANA-mainnet" ||
     providerId === "SOLANA-devnet" ||
     providerId === "SOLANA-testnet";
@@ -1127,7 +1139,9 @@ const server = http.createServer((req, res) => {
 
     if (isX1Request) {
       blockchain = "x1";
-      if (providerId === "X1-testnet") {
+      if (providerId === "X1-localnet") {
+        network = "localnet";
+      } else if (providerId === "X1-testnet") {
         network = "testnet";
       } else if (providerId === "X1-mainnet") {
         network = "mainnet";
@@ -1140,7 +1154,9 @@ const server = http.createServer((req, res) => {
     } else {
       // Solana request - map to corresponding network
       blockchain = "solana";
-      if (providerId === "SOLANA-devnet") {
+      if (providerId === "SOLANA-localnet") {
+        network = "localnet";
+      } else if (providerId === "SOLANA-devnet") {
         network = "devnet";
       } else if (providerId === "SOLANA-testnet") {
         network = "testnet";

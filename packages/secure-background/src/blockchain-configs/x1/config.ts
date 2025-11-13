@@ -73,6 +73,10 @@ export const x1BlockchainConfig: BlockchainConfig<Blockchain.X1> = {
       name: "X1 Testnet",
       url: X1Cluster.TESTNET,
     },
+    LOCALNET: {
+      name: "X1 Localnet",
+      url: X1Cluster.LOCALNET,
+    },
   },
   ConfirmationCommitments: {
     Processed: {

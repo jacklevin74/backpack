@@ -67,6 +67,8 @@ import { WebView } from "react-native-webview";
 import { AuthManager } from "./src/auth/AuthManager";
 import { PinSetup } from "./src/auth/PinSetup";
 import { PinUnlock } from "./src/auth/PinUnlock";
+import { ChangePin } from "./src/auth/ChangePin";
+import { BiometricSettings } from "./src/auth/BiometricSettings";
 
 // Import native USB Ledger module
 const { LedgerUsb } = NativeModules;
@@ -3146,7 +3148,7 @@ export default function App() {
           flex: 1,
           backgroundColor: "#111827",
           justifyContent: "center",
-          alignItems: "center",
+          alignments: "center",
         }}
       >
         <Text style={{ color: "#FFFFFF", fontSize: 18 }}>Loading...</Text>
@@ -3262,7 +3264,14 @@ export default function App() {
                 onPress={() => {
                   triggerHaptic();
                   console.log("Settings button pressed!");
+                  console.log("Current showSettingsModal:", showSettingsModal);
+                  console.log(
+                    "Current settingsNavigationStack:",
+                    settingsNavigationStack
+                  );
+                  setSettingsNavigationStack([]); // Reset navigation stack
                   setShowSettingsModal(true);
+                  console.log("After setting showSettingsModal to true");
                 }}
               >
                 <Image
@@ -5044,403 +5053,453 @@ export default function App() {
       </GestureHandlerRootView>
 
       {/* Settings - Full Page - Outside GestureHandler */}
-      <Modal
-        visible={showSettingsModal}
-        transparent={false}
-        animationType="slide"
-        onRequestClose={navigateBackInSettings}
-      >
-        <View style={[styles.debugFullPageContainer, { paddingTop: 40 }]}>
-          {/* Header */}
-          <View style={styles.debugFullPageHeader}>
-            {settingsNavigationStack[settingsNavigationStack.length - 1] ===
-              "changeSeed" && changeSeedPhraseMode === "generate" ? (
-              <TouchableOpacity onPress={handleGenerateNewSeedPhrase}>
-                <Text style={[styles.debugFullPageClose, { fontSize: 31 }]}>
-                  ⟳
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={{ width: 32 }} />
-            )}
-            <Text style={styles.debugFullPageTitle}>
-              {settingsNavigationStack.length === 0
-                ? "Settings"
-                : settingsNavigationStack[
-                      settingsNavigationStack.length - 1
-                    ] === "manageSecurity"
-                  ? "Manage Security"
+      {showSettingsModal && (
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            elevation: 10,
+          }}
+        >
+          <View style={[styles.debugFullPageContainer, { paddingTop: 40 }]}>
+            {/* Header */}
+            <View style={styles.debugFullPageHeader}>
+              {settingsNavigationStack[settingsNavigationStack.length - 1] ===
+                "changeSeed" && changeSeedPhraseMode === "generate" ? (
+                <TouchableOpacity onPress={handleGenerateNewSeedPhrase}>
+                  <Text style={[styles.debugFullPageClose, { fontSize: 31 }]}>
+                    ⟳
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={{ width: 32 }} />
+              )}
+              <Text style={styles.debugFullPageTitle}>
+                {settingsNavigationStack.length === 0
+                  ? "Settings"
                   : settingsNavigationStack[
                         settingsNavigationStack.length - 1
-                      ] === "exportSeed"
-                    ? "Export Seed Phrase"
-                    : "Change Seed Phrase"}
-            </Text>
-            <TouchableOpacity
-              onPress={
-                settingsNavigationStack.length > 0
-                  ? navigateBackInSettings
-                  : closeAllSettings
-              }
-            >
-              <Text style={styles.debugFullPageClose}>✕</Text>
-            </TouchableOpacity>
-          </View>
+                      ] === "manageSecurity"
+                    ? "Manage Security"
+                    : settingsNavigationStack[
+                          settingsNavigationStack.length - 1
+                        ] === "exportSeed"
+                      ? "Export Seed Phrase"
+                      : "Change Seed Phrase"}
+              </Text>
+              <TouchableOpacity
+                onPress={
+                  settingsNavigationStack.length > 0
+                    ? navigateBackInSettings
+                    : closeAllSettings
+                }
+              >
+                <Text style={styles.debugFullPageClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
 
-          {/* Account Badge (only on main settings) */}
-          {settingsNavigationStack.length === 0 && (
-            <View
-              style={[
-                styles.settingsHeaderLeft,
-                {
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  paddingBottom: 8,
-                },
-              ]}
-            >
+            {/* Account Badge (only on main settings) */}
+            {settingsNavigationStack.length === 0 && (
               <View
                 style={[
-                  styles.settingsAccountBadge,
-                  { backgroundColor: selectedAccount.badgeColor },
+                  styles.settingsHeaderLeft,
+                  {
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                    paddingBottom: 8,
+                  },
                 ]}
               >
-                <Text style={styles.settingsAccountBadgeText}>
-                  {selectedAccount.badge}
-                </Text>
-              </View>
-              <Text style={styles.settingsAccountName}>
-                {selectedAccount.name}
-              </Text>
-            </View>
-          )}
-
-          {/* Menu Items */}
-          <ScrollView
-            style={styles.settingsMenuList}
-            contentContainerStyle={{
-              paddingHorizontal: 16,
-              paddingTop: 8,
-              paddingBottom: 20,
-            }}
-          >
-            {settingsNavigationStack.length === 0 ? (
-              // Main Settings Menu
-              <>
-                <TouchableOpacity
-                  style={styles.settingsMenuItem}
-                  onPress={() => {
-                    setShowSettingsModal(false);
-                    networkSheetRef.current?.expand();
-                  }}
-                >
-                  <Text style={styles.settingsMenuItemText}>Network</Text>
-                  <Text style={styles.settingsMenuItemArrow}>›</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.settingsMenuItem}
-                  onPress={() => {
-                    setShowSettingsModal(false);
-                    setShowBluetoothDrawer(true);
-                    fetchPairedBluetoothDevices();
-                  }}
-                >
-                  <Text style={styles.settingsMenuItemText}>
-                    Bluetooth Devices
-                  </Text>
-                  <Text style={styles.settingsMenuItemArrow}>›</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.settingsMenuItem}
-                  onPress={() => {
-                    setShowSettingsModal(false);
-                    Alert.alert(
-                      "Rename Wallet",
-                      "Rename wallet functionality would open here"
-                    );
-                  }}
-                >
-                  <Text style={styles.settingsMenuItemText}>Rename Wallet</Text>
-                  <Text style={styles.settingsMenuItemArrow}>›</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.settingsMenuItem}
-                  onPress={() => {
-                    setShowSettingsModal(false);
-                    Alert.alert(
-                      "New Account",
-                      "Create new account functionality would open here"
-                    );
-                  }}
-                >
-                  <Text style={styles.settingsMenuItemText}>New Account</Text>
-                  <Text style={styles.settingsMenuItemArrow}>›</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.settingsMenuItem}
-                  onPress={() => {
-                    setShowSettingsModal(false);
-                    Alert.alert("Preferences", "Preferences would open here");
-                  }}
-                >
-                  <Text style={styles.settingsMenuItemText}>Preferences</Text>
-                  <Text style={styles.settingsMenuItemArrow}>›</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.settingsMenuItem}
-                  onPress={() => navigateToSettingsScreen("manageSecurity")}
-                >
-                  <Text style={styles.settingsMenuItemText}>
-                    Manage Security
-                  </Text>
-                  <Text style={styles.settingsMenuItemArrow}>›</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.settingsMenuItem}
-                  onPress={() => {
-                    setShowSettingsModal(false);
-                    if (Platform.OS === "android") {
-                      Linking.sendIntent("android.settings.WIFI_SETTINGS");
-                    } else {
-                      Linking.openURL("app-settings:");
-                    }
-                  }}
-                >
-                  <Text style={styles.settingsMenuItemText}>WiFi Settings</Text>
-                  <Text style={styles.settingsMenuItemArrow}>›</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.settingsMenuItem}
-                  onPress={() => {
-                    setShowSettingsModal(false);
-                    Alert.alert(
-                      "About X1 Wallet",
-                      "About X1 Wallet info would open here"
-                    );
-                  }}
-                >
-                  <Text style={styles.settingsMenuItemText}>
-                    About X1 Wallet
-                  </Text>
-                  <Text style={styles.settingsMenuItemArrow}>›</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.settingsMenuItem}
-                  onPress={() => {
-                    setShowSettingsModal(false);
-                    setShowDebugDrawer(true);
-                  }}
-                >
-                  <Text style={styles.settingsMenuItemText}>Debug</Text>
-                  <Text style={styles.settingsMenuItemArrow}>›</Text>
-                </TouchableOpacity>
-              </>
-            ) : settingsNavigationStack[settingsNavigationStack.length - 1] ===
-              "manageSecurity" ? (
-              // Manage Security Menu
-              <>
-                <TouchableOpacity
-                  style={styles.settingsMenuItem}
-                  onPress={() => navigateToSettingsScreen("exportSeed")}
-                >
-                  <Text style={styles.settingsMenuItemText}>
-                    Export Seed Phrase
-                  </Text>
-                  <Text style={styles.settingsMenuItemArrow}>›</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.settingsMenuItem}
-                  onPress={() => navigateToSettingsScreen("changeSeed")}
-                >
-                  <Text style={styles.settingsMenuItemText}>
-                    Change Seed Phrase
-                  </Text>
-                  <Text style={styles.settingsMenuItemArrow}>›</Text>
-                </TouchableOpacity>
-              </>
-            ) : settingsNavigationStack[settingsNavigationStack.length - 1] ===
-              "exportSeed" ? (
-              // Export Seed Phrase Screen
-              <View style={styles.bottomSheetContent}>
-                {masterSeedPhrase ? (
-                  <>
-                    <Text style={styles.seedPhraseTitle}>
-                      Your Master Seed Phrase
-                    </Text>
-                    <View style={styles.seedPhraseContainer}>
-                      <TouchableOpacity
-                        style={styles.seedPhraseCopyBtnInside}
-                        onPress={handleCopyMasterSeedPhrase}
-                      >
-                        <Text style={styles.seedPhraseCopyIconInside}>⧉</Text>
-                      </TouchableOpacity>
-                      <View style={styles.seedPhraseGrid}>
-                        {masterSeedPhrase.split(" ").map((word, index) => (
-                          <View key={index} style={styles.seedPhraseWord}>
-                            <Text style={styles.seedPhraseText}>
-                              {index + 1}. {word}
-                            </Text>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                    <Text style={styles.seedPhraseWarning}>
-                      Keep this seed phrase secure. All your HD wallets are
-                      derived from this master seed.
-                    </Text>
-                  </>
-                ) : (
-                  <Text style={styles.seedPhraseWarning}>
-                    No master seed phrase found. Create a new wallet to generate
-                    one.
-                  </Text>
-                )}
-              </View>
-            ) : (
-              // Change Seed Phrase Screen
-              <View style={styles.bottomSheetContent}>
-                {/* Mode Selector */}
                 <View
-                  style={{
-                    flexDirection: "row",
-                    marginBottom: 20,
-                    borderBottomWidth: 1,
-                    borderBottomColor: "#333",
-                  }}
+                  style={[
+                    styles.settingsAccountBadge,
+                    { backgroundColor: selectedAccount.badgeColor },
+                  ]}
                 >
-                  <TouchableOpacity
-                    style={{
-                      flex: 1,
-                      paddingVertical: 12,
-                      borderBottomWidth:
-                        changeSeedPhraseMode === "enter" ? 2 : 0,
-                      borderBottomColor: "#4A90E2",
-                    }}
-                    onPress={() => setChangeSeedPhraseMode("enter")}
-                  >
-                    <Text
-                      style={{
-                        color:
-                          changeSeedPhraseMode === "enter" ? "#4A90E2" : "#888",
-                        textAlign: "center",
-                        fontSize: 16,
-                        fontWeight:
-                          changeSeedPhraseMode === "enter" ? "600" : "400",
-                      }}
-                    >
-                      Enter Existing
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={{
-                      flex: 1,
-                      paddingVertical: 12,
-                      borderBottomWidth:
-                        changeSeedPhraseMode === "generate" ? 2 : 0,
-                      borderBottomColor: "#4A90E2",
-                    }}
-                    onPress={() => {
-                      setChangeSeedPhraseMode("generate");
-                      handleGenerateNewSeedPhrase();
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color:
-                          changeSeedPhraseMode === "generate"
-                            ? "#4A90E2"
-                            : "#888",
-                        textAlign: "center",
-                        fontSize: 16,
-                        fontWeight:
-                          changeSeedPhraseMode === "generate" ? "600" : "400",
-                      }}
-                    >
-                      Generate New
-                    </Text>
-                  </TouchableOpacity>
+                  <Text style={styles.settingsAccountBadgeText}>
+                    {selectedAccount.badge}
+                  </Text>
                 </View>
-
-                {changeSeedPhraseMode === "enter" ? (
-                  <>
-                    <Text style={[styles.seedPhraseWarning, { color: "#888" }]}>
-                      Enter your new 12-word seed phrase:
-                    </Text>
-                    <TextInput
-                      style={styles.seedPhraseInput}
-                      value={newSeedPhraseInput}
-                      onChangeText={setNewSeedPhraseInput}
-                      placeholder="word1 word2 word3 ..."
-                      placeholderTextColor="#666"
-                      multiline
-                    />
-                    <TouchableOpacity
-                      style={styles.dangerButton}
-                      onPress={handleChangeSeedPhrase}
-                    >
-                      <Text style={styles.dangerButtonText}>
-                        Change Seed Phrase
-                      </Text>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <>
-                    <View style={styles.seedPhraseContainer}>
-                      <TouchableOpacity
-                        style={styles.seedPhraseCopyBtnInside}
-                        onPress={copyGeneratedSeedPhrase}
-                      >
-                        <Text
-                          style={[
-                            styles.seedPhraseCopyIconInside,
-                            { fontSize: 20.4 },
-                          ]}
-                        >
-                          ⧉
-                        </Text>
-                      </TouchableOpacity>
-                      <View style={styles.seedPhraseGrid}>
-                        {generatedNewSeed.split(" ").map((word, index) => (
-                          <View key={index} style={styles.seedPhraseWord}>
-                            <Text style={styles.seedPhraseText}>
-                              {index + 1}. {word}
-                            </Text>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.dangerButton}
-                      onPress={() => {
-                        handleChangeSeedPhrase(generatedNewSeed);
-                      }}
-                    >
-                      <Text style={styles.dangerButtonText}>
-                        Change Seed Phrase
-                      </Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-
-                <Text style={[styles.seedPhraseWarning, { marginTop: 20 }]}>
-                  ⚠️ WARNING: Changing your master seed phrase will only affect
-                  newly created wallets. Existing wallets will remain unchanged
-                  and will continue to use their original seed phrases.
+                <Text style={styles.settingsAccountName}>
+                  {selectedAccount.name}
                 </Text>
               </View>
             )}
-          </ScrollView>
+
+            {/* Menu Items */}
+            <ScrollView
+              style={styles.settingsMenuList}
+              contentContainerStyle={{
+                paddingHorizontal: 16,
+                paddingTop: 8,
+                paddingBottom: 20,
+              }}
+            >
+              {settingsNavigationStack.length === 0 ? (
+                // Main Settings Menu
+                <>
+                  <TouchableOpacity
+                    style={styles.settingsMenuItem}
+                    onPress={() => {
+                      setShowSettingsModal(false);
+                      networkSheetRef.current?.expand();
+                    }}
+                  >
+                    <Text style={styles.settingsMenuItemText}>Network</Text>
+                    <Text style={styles.settingsMenuItemArrow}>›</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.settingsMenuItem}
+                    onPress={() => {
+                      setShowSettingsModal(false);
+                      setShowBluetoothDrawer(true);
+                      fetchPairedBluetoothDevices();
+                    }}
+                  >
+                    <Text style={styles.settingsMenuItemText}>
+                      Bluetooth Devices
+                    </Text>
+                    <Text style={styles.settingsMenuItemArrow}>›</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.settingsMenuItem}
+                    onPress={() => {
+                      setShowSettingsModal(false);
+                      Alert.alert("Preferences", "Preferences would open here");
+                    }}
+                  >
+                    <Text style={styles.settingsMenuItemText}>Preferences</Text>
+                    <Text style={styles.settingsMenuItemArrow}>›</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.settingsMenuItem}
+                    onPress={() => navigateToSettingsScreen("manageSecurity")}
+                  >
+                    <Text style={styles.settingsMenuItemText}>
+                      Manage Security
+                    </Text>
+                    <Text style={styles.settingsMenuItemArrow}>›</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.settingsMenuItem}
+                    onPress={() => {
+                      setShowSettingsModal(false);
+                      if (Platform.OS === "android") {
+                        Linking.sendIntent("android.settings.WIFI_SETTINGS");
+                      } else {
+                        Linking.openURL("app-settings:");
+                      }
+                    }}
+                  >
+                    <Text style={styles.settingsMenuItemText}>
+                      WiFi Settings
+                    </Text>
+                    <Text style={styles.settingsMenuItemArrow}>›</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.settingsMenuItem}
+                    onPress={() => {
+                      setShowSettingsModal(false);
+                      Alert.alert(
+                        "About X1 Wallet",
+                        "About X1 Wallet info would open here"
+                      );
+                    }}
+                  >
+                    <Text style={styles.settingsMenuItemText}>
+                      About X1 Wallet
+                    </Text>
+                    <Text style={styles.settingsMenuItemArrow}>›</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.settingsMenuItem}
+                    onPress={() => {
+                      setShowSettingsModal(false);
+                      setShowDebugDrawer(true);
+                    }}
+                  >
+                    <Text style={styles.settingsMenuItemText}>Debug</Text>
+                    <Text style={styles.settingsMenuItemArrow}>›</Text>
+                  </TouchableOpacity>
+
+                  {/* Lock App Button */}
+                  <TouchableOpacity
+                    style={[
+                      styles.settingsMenuItem,
+                      {
+                        marginTop: 20,
+                        borderTopWidth: 1,
+                        borderTopColor: "rgba(255, 255, 255, 0.1)",
+                      },
+                    ]}
+                    onPress={() => {
+                      setShowSettingsModal(false);
+                      setAuthState("locked");
+                    }}
+                  >
+                    <Text style={styles.settingsMenuItemText}>Lock</Text>
+                    <Text style={styles.settingsMenuItemArrow}>🔒</Text>
+                  </TouchableOpacity>
+                </>
+              ) : settingsNavigationStack[
+                  settingsNavigationStack.length - 1
+                ] === "manageSecurity" ? (
+                // Manage Security Menu
+                <>
+                  <TouchableOpacity
+                    style={styles.settingsMenuItem}
+                    onPress={() => navigateToSettingsScreen("changePin")}
+                  >
+                    <Text style={styles.settingsMenuItemText}>Change PIN</Text>
+                    <Text style={styles.settingsMenuItemArrow}>›</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.settingsMenuItem}
+                    onPress={() =>
+                      navigateToSettingsScreen("biometricSettings")
+                    }
+                  >
+                    <Text style={styles.settingsMenuItemText}>
+                      Biometric Unlock
+                    </Text>
+                    <Text style={styles.settingsMenuItemArrow}>›</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.settingsMenuItem}
+                    onPress={() => navigateToSettingsScreen("exportSeed")}
+                  >
+                    <Text style={styles.settingsMenuItemText}>
+                      Export Seed Phrase
+                    </Text>
+                    <Text style={styles.settingsMenuItemArrow}>›</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.settingsMenuItem}
+                    onPress={() => navigateToSettingsScreen("changeSeed")}
+                  >
+                    <Text style={styles.settingsMenuItemText}>
+                      Change Seed Phrase
+                    </Text>
+                    <Text style={styles.settingsMenuItemArrow}>›</Text>
+                  </TouchableOpacity>
+                </>
+              ) : settingsNavigationStack[
+                  settingsNavigationStack.length - 1
+                ] === "changePin" ? (
+                // Change PIN Screen
+                <ChangePin
+                  onComplete={() => {
+                    setShowSettingsModal(false);
+                    setSettingsNavigationStack(["main"]);
+                  }}
+                  onCancel={() => {
+                    setSettingsNavigationStack(["manageSecurity"]);
+                  }}
+                />
+              ) : settingsNavigationStack[
+                  settingsNavigationStack.length - 1
+                ] === "biometricSettings" ? (
+                // Biometric Settings Screen
+                <BiometricSettings
+                  password={password}
+                  onBack={() => {
+                    setSettingsNavigationStack(["manageSecurity"]);
+                  }}
+                />
+              ) : settingsNavigationStack[
+                  settingsNavigationStack.length - 1
+                ] === "exportSeed" ? (
+                // Export Seed Phrase Screen
+                <View style={styles.bottomSheetContent}>
+                  {masterSeedPhrase ? (
+                    <>
+                      <Text style={styles.seedPhraseTitle}>
+                        Your Master Seed Phrase
+                      </Text>
+                      <View style={styles.seedPhraseContainer}>
+                        <TouchableOpacity
+                          style={styles.seedPhraseCopyBtnInside}
+                          onPress={handleCopyMasterSeedPhrase}
+                        >
+                          <Text style={styles.seedPhraseCopyIconInside}>⧉</Text>
+                        </TouchableOpacity>
+                        <View style={styles.seedPhraseGrid}>
+                          {masterSeedPhrase.split(" ").map((word, index) => (
+                            <View key={index} style={styles.seedPhraseWord}>
+                              <Text style={styles.seedPhraseText}>
+                                {index + 1}. {word}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                      <Text style={styles.seedPhraseWarning}>
+                        Keep this seed phrase secure. All your HD wallets are
+                        derived from this master seed.
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={styles.seedPhraseWarning}>
+                      No master seed phrase found. Create a new wallet to
+                      generate one.
+                    </Text>
+                  )}
+                </View>
+              ) : (
+                // Change Seed Phrase Screen
+                <View style={styles.bottomSheetContent}>
+                  {/* Mode Selector */}
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      marginBottom: 20,
+                      borderBottomWidth: 1,
+                      borderBottomColor: "#333",
+                    }}
+                  >
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        paddingVertical: 12,
+                        borderBottomWidth:
+                          changeSeedPhraseMode === "enter" ? 2 : 0,
+                        borderBottomColor: "#4A90E2",
+                      }}
+                      onPress={() => setChangeSeedPhraseMode("enter")}
+                    >
+                      <Text
+                        style={{
+                          color:
+                            changeSeedPhraseMode === "enter"
+                              ? "#4A90E2"
+                              : "#888",
+                          textAlign: "center",
+                          fontSize: 16,
+                          fontWeight:
+                            changeSeedPhraseMode === "enter" ? "600" : "400",
+                        }}
+                      >
+                        Enter Existing
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        paddingVertical: 12,
+                        borderBottomWidth:
+                          changeSeedPhraseMode === "generate" ? 2 : 0,
+                        borderBottomColor: "#4A90E2",
+                      }}
+                      onPress={() => {
+                        setChangeSeedPhraseMode("generate");
+                        handleGenerateNewSeedPhrase();
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color:
+                            changeSeedPhraseMode === "generate"
+                              ? "#4A90E2"
+                              : "#888",
+                          textAlign: "center",
+                          fontSize: 16,
+                          fontWeight:
+                            changeSeedPhraseMode === "generate" ? "600" : "400",
+                        }}
+                      >
+                        Generate New
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {changeSeedPhraseMode === "enter" ? (
+                    <>
+                      <Text
+                        style={[styles.seedPhraseWarning, { color: "#888" }]}
+                      >
+                        Enter your new 12-word seed phrase:
+                      </Text>
+                      <TextInput
+                        style={styles.seedPhraseInput}
+                        value={newSeedPhraseInput}
+                        onChangeText={setNewSeedPhraseInput}
+                        placeholder="word1 word2 word3 ..."
+                        placeholderTextColor="#666"
+                        multiline
+                      />
+                      <TouchableOpacity
+                        style={styles.dangerButton}
+                        onPress={handleChangeSeedPhrase}
+                      >
+                        <Text style={styles.dangerButtonText}>
+                          Change Seed Phrase
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <>
+                      <View style={styles.seedPhraseContainer}>
+                        <TouchableOpacity
+                          style={styles.seedPhraseCopyBtnInside}
+                          onPress={copyGeneratedSeedPhrase}
+                        >
+                          <Text
+                            style={[
+                              styles.seedPhraseCopyIconInside,
+                              { fontSize: 20.4 },
+                            ]}
+                          >
+                            ⧉
+                          </Text>
+                        </TouchableOpacity>
+                        <View style={styles.seedPhraseGrid}>
+                          {generatedNewSeed.split(" ").map((word, index) => (
+                            <View key={index} style={styles.seedPhraseWord}>
+                              <Text style={styles.seedPhraseText}>
+                                {index + 1}. {word}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.dangerButton}
+                        onPress={() => {
+                          handleChangeSeedPhrase(generatedNewSeed);
+                        }}
+                      >
+                        <Text style={styles.dangerButtonText}>
+                          Change Seed Phrase
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+
+                  <Text style={[styles.seedPhraseWarning, { marginTop: 20 }]}>
+                    ⚠️ WARNING: Changing your master seed phrase will only
+                    affect newly created wallets. Existing wallets will remain
+                    unchanged and will continue to use their original seed
+                    phrases.
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
         </View>
-      </Modal>
+      )}
     </>
   );
 }

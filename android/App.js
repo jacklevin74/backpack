@@ -31,6 +31,8 @@ import {
   RefreshControl,
   ToastAndroid,
   Keyboard,
+  Vibration,
+  Animated,
 } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import {
@@ -354,6 +356,11 @@ export default function App() {
   const [showTestBrowser, setShowTestBrowser] = useState(false);
   const webViewRef = useRef(null);
 
+  // Haptic feedback mode toggle (secret easter egg)
+  const [hapticMode, setHapticMode] = useState(false);
+  const [tapCount, setTapCount] = useState(0);
+  const tapTimerRef = useRef(null);
+
   // Bottom sheet refs
   const bottomSheetRef = useRef(null);
   const sendSheetRef = useRef(null);
@@ -370,6 +377,66 @@ export default function App() {
   const seedPhraseSheetRef = useRef(null);
 
   const snapPoints = useMemo(() => ["50%", "90%"], []);
+
+  // Animation scales for action buttons
+  const receiveScale = useRef(new Animated.Value(1)).current;
+  const sendScale = useRef(new Animated.Value(1)).current;
+  const swapScale = useRef(new Animated.Value(1)).current;
+  const stakeScale = useRef(new Animated.Value(1)).current;
+
+  // Haptic feedback helper
+  const triggerHaptic = useCallback(() => {
+    if (Platform.OS === "android" && hapticMode) {
+      Vibration.vibrate(10); // Short 10ms vibration
+    }
+  }, [hapticMode]);
+
+  // Handle rapid taps on balance to toggle haptic mode
+  const handleBalanceTap = useCallback(() => {
+    const newCount = tapCount + 1;
+    setTapCount(newCount);
+
+    // Clear existing timer
+    if (tapTimerRef.current) {
+      clearTimeout(tapTimerRef.current);
+    }
+
+    // If 5 taps within time window, toggle haptic mode
+    if (newCount >= 5) {
+      setHapticMode((prev) => !prev);
+      setTapCount(0);
+      // Give strong haptic feedback for toggle
+      if (Platform.OS === "android") {
+        Vibration.vibrate([0, 50, 50, 50]); // Pattern: wait, vibrate, wait, vibrate
+      }
+      ToastAndroid.show(
+        `Haptic Mode ${!hapticMode ? "ON" : "OFF"}`,
+        ToastAndroid.SHORT
+      );
+    } else {
+      // Reset tap count after 1 second of no taps
+      tapTimerRef.current = setTimeout(() => {
+        setTapCount(0);
+      }, 1000);
+    }
+  }, [tapCount, hapticMode]);
+
+  // Button press animation
+  const animateButtonPress = useCallback((scale) => {
+    Animated.sequence([
+      Animated.timing(scale, {
+        toValue: 0.9,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scale, {
+        toValue: 1,
+        friction: 3,
+        tension: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   // Debug logging function - only logs when debug drawer is active
   const addDebugLog = useCallback(
@@ -3028,7 +3095,10 @@ export default function App() {
               <TouchableOpacity
                 testID="wallet-selector-button"
                 style={styles.walletDropdownButton}
-                onPress={showWalletSelector}
+                onPress={() => {
+                  triggerHaptic();
+                  showWalletSelector();
+                }}
               >
                 <Image
                   source={currentNetwork.logo}
@@ -3057,9 +3127,10 @@ export default function App() {
                   styles.quickSwitchButton,
                   currentNetwork.id === "X1" && styles.quickSwitchButtonActive,
                 ]}
-                onPress={() =>
-                  switchNetwork(NETWORKS.find((n) => n.id === "X1"))
-                }
+                onPress={() => {
+                  triggerHaptic();
+                  switchNetwork(NETWORKS.find((n) => n.id === "X1"));
+                }}
               >
                 <Image
                   source={require("./assets/x1.png")}
@@ -3073,9 +3144,10 @@ export default function App() {
                   currentNetwork.id === "SOLANA" &&
                     styles.quickSwitchButtonActive,
                 ]}
-                onPress={() =>
-                  switchNetwork(NETWORKS.find((n) => n.id === "SOLANA"))
-                }
+                onPress={() => {
+                  triggerHaptic();
+                  switchNetwork(NETWORKS.find((n) => n.id === "SOLANA"));
+                }}
               >
                 <Image
                   source={require("./assets/solana.png")}
@@ -3103,7 +3175,10 @@ export default function App() {
               )}
               <TouchableOpacity
                 style={styles.activityIcon}
-                onPress={() => activitySheetRef.current?.expand()}
+                onPress={() => {
+                  triggerHaptic();
+                  activitySheetRef.current?.expand();
+                }}
               >
                 <Image
                   source={require("./assets/clock.png")}
@@ -3113,6 +3188,7 @@ export default function App() {
               <TouchableOpacity
                 style={styles.settingsIcon}
                 onPress={() => {
+                  triggerHaptic();
                   console.log("Settings button pressed!");
                   setShowSettingsModal(true);
                 }}
@@ -3142,7 +3218,11 @@ export default function App() {
             {/* Balance Section with all content */}
             <View style={styles.balanceSection}>
               {/* Balance display */}
-              <View style={styles.balanceContent}>
+              <TouchableOpacity
+                style={styles.balanceContent}
+                onPress={handleBalanceTap}
+                activeOpacity={0.7}
+              >
                 <Text style={styles.balanceUSD}>{balanceUSD}</Text>
                 <Text style={styles.balanceChange}>
                   {tokenPrice !== null
@@ -3155,50 +3235,126 @@ export default function App() {
                       )}`
                     : "$0.00"}
                 </Text>
-              </View>
+              </TouchableOpacity>
 
               {/* Action Buttons */}
               <View style={styles.actionsRow}>
                 <TouchableOpacity
                   style={styles.actionCircle}
-                  onPress={handleReceive}
+                  onPress={() => {
+                    if (hapticMode) {
+                      triggerHaptic();
+                      animateButtonPress(receiveScale);
+                    }
+                    handleReceive();
+                  }}
                 >
-                  <View style={styles.actionCircleBg}>
-                    <Text style={styles.actionCircleIcon}>▼</Text>
-                  </View>
+                  <Animated.View
+                    style={[
+                      styles.actionCircleBg,
+                      hapticMode && styles.actionCircleBgEnhanced,
+                      { backgroundColor: hapticMode ? "#4A90E2" : "#1a1a1a" },
+                      hapticMode && { transform: [{ scale: receiveScale }] },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.actionCircleIcon,
+                        !hapticMode && { color: "#4A90E2" },
+                      ]}
+                    >
+                      ▼
+                    </Text>
+                  </Animated.View>
                   <Text style={styles.actionCircleText}>Receive</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.actionCircle}
-                  onPress={handleSend}
+                  onPress={() => {
+                    if (hapticMode) {
+                      triggerHaptic();
+                      animateButtonPress(sendScale);
+                    }
+                    handleSend();
+                  }}
                 >
-                  <View style={styles.actionCircleBg}>
-                    <Text style={styles.actionCircleIcon}>▲</Text>
-                  </View>
+                  <Animated.View
+                    style={[
+                      styles.actionCircleBg,
+                      hapticMode && styles.actionCircleBgEnhanced,
+                      { backgroundColor: hapticMode ? "#E8A951" : "#1a1a1a" },
+                      hapticMode && { transform: [{ scale: sendScale }] },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.actionCircleIcon,
+                        !hapticMode && { color: "#4A90E2" },
+                      ]}
+                    >
+                      ▲
+                    </Text>
+                  </Animated.View>
                   <Text style={styles.actionCircleText}>Send</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.actionCircle}
-                  onPress={handleSwap}
+                  onPress={() => {
+                    if (hapticMode) {
+                      triggerHaptic();
+                      animateButtonPress(swapScale);
+                    }
+                    handleSwap();
+                  }}
                 >
-                  <View style={styles.actionCircleBg}>
+                  <Animated.View
+                    style={[
+                      styles.actionCircleBg,
+                      hapticMode && styles.actionCircleBgEnhanced,
+                      { backgroundColor: hapticMode ? "#9B59B6" : "#1a1a1a" },
+                      hapticMode && { transform: [{ scale: swapScale }] },
+                    ]}
+                  >
                     <Image
                       source={require("./assets/swap.png")}
-                      style={styles.swapIcon}
+                      style={[
+                        styles.swapIcon,
+                        !hapticMode && { tintColor: "#4A90E2" },
+                      ]}
                     />
-                  </View>
+                  </Animated.View>
                   <Text style={styles.actionCircleText}>Swap</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.actionCircle}
-                  onPress={handleStake}
+                  onPress={() => {
+                    if (hapticMode) {
+                      triggerHaptic();
+                      animateButtonPress(stakeScale);
+                    }
+                    handleStake();
+                  }}
                 >
-                  <View style={styles.actionCircleBg}>
-                    <Text style={styles.actionCircleIcon}>◈</Text>
-                  </View>
+                  <Animated.View
+                    style={[
+                      styles.actionCircleBg,
+                      hapticMode && styles.actionCircleBgEnhanced,
+                      { backgroundColor: hapticMode ? "#2ECC71" : "#1a1a1a" },
+                      hapticMode && { transform: [{ scale: stakeScale }] },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.actionCircleIcon,
+                        !hapticMode && { color: "#4A90E2" },
+                      ]}
+                    >
+                      ◈
+                    </Text>
+                  </Animated.View>
                   <Text style={styles.actionCircleText}>Stake</Text>
                 </TouchableOpacity>
               </View>
@@ -3208,7 +3364,13 @@ export default function App() {
                 {tokens.map((token) => {
                   const nativeToken = getNativeTokenInfo();
                   return (
-                    <View key={token.id} style={styles.tokenRow}>
+                    <View
+                      key={token.id}
+                      style={[
+                        styles.tokenRow,
+                        hapticMode && styles.tokenRowEnhanced,
+                      ]}
+                    >
                       <View style={styles.tokenLeft}>
                         <View style={styles.tokenIconLarge}>
                           <Image
@@ -5541,14 +5703,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  actionCircleBgEnhanced: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
   actionCircleIcon: {
-    fontSize: 24,
-    color: "#4A90E2",
+    fontSize: 26,
+    color: "#FFFFFF",
   },
   swapIcon: {
-    width: 24,
-    height: 24,
-    tintColor: "#4A90E2",
+    width: 26,
+    height: 26,
+    tintColor: "#FFFFFF",
   },
   actionCircleText: {
     fontSize: 12,
@@ -5566,6 +5738,13 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     borderRadius: 12,
     marginBottom: 8,
+  },
+  tokenRowEnhanced: {
+    paddingHorizontal: 16,
+    backgroundColor: "#0a0a0a",
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#1a1a1a",
   },
   tokenLeft: {
     flexDirection: "row",

@@ -13,7 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-PROJECT_DIR="/home/jack/backpack/backpack-ui-only"
+PROJECT_DIR="/home/jack/backpack/android"
 ANDROID_DIR="${PROJECT_DIR}/android"
 APK_OUTPUT="${ANDROID_DIR}/app/build/outputs/apk/release/app-release.apk"
 FINAL_OUTPUT_DIR="${HOME}/Downloads"

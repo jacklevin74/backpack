@@ -351,7 +351,7 @@ export class SecureStore {
       )) ?? {};
     const publicKeyInfo =
       publicKeyStore[userId].platforms[blockchain]?.publicKeys[publicKey];
-    if (!publicKey) {
+    if (!publicKeyInfo) {
       throw new Error("Unknown PublicKey");
     }
 

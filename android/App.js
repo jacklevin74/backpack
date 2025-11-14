@@ -63,6 +63,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import { WebView } from "react-native-webview";
 
+// Import authentication components
+import { AuthManager } from "./src/auth/AuthManager";
+import { PinSetup } from "./src/auth/PinSetup";
+import { PinUnlock } from "./src/auth/PinUnlock";
+
 // Import native USB Ledger module
 const { LedgerUsb } = NativeModules;
 
@@ -269,6 +274,10 @@ const NETWORKS = [
 ];
 
 export default function App() {
+  // Authentication states
+  const [authState, setAuthState] = useState("loading"); // 'loading', 'setup', 'locked', 'unlocked'
+  const [password, setPassword] = useState(null);
+
   const [wallets, setWallets] = useState([]);
   const [selectedWallet, setSelectedWallet] = useState(null);
   const [accounts, setAccounts] = useState(MOCK_ACCOUNTS);
@@ -574,12 +583,37 @@ export default function App() {
     }
   };
 
+  // Check authentication state on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const hasPin = await AuthManager.hasPin();
+        if (!hasPin) {
+          // Generate a random password for new users
+          const randomPassword = Array.from(randomBytes(32))
+            .map((byte) => byte.toString(16).padStart(2, "0"))
+            .join("");
+          setPassword(randomPassword);
+          setAuthState("setup");
+        } else {
+          setAuthState("locked");
+        }
+      } catch (error) {
+        console.error("Error checking auth:", error);
+        setAuthState("setup");
+      }
+    };
+    checkAuth();
+  }, []);
+
   // Load wallets and master seed phrase on mount
   useEffect(() => {
-    loadWalletsFromStorage();
-    loadMasterSeedPhrase();
-    loadDerivationIndex();
-  }, []);
+    if (authState === "unlocked") {
+      loadWalletsFromStorage();
+      loadMasterSeedPhrase();
+      loadDerivationIndex();
+    }
+  }, [authState]);
 
   // Save selected wallet ID to storage whenever it changes
   useEffect(() => {
@@ -3079,6 +3113,44 @@ export default function App() {
           />
         </View>
       </SafeAreaView>
+    );
+  }
+
+  // Show PIN setup screen
+  if (authState === "setup") {
+    return (
+      <PinSetup
+        password={password}
+        onComplete={() => setAuthState("unlocked")}
+      />
+    );
+  }
+
+  // Show PIN unlock screen
+  if (authState === "locked") {
+    return (
+      <PinUnlock
+        onUnlock={(recoveredPassword) => {
+          setPassword(recoveredPassword);
+          setAuthState("unlocked");
+        }}
+      />
+    );
+  }
+
+  // Show loading screen
+  if (authState === "loading") {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "#111827",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <Text style={{ color: "#FFFFFF", fontSize: 18 }}>Loading...</Text>
+      </View>
     );
   }
 

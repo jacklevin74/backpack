@@ -58,6 +58,7 @@ import QRCode from "react-native-qrcode-svg";
 import TransportBLE from "@ledgerhq/react-native-hw-transport-ble";
 import AppSolana from "@ledgerhq/hw-app-solana";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 import { WebView } from "react-native-webview";
 
 // Import native USB Ledger module
@@ -98,6 +99,76 @@ const MOCK_WALLETS = [
     selected: false,
   },
 ];
+
+const MASTER_SEED_STORAGE_KEY = "@masterSeedPhrase";
+const DERIVATION_INDEX_STORAGE_KEY = "@derivationIndex";
+const WALLET_MNEMONIC_KEY_PREFIX = "@walletMnemonic:";
+
+const getWalletMnemonicKey = (walletId) =>
+  `${WALLET_MNEMONIC_KEY_PREFIX}${walletId}`;
+
+const saveSecureItem = async (key, value) => {
+  try {
+    const secureAvailable = await SecureStore.isAvailableAsync();
+    if (secureAvailable) {
+      if (value === null || value === undefined) {
+        await SecureStore.deleteItemAsync(key);
+      } else {
+        await SecureStore.setItemAsync(key, value);
+      }
+      await AsyncStorage.removeItem(key);
+    } else if (value === null || value === undefined) {
+      await AsyncStorage.removeItem(key);
+    } else {
+      await AsyncStorage.setItem(key, value);
+    }
+  } catch (error) {
+    console.error(`Error saving secure item (${key}):`, error);
+  }
+};
+
+const getSecureItem = async (key) => {
+  try {
+    const secureAvailable = await SecureStore.isAvailableAsync();
+    if (secureAvailable) {
+      const stored = await SecureStore.getItemAsync(key);
+      if (stored) {
+        await AsyncStorage.removeItem(key);
+        return stored;
+      }
+      const legacy = await AsyncStorage.getItem(key);
+      if (legacy) {
+        await SecureStore.setItemAsync(key, legacy);
+        await AsyncStorage.removeItem(key);
+        return legacy;
+      }
+      return null;
+    }
+    return await AsyncStorage.getItem(key);
+  } catch (error) {
+    console.error(`Error loading secure item (${key}):`, error);
+    return null;
+  }
+};
+
+const deleteSecureItem = async (key) => {
+  await saveSecureItem(key, null);
+};
+
+const saveWalletMnemonicSecurely = async (walletId, mnemonic) => {
+  if (!walletId) return;
+  await saveSecureItem(getWalletMnemonicKey(walletId), mnemonic);
+};
+
+const loadWalletMnemonicSecurely = async (walletId) => {
+  if (!walletId) return null;
+  return getSecureItem(getWalletMnemonicKey(walletId));
+};
+
+const deleteWalletMnemonicSecurely = async (walletId) => {
+  if (!walletId) return;
+  await deleteSecureItem(getWalletMnemonicKey(walletId));
+};
 
 // Mock account data
 const MOCK_ACCOUNTS = [
@@ -207,6 +278,7 @@ export default function App() {
   const [importMnemonic, setImportMnemonic] = useState("");
   const [importPrivateKey, setImportPrivateKey] = useState("");
   const [importType, setImportType] = useState("mnemonic"); // "mnemonic" or "privateKey"
+  const [importDerivationIndex, setImportDerivationIndex] = useState("0");
   const [editingWallet, setEditingWallet] = useState(null);
   const [editWalletName, setEditWalletName] = useState("");
   const [showPrivateKey, setShowPrivateKey] = useState(false);
@@ -221,8 +293,10 @@ export default function App() {
   const [changeSeedPhraseMode, setChangeSeedPhraseMode] = useState("enter"); // "enter" or "generate"
   const [generatedNewSeed, setGeneratedNewSeed] = useState("");
   const [showSecurityDrawer, setShowSecurityDrawer] = useState(false);
-  const [seedPhraseRevealed, setSeedPhraseRevealed] = useState(false);
   const [currentBottomTab, setCurrentBottomTab] = useState("portfolio"); // "portfolio", "swap", "browser"
+  const [walletSeedPhraseForDisplay, setWalletSeedPhraseForDisplay] =
+    useState(null);
+  const [walletSeedPhraseLoading, setWalletSeedPhraseLoading] = useState(false);
   const [addressCopied, setAddressCopied] = useState(false);
   const [copiedWalletId, setCopiedWalletId] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -290,8 +364,8 @@ export default function App() {
       // Remove keypair objects before saving (they can't be JSON serialized)
       // We only save secretKey and reconstruct keypair when loading
       const walletsForStorage = walletsToSave.map((wallet) => {
-        const { keypair, ...walletWithoutKeypair } = wallet;
-        return walletWithoutKeypair;
+        const { keypair, mnemonic, ...walletWithoutSecrets } = wallet;
+        return walletWithoutSecrets;
       });
 
       await AsyncStorage.setItem("@wallets", JSON.stringify(walletsForStorage));
@@ -310,21 +384,22 @@ export default function App() {
 
         // Reconstruct keypairs from stored secret keys
         const walletsWithKeypairs = parsed.map((wallet) => {
+          const { mnemonic, ...walletWithoutMnemonic } = wallet;
           if (wallet.secretKey && !wallet.isLedger) {
             try {
               const secretKeyArray = new Uint8Array(wallet.secretKey);
               const keypair = Keypair.fromSecretKey(secretKeyArray);
-              return { ...wallet, keypair };
+              return { ...walletWithoutMnemonic, keypair };
             } catch (err) {
               console.error(
                 "Error reconstructing keypair for wallet:",
                 wallet.id,
                 err
               );
-              return wallet;
+              return walletWithoutMnemonic;
             }
           }
-          return wallet;
+          return walletWithoutMnemonic;
         });
 
         setWallets(walletsWithKeypairs);
@@ -364,8 +439,8 @@ export default function App() {
   // Save and load master seed phrase
   const saveMasterSeedPhrase = async (seedPhrase) => {
     try {
-      await AsyncStorage.setItem("@masterSeedPhrase", seedPhrase);
-      console.log("Master seed phrase saved");
+      await saveSecureItem(MASTER_SEED_STORAGE_KEY, seedPhrase);
+      console.log("Master seed phrase saved securely");
     } catch (error) {
       console.error("Error saving master seed phrase:", error);
     }
@@ -373,7 +448,7 @@ export default function App() {
 
   const loadMasterSeedPhrase = async () => {
     try {
-      const stored = await AsyncStorage.getItem("@masterSeedPhrase");
+      const stored = await getSecureItem(MASTER_SEED_STORAGE_KEY);
       if (stored) {
         setMasterSeedPhrase(stored);
         console.log("Master seed phrase loaded");
@@ -385,7 +460,7 @@ export default function App() {
 
   const saveDerivationIndex = async (index) => {
     try {
-      await AsyncStorage.setItem("@derivationIndex", String(index));
+      await saveSecureItem(DERIVATION_INDEX_STORAGE_KEY, String(index));
       console.log("Derivation index saved:", index);
     } catch (error) {
       console.error("Error saving derivation index:", error);
@@ -394,10 +469,13 @@ export default function App() {
 
   const loadDerivationIndex = async () => {
     try {
-      const stored = await AsyncStorage.getItem("@derivationIndex");
-      if (stored) {
-        setWalletDerivationIndex(parseInt(stored, 10));
-        console.log("Derivation index loaded:", stored);
+      const stored = await getSecureItem(DERIVATION_INDEX_STORAGE_KEY);
+      if (stored !== null && stored !== undefined) {
+        const parsedIndex = parseInt(stored, 10);
+        if (!Number.isNaN(parsedIndex)) {
+          setWalletDerivationIndex(parsedIndex);
+          console.log("Derivation index loaded:", parsedIndex);
+        }
       }
     } catch (error) {
       console.error("Error loading derivation index:", error);
@@ -752,12 +830,13 @@ export default function App() {
         {
           text: "Delete",
           style: "destructive",
-          onPress: () => {
+          onPress: async () => {
             console.log("Deleting wallet:", wallet.name);
             // Remove the wallet from the list
             const updatedWallets = wallets.filter((w) => w.id !== wallet.id);
             console.log("Wallets after deletion:", updatedWallets.length);
             setWallets(updatedWallets);
+            await deleteWalletMnemonicSecurely(wallet.id);
 
             // If we deleted the selected wallet, select the first remaining wallet or reset
             if (wallet.selected && updatedWallets.length > 0) {
@@ -789,6 +868,29 @@ export default function App() {
       ]
     );
   };
+
+  const openSeedPhraseSheet = useCallback(async () => {
+    if (!editingWallet) {
+      return;
+    }
+
+    try {
+      setWalletSeedPhraseLoading(true);
+      let phrase = null;
+
+      if (!editingWallet.derivationPath) {
+        phrase = await loadWalletMnemonicSecurely(editingWallet.id);
+      }
+
+      setWalletSeedPhraseForDisplay(phrase);
+    } catch (error) {
+      console.error("Error loading wallet seed phrase:", error);
+      setWalletSeedPhraseForDisplay(null);
+    } finally {
+      setWalletSeedPhraseLoading(false);
+      seedPhraseSheetRef.current?.expand();
+    }
+  }, [editingWallet]);
 
   // Register wallet with the transaction indexer API
   const registerWalletWithIndexer = async (address, network) => {
@@ -1597,6 +1699,10 @@ export default function App() {
 
   const handleShowImportWallet = () => {
     setShowAddWalletModal(false);
+    setImportType("mnemonic");
+    setImportMnemonic("");
+    setImportPrivateKey("");
+    setImportDerivationIndex("0");
     setShowImportWalletModal(true);
   };
 
@@ -1608,14 +1714,47 @@ export default function App() {
   const handleImportWallet = async () => {
     try {
       let keypair;
+      let derivationPath = null;
+      let mnemonicForWallet = null;
+      const normalizedMnemonic = importMnemonic
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, " ");
 
       if (importType === "mnemonic") {
-        if (!bip39.validateMnemonic(importMnemonic.trim())) {
+        if (!bip39.validateMnemonic(normalizedMnemonic)) {
           Alert.alert("Error", "Invalid recovery phrase");
           return;
         }
-        const seed = await bip39.mnemonicToSeed(importMnemonic.trim());
-        keypair = Keypair.fromSeed(seed.slice(0, 32));
+
+        const parsedIndex = parseInt(importDerivationIndex, 10);
+        if (Number.isNaN(parsedIndex) || parsedIndex < 0) {
+          Alert.alert(
+            "Error",
+            "Derivation index must be a non-negative number"
+          );
+          return;
+        }
+
+        requestedDerivationIndex = parsedIndex;
+        const seed = await bip39.mnemonicToSeed(normalizedMnemonic);
+        derivationPath = `m/44'/501'/${parsedIndex}'/0'`;
+
+        const hdkey = slip10.fromMasterSeed(seed);
+        const derivedKey = hdkey.derive(derivationPath);
+        keypair = Keypair.fromSeed(derivedKey.privateKey);
+        mnemonicForWallet = normalizedMnemonic;
+
+        if (!masterSeedPhrase) {
+          setMasterSeedPhrase(normalizedMnemonic);
+          await saveMasterSeedPhrase(normalizedMnemonic);
+        }
+
+        if (walletDerivationIndex <= parsedIndex) {
+          const nextIndex = parsedIndex + 1;
+          setWalletDerivationIndex(nextIndex);
+          await saveDerivationIndex(nextIndex);
+        }
       } else {
         // Import from private key (try bs58 first, then JSON array)
         const trimmedKey = importPrivateKey.trim();
@@ -1655,15 +1794,24 @@ export default function App() {
         selected: false,
         secretKey: Array.from(keypair.secretKey), // Store as array for JSON serialization
         keypair: keypair, // Keep in memory for immediate use
-        mnemonic: importType === "mnemonic" ? importMnemonic.trim() : null, // Store mnemonic if imported via mnemonic
+        derivationPath,
       };
 
       const updatedWallets = [...wallets, newWallet];
       setWallets(updatedWallets);
       await saveWalletsToStorage(updatedWallets);
 
+      if (
+        mnemonicForWallet &&
+        masterSeedPhrase &&
+        masterSeedPhrase !== mnemonicForWallet
+      ) {
+        await saveWalletMnemonicSecurely(newWallet.id, mnemonicForWallet);
+      }
+
       setImportMnemonic("");
       setImportPrivateKey("");
+      setImportDerivationIndex("0");
       setShowImportWalletModal(false);
 
       // Register the wallet with the transaction indexer
@@ -1704,7 +1852,6 @@ export default function App() {
         selected: false,
         secretKey: Array.from(keypair.secretKey), // Store as array for JSON serialization
         keypair: keypair, // Keep in memory for immediate use
-        mnemonic: seedPhraseToUse, // Store the master mnemonic
         derivationPath: path, // Store the derivation path used
       };
 
@@ -1740,11 +1887,7 @@ export default function App() {
     const newSeed = bip39.generateMnemonic();
     setGeneratedNewSeed(newSeed);
     setChangeSeedPhraseMode("generate");
-    Clipboard.setString(newSeed);
-    ToastAndroid.show(
-      "New seed phrase generated and copied",
-      ToastAndroid.SHORT
-    );
+    ToastAndroid.show("New seed phrase generated", ToastAndroid.SHORT);
   };
 
   const handleConfirmChangeSeedPhrase = async () => {
@@ -4266,17 +4409,37 @@ export default function App() {
               </View>
 
               {importType === "mnemonic" ? (
-                <TextInput
-                  style={styles.importInput}
-                  placeholder="Enter your 12-word recovery phrase"
-                  placeholderTextColor="#666666"
-                  value={importMnemonic}
-                  onChangeText={setImportMnemonic}
-                  multiline
-                  numberOfLines={4}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
+                <>
+                  <TextInput
+                    style={styles.importInput}
+                    placeholder="Enter your 12-word recovery phrase"
+                    placeholderTextColor="#666666"
+                    value={importMnemonic}
+                    onChangeText={setImportMnemonic}
+                    multiline
+                    numberOfLines={4}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <Text style={styles.importLabel}>
+                    Derivation Index (m/44'/501'/index'/0')
+                  </Text>
+                  <TextInput
+                    style={styles.importDerivationInput}
+                    placeholder="0"
+                    placeholderTextColor="#666666"
+                    keyboardType="number-pad"
+                    value={importDerivationIndex}
+                    onChangeText={(text) =>
+                      setImportDerivationIndex(text.replace(/[^0-9]/g, ""))
+                    }
+                  />
+                  <Text style={styles.importHelperText}>
+                    Use 0 to recover the first wallet, or increase the index to
+                    restore additional accounts derived from the same seed
+                    phrase.
+                  </Text>
+                </>
               ) : (
                 <TextInput
                   style={styles.importInput}
@@ -4364,8 +4527,9 @@ export default function App() {
               style={styles.settingsMenuItem}
               onPress={() => {
                 editWalletSheetRef.current?.close();
+                setWalletSeedPhraseForDisplay(null);
                 setTimeout(() => {
-                  seedPhraseSheetRef.current?.expand();
+                  openSeedPhraseSheet();
                 }, 100);
               }}
             >
@@ -4592,6 +4756,8 @@ export default function App() {
             <TouchableOpacity
               onPress={() => {
                 seedPhraseSheetRef.current?.close();
+                setWalletSeedPhraseForDisplay(null);
+                setWalletSeedPhraseLoading(false);
               }}
             >
               <Text style={styles.bottomSheetClose}>✕</Text>
@@ -4604,29 +4770,40 @@ export default function App() {
                 <Text style={styles.privateKeyLabel}>
                   Seed Phrase (Recovery Phrase):
                 </Text>
-                {editingWallet.mnemonic && (
-                  <TouchableOpacity
-                    style={styles.bottomSheetCopyBtn}
-                    onPress={() => {
-                      Clipboard.setString(editingWallet.mnemonic);
-                      ToastAndroid.show(
-                        "Seed phrase copied!",
-                        ToastAndroid.SHORT
-                      );
-                    }}
-                  >
-                    <Text style={styles.bottomSheetCopyIcon}>⧉</Text>
-                  </TouchableOpacity>
-                )}
+                {!editingWallet.derivationPath &&
+                  walletSeedPhraseForDisplay &&
+                  !walletSeedPhraseLoading && (
+                    <TouchableOpacity
+                      style={styles.bottomSheetCopyBtn}
+                      onPress={() => {
+                        Clipboard.setString(walletSeedPhraseForDisplay);
+                        ToastAndroid.show(
+                          "Seed phrase copied!",
+                          ToastAndroid.SHORT
+                        );
+                      }}
+                    >
+                      <Text style={styles.bottomSheetCopyIcon}>⧉</Text>
+                    </TouchableOpacity>
+                  )}
               </View>
-              {editingWallet.mnemonic ? (
+
+              {editingWallet.derivationPath ? (
+                <Text style={styles.privateKeyText}>
+                  This wallet is derived from your master seed phrase. Go to
+                  Manage Security -> Export Seed Phrase to view or back it up.
+                </Text>
+              ) : walletSeedPhraseLoading ? (
+                <Text style={styles.privateKeyText}>
+                  Loading seed phrase...
+                </Text>
+              ) : walletSeedPhraseForDisplay ? (
                 <Text style={styles.seedPhraseText} selectable={true}>
-                  {editingWallet.mnemonic}
+                  {walletSeedPhraseForDisplay}
                 </Text>
               ) : (
                 <Text style={styles.privateKeyText}>
-                  Not available. This wallet was not created with or imported
-                  using a seed phrase.
+                  No stored recovery phrase was found for this wallet.
                 </Text>
               )}
             </View>
@@ -6204,6 +6381,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     minHeight: 100,
     textAlignVertical: "top",
+  },
+  importLabel: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  importDerivationInput: {
+    backgroundColor: "#1a1a1a",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    color: "#FFFFFF",
+    fontSize: 16,
+  },
+  importHelperText: {
+    color: "#888888",
+    fontSize: 12,
+    lineHeight: 16,
+    marginBottom: 24,
   },
   ledgerStatus: {
     padding: 32,

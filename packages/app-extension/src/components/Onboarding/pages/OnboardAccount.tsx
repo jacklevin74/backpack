@@ -150,10 +150,7 @@ export const OnboardAccount = ({
                 mnemonic={mnemonic!}
                 onNext={(walletDescriptors: Array<WalletDescriptor>) => {
                     setOnboardingData({
-                      signedWalletDescriptors: [
-                        ...signedWalletDescriptors,
-                        ...walletDescriptors,
-                      ],
+                      signedWalletDescriptors: walletDescriptors,
                     });
                     nextStep();
                   }}

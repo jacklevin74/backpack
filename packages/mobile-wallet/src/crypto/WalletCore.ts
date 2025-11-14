@@ -1,7 +1,7 @@
-import { Keypair, PublicKey } from '@solana/web3.js';
+import { Keypair } from '@solana/web3.js';
 import { mnemonicToSeedSync, generateMnemonic, validateMnemonic } from 'bip39';
 import { encode, decode } from 'bs58';
-import { HDNodeWallet, Wallet, Mnemonic } from 'ethers6';
+import { HDNodeWallet, Wallet } from 'ethers6';
 import nacl from 'tweetnacl';
 import { derivePath } from 'ed25519-hd-key';
 import { randomBytes, secretbox } from 'tweetnacl';

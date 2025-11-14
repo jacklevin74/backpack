@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { encrypt, decrypt, SecretPayload } from '../crypto/WalletCore';
+import { AuthManager } from './AuthManager';
 
 const WALLET_KEY = '@wallet:encrypted';
 const WALLET_EXISTS_KEY = '@wallet:exists';
@@ -33,5 +34,6 @@ export class SecureStorage {
   static async clearWallet(): Promise<void> {
     await AsyncStorage.removeItem(WALLET_KEY);
     await AsyncStorage.removeItem(WALLET_EXISTS_KEY);
+    await AuthManager.clearSecurityState();
   }
 }

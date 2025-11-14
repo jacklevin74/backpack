@@ -1864,7 +1864,7 @@ export default function App() {
       const newWallet = {
         id: String(wallets.length + 1),
         name: `Wallet ${wallets.length + 1}`,
-        address: `${publicKeyStr.slice(0, 4)}...${publicKeyStr.slice(-4)}`,
+        address: publicKeyStr,
         publicKey: publicKeyStr,
         selected: false,
         secretKey: Array.from(keypair.secretKey), // Store as array for JSON serialization
@@ -1922,7 +1922,7 @@ export default function App() {
       const newWallet = {
         id: String(wallets.length + 1),
         name: `Wallet ${wallets.length + 1}`,
-        address: `${publicKeyStr.slice(0, 4)}...${publicKeyStr.slice(-4)}`,
+        address: publicKeyStr,
         publicKey: publicKeyStr,
         selected: false,
         secretKey: Array.from(keypair.secretKey), // Store as array for JSON serialization
@@ -2711,7 +2711,7 @@ export default function App() {
     const newWallet = {
       id: Date.now(),
       name: `Ledger ${account.index + 1}`,
-      address: account.address.slice(0, 4) + "..." + account.address.slice(-4),
+      address: account.address,
       publicKey: account.address,
       selected: true, // Set new wallet as selected
       isLedger: true,
@@ -3030,6 +3030,10 @@ export default function App() {
                 style={styles.walletDropdownButton}
                 onPress={showWalletSelector}
               >
+                <Image
+                  source={currentNetwork.logo}
+                  style={styles.x1LogoSmall}
+                />
                 <Text style={styles.walletDropdownText}>
                   {selectedWallet?.name || "No wallet"}
                 </Text>
@@ -3474,11 +3478,6 @@ export default function App() {
               </TouchableOpacity>
             </View>
 
-            {/* Network Logo */}
-            <View style={styles.bottomSheetLogo}>
-              <Image source={currentNetwork.logo} style={styles.x1LogoMedium} />
-            </View>
-
             {/* Wallets List */}
             <View style={styles.bottomSheetList}>
               {wallets.map((wallet, index) => (
@@ -3501,9 +3500,15 @@ export default function App() {
                         {wallet.name}
                       </Text>
                       <Text style={styles.bottomSheetWalletAddress}>
-                        {copiedWalletId === wallet.id
-                          ? "Copied"
-                          : wallet.address}
+                        {copiedWalletId === wallet.id ? (
+                          "Copied"
+                        ) : (
+                          <>
+                            {wallet.publicKey.slice(0, 12)}
+                            <Text style={{ fontSize: 14.4 }}>...</Text>
+                            {wallet.publicKey.slice(-12)}
+                          </>
+                        )}
                       </Text>
                     </View>
                   </View>
@@ -5222,7 +5227,7 @@ const styles = StyleSheet.create({
   },
   safeTopArea: {
     backgroundColor: "#000000",
-    height: 70,
+    height: 40,
   },
   topBar: {
     flexDirection: "row",
@@ -5475,9 +5480,9 @@ const styles = StyleSheet.create({
     color: "#999999",
   },
   x1LogoSmall: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 25,
+    height: 25,
+    borderRadius: 12.5,
   },
   x1LogoLarge: {
     width: 100,
@@ -5585,9 +5590,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   x1LogoLarge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 41.6,
+    height: 41.6,
+    borderRadius: 20.8,
   },
   tokenInfo: {
     gap: 4,
@@ -5857,6 +5862,7 @@ const styles = StyleSheet.create({
   },
   bottomSheetScrollContent: {
     paddingHorizontal: 20,
+    paddingTop: 30,
     paddingBottom: 20,
     backgroundColor: "#000000",
   },
@@ -5884,7 +5890,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   bottomSheetAdd: {
-    fontSize: 28,
+    fontSize: 37.8,
     color: "#4A90E2",
     fontWeight: "300",
   },
@@ -5957,9 +5963,10 @@ const styles = StyleSheet.create({
   bottomSheetEditBtn: {
     paddingHorizontal: 8,
     paddingVertical: 6,
+    marginTop: -2,
   },
   bottomSheetEditIcon: {
-    fontSize: 18,
+    fontSize: 21.6,
     color: "#FFFFFF",
   },
   bottomSheetAddButton: {

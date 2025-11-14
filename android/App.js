@@ -3034,8 +3034,16 @@ export default function App() {
                   source={currentNetwork.logo}
                   style={styles.x1LogoSmall}
                 />
-                <Text style={styles.walletDropdownText}>
-                  {selectedWallet?.name || "No wallet"}
+                <Text
+                  style={styles.walletDropdownText}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {selectedWallet?.name
+                    ? selectedWallet.name.length > 10
+                      ? `${selectedWallet.name.slice(0, 10)}...`
+                      : selectedWallet.name
+                    : "No wallet"}
                 </Text>
                 <Text style={styles.walletDropdownArrow}>▼</Text>
               </TouchableOpacity>
@@ -4237,23 +4245,6 @@ export default function App() {
               >
                 <Text style={styles.settingsMenuItemText}>
                   Show Private Key
-                </Text>
-                <Text style={styles.settingsMenuItemArrow}>›</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                testID="show-seed-phrase-button"
-                style={styles.settingsMenuItem}
-                onPress={() => {
-                  editWalletSheetRef.current?.close();
-                  setWalletSeedPhraseForDisplay(null);
-                  setTimeout(() => {
-                    openSeedPhraseSheet();
-                  }, 100);
-                }}
-              >
-                <Text style={styles.settingsMenuItemText}>
-                  Show Seed Phrase
                 </Text>
                 <Text style={styles.settingsMenuItemArrow}>›</Text>
               </TouchableOpacity>

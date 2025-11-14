@@ -3030,10 +3030,6 @@ export default function App() {
                 style={styles.walletDropdownButton}
                 onPress={showWalletSelector}
               >
-                <Image
-                  source={require("./assets/x1.png")}
-                  style={styles.x1LogoSmall}
-                />
                 <Text style={styles.walletDropdownText}>
                   {selectedWallet?.name || "No wallet"}
                 </Text>
@@ -5226,7 +5222,7 @@ const styles = StyleSheet.create({
   },
   safeTopArea: {
     backgroundColor: "#000000",
-    height: 40,
+    height: 70,
   },
   topBar: {
     flexDirection: "row",
@@ -6067,7 +6063,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   addAccountButtonText: {
-    fontSize: 16,
+    fontSize: 20.8,
     color: "#4A90E2",
   },
   // Settings Drawer Styles

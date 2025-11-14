@@ -273,6 +273,8 @@ export default function App() {
   const browserSheetRef = useRef(null);
   const privateKeySheetRef = useRef(null);
   const seedPhraseSheetRef = useRef(null);
+  const exportSeedPhraseSheetRef = useRef(null);
+  const changeSeedPhraseSheetRef = useRef(null);
 
   const snapPoints = useMemo(() => ["50%", "90%"], []);
 
@@ -3596,7 +3598,7 @@ export default function App() {
                   style={styles.settingsMenuItem}
                   onPress={() => {
                     setShowSecurityDrawer(false);
-                    setShowExportSeedPhraseModal(true);
+                    exportSeedPhraseSheetRef.current?.expand();
                     setSeedPhraseRevealed(false);
                   }}
                 >
@@ -3610,7 +3612,7 @@ export default function App() {
                   style={styles.settingsMenuItem}
                   onPress={() => {
                     setShowSecurityDrawer(false);
-                    setShowChangeSeedPhraseModal(true);
+                    changeSeedPhraseSheetRef.current?.expand();
                   }}
                 >
                   <Text style={styles.settingsMenuItemText}>
@@ -4012,212 +4014,193 @@ export default function App() {
         </Pressable>
       </Modal>
 
-      {/* Export Seed Phrase Modal */}
-      <Modal
-        visible={showExportSeedPhraseModal}
-        transparent={true}
-        animationType="slide"
+      {/* Export Seed Phrase Bottom Sheet */}
+      <BottomSheet
+        ref={exportSeedPhraseSheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        enablePanDownToClose={true}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: "#000000" }}
+        handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
       >
-        <Pressable
-          style={styles.settingsDrawerOverlay}
-          onPress={() => setShowExportSeedPhraseModal(false)}
-        >
-          <Pressable
-            style={styles.settingsDrawerContent}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <View style={styles.settingsDrawerContentArea}>
-              <View style={styles.settingsDrawerHeader}>
-                <View style={{ width: 32 }} />
-                <Text style={styles.settingsDrawerTitle}>
-                  Export Seed Phrase
-                </Text>
-                <TouchableOpacity
-                  onPress={() => setShowExportSeedPhraseModal(false)}
-                >
-                  <Text style={styles.settingsDrawerClose}>✕</Text>
-                </TouchableOpacity>
-              </View>
-              {masterSeedPhrase ? (
-                <>
-                  <Text style={styles.seedPhraseTitle}>
-                    Your Master Seed Phrase
-                  </Text>
-                  <View style={styles.seedPhraseContainer}>
-                    <TouchableOpacity
-                      style={styles.seedPhraseCopyBtnInside}
-                      onPress={handleCopyMasterSeedPhrase}
-                    >
-                      <Text style={styles.seedPhraseCopyIconInside}>⧉</Text>
-                    </TouchableOpacity>
-                    <View style={styles.seedPhraseGrid}>
-                      {masterSeedPhrase.split(" ").map((word, index) => (
-                        <View key={index} style={styles.seedPhraseWord}>
-                          <Text style={styles.seedPhraseText}>
-                            {index + 1}. {word}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                  <Text style={styles.seedPhraseWarning}>
-                    Keep this seed phrase secure. All your HD wallets are
-                    derived from this master seed.
-                  </Text>
-                </>
-              ) : (
-                <Text style={styles.seedPhraseWarning}>
-                  No master seed phrase found. Create a new wallet to generate
-                  one.
-                </Text>
-              )}
-              <TouchableOpacity
-                style={styles.confirmButton}
-                onPress={() => setShowExportSeedPhraseModal(false)}
-              >
-                <Text style={styles.confirmButtonText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      {/* Change Seed Phrase Modal */}
-      <Modal
-        visible={showChangeSeedPhraseModal}
-        transparent={true}
-        animationType="slide"
-      >
-        <Pressable
-          style={styles.settingsDrawerOverlay}
-          onPress={() => {
-            setShowChangeSeedPhraseModal(false);
-            setNewSeedPhraseInput("");
-            setGeneratedNewSeed("");
-            setChangeSeedPhraseMode("enter");
-          }}
-        >
-          <Pressable
-            style={styles.settingsDrawerContent}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <View style={styles.settingsDrawerContentArea}>
-              <View style={styles.settingsDrawerHeader}>
-                <View style={{ width: 32 }} />
-                <Text style={styles.settingsDrawerTitle}>
-                  Change Seed Phrase
-                </Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    setShowChangeSeedPhraseModal(false);
-                    setNewSeedPhraseInput("");
-                    setGeneratedNewSeed("");
-                    setChangeSeedPhraseMode("enter");
-                  }}
-                >
-                  <Text style={styles.settingsDrawerClose}>✕</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Mode Selector */}
-              <View style={{ flexDirection: "row", marginBottom: 16, gap: 8 }}>
-                <TouchableOpacity
-                  style={[
-                    styles.modeButton,
-                    changeSeedPhraseMode === "enter" && styles.modeButtonActive,
-                  ]}
-                  onPress={() => setChangeSeedPhraseMode("enter")}
-                >
-                  <Text
-                    style={[
-                      styles.modeButtonText,
-                      changeSeedPhraseMode === "enter" &&
-                        styles.modeButtonTextActive,
-                    ]}
-                  >
-                    Enter Seed Phrase
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.modeButton,
-                    changeSeedPhraseMode === "generate" &&
-                      styles.modeButtonActive,
-                  ]}
-                  onPress={() => {
-                    setChangeSeedPhraseMode("generate");
-                    handleGenerateNewSeedPhrase();
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.modeButtonText,
-                      changeSeedPhraseMode === "generate" &&
-                        styles.modeButtonTextActive,
-                    ]}
-                  >
-                    Generate New
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Enter Mode */}
-              {changeSeedPhraseMode === "enter" ? (
-                <>
-                  <Text style={styles.seedPhraseTitle}>
-                    Enter New Seed Phrase
-                  </Text>
-                  <TextInput
-                    style={[styles.seedPhraseInput, { height: 120 }]}
-                    multiline
-                    placeholder="Enter your 12 or 24 word seed phrase"
-                    value={newSeedPhraseInput}
-                    onChangeText={setNewSeedPhraseInput}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                </>
-              ) : (
-                <>
-                  {/* Generate Mode */}
-                  <Text style={styles.seedPhraseTitle}>
-                    Generated Seed Phrase
-                  </Text>
-                  <View style={styles.seedPhraseContainer}>
-                    <TouchableOpacity
-                      style={styles.seedPhraseCopyBtnInside}
-                      onPress={handleGenerateNewSeedPhrase}
-                    >
-                      <Text style={styles.seedPhraseCopyIconInside}>⟳</Text>
-                    </TouchableOpacity>
-                    <View style={styles.seedPhraseGrid}>
-                      {generatedNewSeed.split(" ").map((word, index) => (
-                        <View key={index} style={styles.seedPhraseWord}>
-                          <Text style={styles.seedPhraseText}>
-                            {index + 1}. {word}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                </>
-              )}
-
-              <Text style={styles.seedPhraseWarning}>
-                Warning: Changing your master seed phrase will only affect newly
-                created wallets. Existing wallets will remain unchanged and will
-                continue to use their original seed phrases.
+        <BottomSheetScrollView style={styles.bottomSheetContent}>
+          <View style={styles.bottomSheetHeader}>
+            <View style={{ width: 32 }} />
+            <Text style={styles.bottomSheetTitle}>Export Seed Phrase</Text>
+            <TouchableOpacity
+              onPress={() => exportSeedPhraseSheetRef.current?.close()}
+            >
+              <Text style={styles.bottomSheetClose}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          {masterSeedPhrase ? (
+            <>
+              <Text style={styles.seedPhraseTitle}>
+                Your Master Seed Phrase
               </Text>
-              <TouchableOpacity
-                style={styles.confirmButton}
-                onPress={handleConfirmChangeSeedPhrase}
+              <View style={styles.seedPhraseContainer}>
+                <TouchableOpacity
+                  style={styles.seedPhraseCopyBtnInside}
+                  onPress={handleCopyMasterSeedPhrase}
+                >
+                  <Text style={styles.seedPhraseCopyIconInside}>⧉</Text>
+                </TouchableOpacity>
+                <View style={styles.seedPhraseGrid}>
+                  {masterSeedPhrase.split(" ").map((word, index) => (
+                    <View key={index} style={styles.seedPhraseWord}>
+                      <Text style={styles.seedPhraseText}>
+                        {index + 1}. {word}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+              <Text style={styles.seedPhraseWarning}>
+                Keep this seed phrase secure. All your HD wallets are derived
+                from this master seed.
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.seedPhraseWarning}>
+              No master seed phrase found. Create a new wallet to generate one.
+            </Text>
+          )}
+        </BottomSheetScrollView>
+      </BottomSheet>
+
+      {/* Change Seed Phrase Bottom Sheet */}
+      <BottomSheet
+        ref={changeSeedPhraseSheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        enablePanDownToClose={true}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: "#000000" }}
+        handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+        onClose={() => {
+          setNewSeedPhraseInput("");
+          setGeneratedNewSeed("");
+          setChangeSeedPhraseMode("enter");
+        }}
+      >
+        <BottomSheetScrollView style={styles.bottomSheetContent}>
+          <View style={styles.bottomSheetHeader}>
+            <View style={{ width: 32 }} />
+            <Text style={styles.bottomSheetTitle}>Change Seed Phrase</Text>
+            <TouchableOpacity
+              onPress={() => {
+                changeSeedPhraseSheetRef.current?.close();
+              }}
+            >
+              <Text style={styles.bottomSheetClose}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Mode Selector */}
+          <View
+            style={{
+              flexDirection: "row",
+              marginBottom: 16,
+              gap: 24,
+              paddingHorizontal: 20,
+              justifyContent: "center",
+            }}
+          >
+            <TouchableOpacity onPress={() => setChangeSeedPhraseMode("enter")}>
+              <Text
+                style={{
+                  fontSize: 16,
+                  color:
+                    changeSeedPhraseMode === "enter" ? "#FFFFFF" : "#888888",
+                  fontWeight: changeSeedPhraseMode === "enter" ? "600" : "400",
+                }}
               >
-                <Text style={styles.confirmButtonText}>Change Seed Phrase</Text>
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+                Enter Seed Phrase
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                setChangeSeedPhraseMode("generate");
+                handleGenerateNewSeedPhrase();
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 16,
+                  color:
+                    changeSeedPhraseMode === "generate" ? "#FFFFFF" : "#888888",
+                  fontWeight:
+                    changeSeedPhraseMode === "generate" ? "600" : "400",
+                }}
+              >
+                Generate New
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Enter Mode */}
+          {changeSeedPhraseMode === "enter" ? (
+            <>
+              <TextInput
+                style={[styles.seedPhraseInput, { height: 120 }]}
+                multiline
+                placeholder="Enter your 12 or 24 word seed phrase"
+                value={newSeedPhraseInput}
+                onChangeText={setNewSeedPhraseInput}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </>
+          ) : (
+            <>
+              {/* Generate Mode */}
+              <View style={styles.seedPhraseContainer}>
+                <TouchableOpacity
+                  style={styles.seedPhraseCopyBtnInside}
+                  onPress={handleGenerateNewSeedPhrase}
+                >
+                  <Text style={styles.seedPhraseCopyIconInside}>⟳</Text>
+                </TouchableOpacity>
+                <View style={styles.seedPhraseGrid}>
+                  {generatedNewSeed.split(" ").map((word, index) => (
+                    <View key={index} style={styles.seedPhraseWord}>
+                      <Text style={styles.seedPhraseText}>
+                        {index + 1}. {word}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </>
+          )}
+
+          <Text style={styles.seedPhraseWarning}>
+            Warning: Changing your master seed phrase will only affect newly
+            created wallets. Existing wallets will remain unchanged and will
+            continue to use their original seed phrases.
+          </Text>
+          <View style={{ alignItems: "center", marginTop: 16 }}>
+            <TouchableOpacity
+              style={{
+                backgroundColor: "#DC2626",
+                paddingVertical: 12,
+                paddingHorizontal: 24,
+                borderRadius: 8,
+                width: "60%",
+                alignItems: "center",
+              }}
+              onPress={handleConfirmChangeSeedPhrase}
+            >
+              <Text
+                style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "600" }}
+              >
+                Change Seed Phrase
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </BottomSheetScrollView>
+      </BottomSheet>
 
       {/* Import Wallet Modal */}
       <Modal
@@ -6076,10 +6059,12 @@ const styles = StyleSheet.create({
   seedPhraseGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
+    paddingRight: 48,
+    paddingTop: 4,
   },
   seedPhraseWord: {
-    width: "33.33%",
-    paddingVertical: 8,
+    width: "50%",
+    paddingVertical: 6,
     paddingHorizontal: 4,
   },
   seedPhraseText: {

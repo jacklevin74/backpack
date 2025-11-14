@@ -1,0 +1,29 @@
+appId: com.anonymous.backpackuionly
+---
+# Debug flow to capture screenshots of network switching
+
+- launchApp
+
+# Initial state - should be X1
+- takeScreenshot: "00-initial-state"
+
+# Tap Solana button
+- tapOn:
+    point: "60%,7%"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: "01-after-tap-solana"
+
+# Wait a bit more
+- runFlow:
+    when:
+      visible: ".*"
+    commands:
+      - takeScreenshot: "02-after-wait"
+
+# Tap X1 button
+- tapOn:
+    point: "40%,7%"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: "03-after-tap-x1"

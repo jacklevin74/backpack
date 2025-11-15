@@ -1,10 +1,13 @@
 import React, { Suspense, useMemo, useEffect } from "react";
 import { View, ActivityIndicator } from "react-native";
+import type { SuspenseQueryHookOptions } from "@apollo/client";
 import { GET_TOKEN_BALANCES_QUERY } from "../apollo/queries";
 import type {
   ProviderId,
   ResponseBalanceSummary,
   ResponseTokenBalance,
+  GetTokenBalancesQuery,
+  GetTokenBalancesQueryVariables,
 } from "../apollo/types";
 import { usePolledSuspenseQuery } from "../hooks/usePolledSuspenseQuery";
 import { BalancesTable } from "./BalancesTable";
@@ -74,7 +77,11 @@ function _TokenBalances({
     : providerId;
 
   // Fetch token balances with polling
-  const { data, error } = usePolledSuspenseQuery(
+  const { data, error } = usePolledSuspenseQuery<
+    GetTokenBalancesQuery,
+    GetTokenBalancesQueryVariables,
+    Omit<SuspenseQueryHookOptions<GetTokenBalancesQuery, GetTokenBalancesQueryVariables>, "variables">
+  >(
     pollingIntervalSeconds ?? DEFAULT_POLLING_INTERVAL_SECONDS,
     GET_TOKEN_BALANCES_QUERY,
     {

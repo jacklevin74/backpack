@@ -4791,7 +4791,7 @@ function AppContent() {
                 {editingWallet.derivationPath ? (
                   <Text style={styles.privateKeyText}>
                     This wallet is derived from your master seed phrase. Go to
-                    Manage Security -> Export Seed Phrase to view or back it up.
+                    Manage Security {'->'} Export Seed Phrase to view or back it up.
                   </Text>
                 ) : walletSeedPhraseLoading ? (
                   <Text style={styles.privateKeyText}>

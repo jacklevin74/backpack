@@ -9,6 +9,9 @@ import React, {
   useMemo,
   useCallback,
 } from "react";
+import { ApolloProvider } from "@apollo/client";
+import { createApolloClient } from "./apollo/client";
+import { TokenBalances } from "./components/TokenBalances";
 import {
   SafeAreaView,
   StyleSheet,
@@ -268,7 +271,10 @@ const NETWORKS = [
   },
 ];
 
-export default function App() {
+// Create Apollo Client instance
+const apolloClient = createApolloClient("backpack-android", "1.0.0");
+
+function AppContent() {
   const [wallets, setWallets] = useState([]);
   const [selectedWallet, setSelectedWallet] = useState(null);
   const [accounts, setAccounts] = useState(MOCK_ACCOUNTS);
@@ -682,7 +688,20 @@ export default function App() {
     try {
       // Use provided network or current network
       const activeNetwork = network || currentNetwork;
+
+      // Guard: ensure activeNetwork exists
+      if (!activeNetwork) {
+        console.log("No active network available");
+        return;
+      }
+
       const cacheKey = `${selectedWallet.publicKey}-${activeNetwork.providerId}`;
+
+      // Skip REST API fetch for Solana networks (using GraphQL instead)
+      if (activeNetwork.providerId.startsWith("SOLANA")) {
+        console.log("Skipping REST API fetch for Solana - using GraphQL pricing");
+        return;
+      }
 
       // Load from cache first if requested
       if (useCache && balanceCache[cacheKey]) {
@@ -767,6 +786,13 @@ export default function App() {
     if (!selectedWallet) return;
     try {
       const activeNetwork = network || currentNetwork;
+
+      // Guard: ensure activeNetwork exists
+      if (!activeNetwork) {
+        console.log("No active network available");
+        return;
+      }
+
       const url = `${API_SERVER}/transactions/${selectedWallet.publicKey}?providerId=${activeNetwork.providerId}`;
       console.log("Fetching fresh transactions from:", url);
 
@@ -3217,25 +3243,27 @@ export default function App() {
           >
             {/* Balance Section with all content */}
             <View style={styles.balanceSection}>
-              {/* Balance display */}
-              <TouchableOpacity
-                style={styles.balanceContent}
-                onPress={handleBalanceTap}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.balanceUSD}>{balanceUSD}</Text>
-                <Text style={styles.balanceChange}>
-                  {tokenPrice !== null
-                    ? `${getNativeTokenInfo().symbol} $${tokenPrice.toLocaleString(
-                        "en-US",
-                        {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        }
-                      )}`
-                    : "$0.00"}
-                </Text>
-              </TouchableOpacity>
+              {/* Balance display - shown for all chains */}
+              {currentNetwork && (
+                <TouchableOpacity
+                  style={styles.balanceContent}
+                  onPress={handleBalanceTap}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.balanceUSD}>{balanceUSD}</Text>
+                  <Text style={styles.balanceChange}>
+                    {tokenPrice !== null
+                      ? `${getNativeTokenInfo().symbol} $${tokenPrice.toLocaleString(
+                          "en-US",
+                          {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          }
+                        )}`
+                      : "$0.00"}
+                  </Text>
+                </TouchableOpacity>
+              )}
 
               {/* Action Buttons */}
               <View style={styles.actionsRow}>
@@ -3359,45 +3387,56 @@ export default function App() {
                 </TouchableOpacity>
               </View>
 
-              {/* Token List */}
-              <View style={styles.tokenSection}>
-                {tokens.map((token) => {
-                  const nativeToken = getNativeTokenInfo();
-                  return (
-                    <View
-                      key={token.id}
-                      style={[
-                        styles.tokenRow,
-                        hapticMode && styles.tokenRowEnhanced,
-                      ]}
-                    >
-                      <View style={styles.tokenLeft}>
-                        <View style={styles.tokenIconLarge}>
-                          <Image
-                            testID={`native-token-icon-${currentNetwork.id.toLowerCase()}`}
-                            source={nativeToken.logo}
-                            style={styles.x1LogoLarge}
-                          />
+              {/* Token List - Use GraphQL for Solana, REST for others */}
+              {selectedWallet && currentNetwork && currentNetwork.providerId.startsWith("SOLANA") ? (
+                <View style={styles.tokenSection}>
+                  <TokenBalances
+                    address={selectedWallet.publicKey}
+                    providerId={currentNetwork.providerId}
+                    pollingIntervalSeconds={60}
+                    onBalanceUpdate={(balanceUSD) => setBalanceUSD(balanceUSD)}
+                  />
+                </View>
+              ) : (
+                <View style={styles.tokenSection}>
+                  {tokens.map((token) => {
+                    const nativeToken = getNativeTokenInfo();
+                    return (
+                      <View
+                        key={token.id}
+                        style={[
+                          styles.tokenRow,
+                          hapticMode && styles.tokenRowEnhanced,
+                        ]}
+                      >
+                        <View style={styles.tokenLeft}>
+                          <View style={styles.tokenIconLarge}>
+                            <Image
+                              testID={`native-token-icon-${currentNetwork.id.toLowerCase()}`}
+                              source={nativeToken.logo}
+                              style={styles.x1LogoLarge}
+                            />
+                          </View>
+                          <View style={styles.tokenInfo}>
+                            <Text style={styles.tokenNameLarge}>
+                              {nativeToken.name}
+                            </Text>
+                            <Text style={styles.tokenBalanceSmall}>
+                              {token.balance} {nativeToken.symbol}
+                            </Text>
+                          </View>
                         </View>
-                        <View style={styles.tokenInfo}>
-                          <Text style={styles.tokenNameLarge}>
-                            {nativeToken.name}
+                        <View style={styles.tokenRight}>
+                          <Text style={styles.tokenUsdLarge}>
+                            ${token.usdValue}
                           </Text>
-                          <Text style={styles.tokenBalanceSmall}>
-                            {token.balance} {nativeToken.symbol}
-                          </Text>
+                          <Text style={styles.tokenChange}>+$0.00</Text>
                         </View>
                       </View>
-                      <View style={styles.tokenRight}>
-                        <Text style={styles.tokenUsdLarge}>
-                          ${token.usdValue}
-                        </Text>
-                        <Text style={styles.tokenChange}>+$0.00</Text>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
+                    );
+                  })}
+                </View>
+              )}
             </View>
           </ScrollView>
 
@@ -6880,3 +6919,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
+
+// Export App with ApolloProvider wrapper
+export default function App() {
+  return (
+    <ApolloProvider client={apolloClient}>
+      <AppContent />
+    </ApolloProvider>
+  );
+}

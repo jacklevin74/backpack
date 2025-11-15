@@ -10,6 +10,7 @@
     "postinstall": "sed -i 's/safePromise\\.reject(null, errorConverter\\.toJs(error))/safePromise.reject(error.errorCode.name(), errorConverter.toJs(error))/g' node_modules/@ledgerhq/react-native-hw-transport-ble/node_modules/react-native-ble-plx/android/src/main/java/com/bleplx/BlePlxModule.java 2>/dev/null || true; sed -i 's/promise\\.reject(code, message)/promise.reject(code == null ? \"UNKNOWN_ERROR\" : code, message)/g' node_modules/@ledgerhq/react-native-hw-transport-ble/node_modules/react-native-ble-plx/android/src/main/java/com/bleplx/utils/SafePromise.java 2>/dev/null || true; sed -i 's/promise\\.reject(code, e)/promise.reject(code == null ? \"UNKNOWN_ERROR\" : code, e)/g' node_modules/@ledgerhq/react-native-hw-transport-ble/node_modules/react-native-ble-plx/android/src/main/java/com/bleplx/utils/SafePromise.java 2>/dev/null || true; sed -i 's/promise\\.reject(code, message, e)/promise.reject(code == null ? \"UNKNOWN_ERROR\" : code, message, e)/g' node_modules/@ledgerhq/react-native-hw-transport-ble/node_modules/react-native-ble-plx/android/src/main/java/com/bleplx/utils/SafePromise.java 2>/dev/null || true"
   },
   "dependencies": {
+    "@apollo/client": "^3.14.0",
     "@craftzdog/react-native-buffer": "^6.1.1",
     "@gorhom/bottom-sheet": "^5.2.6",
     "@ledgerhq/hw-app-solana": "^7.6.0",
@@ -18,6 +19,8 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/netinfo": "11.4.1",
     "@solana/web3.js": "^1.98.4",
+    "@types/react": "~19.1.10",
+    "apollo3-cache-persist": "^0.14.1",
     "bip39": "^3.1.0",
     "bs58": "^6.0.0",
     "buffer": "^6.0.3",
@@ -27,6 +30,7 @@
     "expo-clipboard": "~8.0.7",
     "expo-secure-store": "~15.0.7",
     "expo-status-bar": "~3.0.8",
+    "graphql": "^16.12.0",
     "micro-key-producer": "^0.8.2",
     "react": "19.1.0",
     "react-native": "0.81.5",
@@ -38,7 +42,8 @@
     "react-native-webview": "^13.16.0",
     "react-native-worklets": "^0.6.1",
     "stream-browserify": "^3.0.0",
-    "tweetnacl": "^1.0.3"
+    "tweetnacl": "^1.0.3",
+    "typescript": "~5.9.2"
   },
   "private": true,
   "devDependencies": {

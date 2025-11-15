@@ -5241,6 +5241,116 @@ export default function App() {
                     <Text style={styles.settingsMenuItemArrow}>›</Text>
                   </TouchableOpacity>
 
+                  {/* Reset Wallet Button */}
+                  <TouchableOpacity
+                    style={[
+                      styles.settingsMenuItem,
+                      {
+                        marginTop: 20,
+                        borderTopWidth: 1,
+                        borderTopColor: "rgba(255, 255, 255, 0.1)",
+                      },
+                    ]}
+                    onPress={() => {
+                      Alert.alert(
+                        "Reset Wallet",
+                        "This will delete ALL wallet data including:\n\n• All wallets and accounts\n• Seed phrases and private keys\n• Security settings (PIN/biometric)\n• All app settings\n\nThis action cannot be undone!\n\nMake sure you have backed up your seed phrases before proceeding.",
+                        [
+                          {
+                            text: "Cancel",
+                            style: "cancel",
+                          },
+                          {
+                            text: "Reset",
+                            style: "destructive",
+                            onPress: async () => {
+                              try {
+                                setShowSettingsModal(false);
+
+                                // Clear AsyncStorage
+                                await AsyncStorage.clear();
+
+                                // Clear SecureStore
+                                const secureAvailable =
+                                  await SecureStore.isAvailableAsync();
+                                if (secureAvailable) {
+                                  // Clear all known SecureStore keys
+                                  const keysToDelete = [
+                                    "x1_wallet_secure_store_seed",
+                                    "x1_wallet_secure_store_mnemonic",
+                                    "x1_wallet_secure_store_pin_hash",
+                                    "x1_wallet_secure_store_pin_salt",
+                                    "x1_wallet_secure_store_biometric_key",
+                                  ];
+
+                                  for (const key of keysToDelete) {
+                                    try {
+                                      await SecureStore.deleteItemAsync(key);
+                                    } catch (e) {
+                                      // Key might not exist, continue
+                                      console.log(
+                                        `Could not delete ${key}:`,
+                                        e
+                                      );
+                                    }
+                                  }
+                                }
+
+                                // Reset all state variables
+                                setMasterSeedPhrase(null);
+                                setWallets([]);
+                                setSelectedWallet(null);
+                                setEditingWallet(null);
+                                setEditWalletName("");
+                                setShowAddWalletModal(false);
+                                setShowChangeNameModal(false);
+                                setShowViewPrivateKeyModal(false);
+                                setShowViewSeedPhraseModal(false);
+                                setShowExportSeedPhraseModal(false);
+                                setShowChangeSeedPhraseModal(false);
+                                setAuthState("loading");
+                                setPassword(null);
+                                setSecurityAuthenticated(false);
+                                setSecurityAuthRequired(false);
+                                setWalletDerivationIndex(0);
+
+                                Alert.alert(
+                                  "Wallet Reset",
+                                  "All wallet data has been cleared. The app will now restart.",
+                                  [
+                                    {
+                                      text: "OK",
+                                      onPress: () => {
+                                        // App will re-initialize from the cleared state
+                                      },
+                                    },
+                                  ]
+                                );
+                              } catch (error) {
+                                console.error("Error resetting wallet:", error);
+                                Alert.alert(
+                                  "Error",
+                                  "Failed to reset wallet. Please try again."
+                                );
+                              }
+                            },
+                          },
+                        ],
+                        { cancelable: true }
+                      );
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.settingsMenuItemText,
+                        { color: "#EF4444" },
+                      ]}
+                    >
+                      Reset Wallet
+                    </Text>
+                    <Text style={styles.settingsMenuItemArrow}>⚠️</Text>
+                  </TouchableOpacity>
+
                   {/* Lock App Button */}
                   <TouchableOpacity
                     style={[
@@ -5303,6 +5413,101 @@ export default function App() {
                       Change Seed Phrase
                     </Text>
                     <Text style={styles.settingsMenuItemArrow}>›</Text>
+                  </TouchableOpacity>
+
+                  {/* Clear PIN Button */}
+                  <TouchableOpacity
+                    style={[
+                      styles.settingsMenuItem,
+                      {
+                        marginTop: 20,
+                        borderTopWidth: 1,
+                        borderTopColor: "rgba(255, 255, 255, 0.1)",
+                      },
+                    ]}
+                    onPress={async () => {
+                      Alert.alert(
+                        "Clear PIN & Biometrics",
+                        "This will remove your PIN and biometric authentication settings. You will need to set up a new PIN when you next lock the app.\n\nYour wallets and seed phrases will NOT be affected.",
+                        [
+                          {
+                            text: "Cancel",
+                            style: "cancel",
+                          },
+                          {
+                            text: "Clear",
+                            style: "destructive",
+                            onPress: async () => {
+                              try {
+                                // Get the existing master password before clearing
+                                const existingPassword =
+                                  await AuthManager.getMasterPassword();
+
+                                // Clear SecureStore authentication data
+                                const secureAvailable =
+                                  await SecureStore.isAvailableAsync();
+                                if (secureAvailable) {
+                                  const authKeys = [
+                                    "x1_wallet_secure_store_pin_hash",
+                                    "x1_wallet_secure_store_pin_salt",
+                                    "x1_wallet_secure_store_biometric_key",
+                                  ];
+
+                                  for (const key of authKeys) {
+                                    try {
+                                      await SecureStore.deleteItemAsync(key);
+                                    } catch (e) {
+                                      console.log(
+                                        `Could not delete ${key}:`,
+                                        e
+                                      );
+                                    }
+                                  }
+                                }
+
+                                // Reset auth state to setup to trigger new PIN creation
+                                // Keep the existing password so new PIN can be associated with it
+                                setPassword(existingPassword);
+                                setSecurityAuthenticated(false);
+                                setSecurityAuthRequired(false);
+                                setShowSettingsModal(false);
+                                setAuthState("setup");
+
+                                Alert.alert(
+                                  "PIN Cleared",
+                                  "Your PIN and biometric settings have been cleared. Please set up a new PIN to continue using the app.",
+                                  [
+                                    {
+                                      text: "OK",
+                                      onPress: () => {
+                                        // Auth state is already set to "setup"
+                                      },
+                                    },
+                                  ]
+                                );
+                              } catch (error) {
+                                console.error("Error clearing PIN:", error);
+                                Alert.alert(
+                                  "Error",
+                                  "Failed to clear PIN. Please try again."
+                                );
+                              }
+                            },
+                          },
+                        ],
+                        { cancelable: true }
+                      );
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.settingsMenuItemText,
+                        { color: "#FFA500" },
+                      ]}
+                    >
+                      Clear PIN & Biometrics
+                    </Text>
+                    <Text style={styles.settingsMenuItemArrow}>🗑️</Text>
                   </TouchableOpacity>
                 </>
               ) : settingsNavigationStack[

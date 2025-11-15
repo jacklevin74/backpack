@@ -3,11 +3,17 @@ import { View, Text, StyleSheet, Alert } from "react-native";
 import { PinPad } from "./PinPad";
 import { PinDots } from "./PinDots";
 import { AuthManager } from "./AuthManager";
+import { Toast } from "./Toast";
 
 export const PinSetup = ({ password, onComplete }) => {
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [step, setStep] = useState("enter"); // 'enter' or 'confirm'
+  const [toast, setToast] = useState({
+    visible: false,
+    message: "",
+    type: "info",
+  });
 
   const handleNumberPress = (num) => {
     if (step === "enter") {
@@ -31,15 +37,32 @@ export const PinSetup = ({ password, onComplete }) => {
             if (newConfirmPin === pin) {
               try {
                 await AuthManager.setupPin(pin, password);
-                onComplete();
+                setToast({
+                  visible: true,
+                  message: "PIN created successfully",
+                  type: "success",
+                });
+
+                // Give the toast a moment to appear before navigating
+                setTimeout(() => {
+                  onComplete();
+                }, 300);
               } catch (error) {
-                Alert.alert("Error", error.message || "Failed to setup PIN");
+                setToast({
+                  visible: true,
+                  message: error.message || "Failed to setup PIN",
+                  type: "error",
+                });
                 setPin("");
                 setConfirmPin("");
                 setStep("enter");
               }
             } else {
-              Alert.alert("Error", "PINs do not match. Please try again.");
+              setToast({
+                visible: true,
+                message: "PINs do not match",
+                type: "error",
+              });
               setPin("");
               setConfirmPin("");
               setStep("enter");
@@ -77,6 +100,13 @@ export const PinSetup = ({ password, onComplete }) => {
       />
 
       <PinPad onNumberPress={handleNumberPress} onBackspace={handleBackspace} />
+
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        visible={toast.visible}
+        onHide={() => setToast({ ...toast, visible: false })}
+      />
     </View>
   );
 };

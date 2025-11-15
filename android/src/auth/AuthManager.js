@@ -3,7 +3,8 @@ import * as SecureStore from "expo-secure-store";
 import * as LocalAuthentication from "expo-local-authentication";
 import { Buffer } from "buffer";
 import { randomBytes } from "tweetnacl";
-import Crypto from "crypto-browserify";
+import { pbkdf2 } from "@noble/hashes/pbkdf2";
+import { sha256 } from "@noble/hashes/sha256";
 
 const PIN_CONFIG_KEY = "pin_config";
 const MASTER_PASSWORD_KEY = "master_password";
@@ -12,7 +13,7 @@ const BIOMETRIC_PREFERENCE_KEY = "@wallet:biometricPreference";
 const LOCK_STATE_KEY = "@wallet:pinLockState";
 const LOCK_WINDOWS_MS = [30_000, 120_000, 600_000];
 const MAX_FAILED_ATTEMPTS = 5;
-const PIN_KDF_ITERATIONS = 250_000;
+const PIN_KDF_ITERATIONS = 10_000; // Reduced for mobile performance
 
 export class PinLockoutError extends Error {
   constructor(remainingMs) {
@@ -54,23 +55,36 @@ export class AuthManager {
   }
 
   static async setupPin(pin, password) {
+    console.log(
+      "setupPin called with pin length:",
+      pin?.length,
+      "password length:",
+      password?.length
+    );
     AuthManager.assertValidPin(pin);
 
+    console.log("Generating salt...");
     const salt = randomBytes(16);
+    console.log("Salt generated, deriving PIN hash...");
     const derived = await AuthManager.derivePinHash(
       pin,
       salt,
       PIN_KDF_ITERATIONS
     );
+    console.log("PIN hash derived, creating config...");
     const config = {
       salt: Buffer.from(salt).toString("base64"),
       hash: Buffer.from(derived).toString("base64"),
       iterations: PIN_KDF_ITERATIONS,
     };
 
+    console.log("Saving PIN config to SecureStore...");
     await SecureStore.setItemAsync(PIN_CONFIG_KEY, JSON.stringify(config));
+    console.log("Storing master password...");
     await AuthManager.storeMasterPassword(password);
+    console.log("Clearing lock state...");
     await AuthManager.clearLockState();
+    console.log("PIN setup complete!");
   }
 
   static async clearSecurityState() {
@@ -130,18 +144,11 @@ export class AuthManager {
       throw new Error("Biometrics not enabled");
     }
 
-    const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: "Authenticate to unlock X1 Wallet",
-      cancelLabel: "Cancel",
-      disableDeviceFallback: false,
-    });
-
-    if (!result.success) {
-      throw new Error("Biometric authentication failed");
-    }
-
+    // SecureStore will automatically trigger biometric authentication
+    // because the password was stored with requireAuthentication: true
     const password = await SecureStore.getItemAsync(BIOMETRIC_PASSWORD_KEY, {
       requireAuthentication: true,
+      authenticationPrompt: "Authenticate to unlock X1 Wallet",
     });
 
     if (!password) {
@@ -213,16 +220,10 @@ export class AuthManager {
   }
 
   static async derivePinHash(pin, salt, iterations) {
-    return new Promise((resolve, reject) => {
-      Crypto.pbkdf2(
-        pin,
-        Buffer.from(salt),
-        iterations,
-        32,
-        "sha256",
-        (err, key) => (err ? reject(err) : resolve(key))
-      );
-    });
+    // Use @noble/hashes for PBKDF2 (React Native compatible)
+    const saltBytes = salt instanceof Uint8Array ? salt : Buffer.from(salt);
+    const hash = pbkdf2(sha256, pin, saltBytes, { c: iterations, dkLen: 32 });
+    return Buffer.from(hash);
   }
 
   static async verifyPin(pin, config) {
@@ -234,10 +235,17 @@ export class AuthManager {
       config.iterations
     );
 
-    if (
-      expectedHash.length !== derived.length ||
-      !Crypto.timingSafeEqual(expectedHash, derived)
-    ) {
+    // Timing-safe comparison
+    if (expectedHash.length !== derived.length) {
+      throw new Error("Invalid PIN");
+    }
+
+    let mismatch = 0;
+    for (let i = 0; i < expectedHash.length; i++) {
+      mismatch |= expectedHash[i] ^ derived[i];
+    }
+
+    if (mismatch !== 0) {
       throw new Error("Invalid PIN");
     }
   }

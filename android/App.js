@@ -6969,7 +6969,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "transparent",
     borderTopWidth: 0,
-    paddingBottom: 10,
+    paddingBottom: 35,
     paddingTop: 0,
     paddingHorizontal: 20,
     justifyContent: "space-around",

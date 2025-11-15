@@ -1,5 +1,12 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  Image,
+} from "react-native";
 import { PinPad } from "./PinPad";
 import { PinDots } from "./PinDots";
 import { AuthManager, PinLockoutError } from "./AuthManager";
@@ -10,6 +17,7 @@ export const PinUnlock = ({ onUnlock }) => {
   const [error, setError] = useState("");
   const [lockoutMs, setLockoutMs] = useState(0);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const isAuthenticatingRef = useRef(false);
   const [toast, setToast] = useState({
     visible: false,
     message: "",
@@ -36,7 +44,14 @@ export const PinUnlock = ({ onUnlock }) => {
   };
 
   const handleBiometric = async () => {
+    // Prevent double-activation using ref (synchronous check)
+    if (isAuthenticatingRef.current) {
+      console.log("Biometric authentication already in progress, ignoring tap");
+      return;
+    }
+
     try {
+      isAuthenticatingRef.current = true;
       setError("");
       // Add delay to ensure activity is fully ready and UI is stable
       // Increased from 100ms to 500ms to prevent "activity no longer available" errors
@@ -65,6 +80,8 @@ export const PinUnlock = ({ onUnlock }) => {
           type: "error",
         });
       }
+    } finally {
+      isAuthenticatingRef.current = false;
     }
   };
 
@@ -142,17 +159,18 @@ export const PinUnlock = ({ onUnlock }) => {
         </Text>
       </View>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
       <PinDots length={6} filled={pin.length} />
 
       {biometricAvailable && lockoutMs === 0 && (
         <TouchableOpacity
           style={styles.biometricButton}
           onPress={handleBiometric}
-          activeOpacity={0.7}
+          activeOpacity={0.6}
         >
-          <Text style={styles.biometricText}>Use Biometric</Text>
+          <Image
+            source={require("../../assets/fingerprint.png")}
+            style={styles.fingerprintImage}
+          />
         </TouchableOpacity>
       )}
 
@@ -199,17 +217,14 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   biometricButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    marginVertical: 15,
-    borderRadius: 8,
-    backgroundColor: "rgba(139, 92, 246, 0.2)",
-    borderWidth: 1,
-    borderColor: "rgba(139, 92, 246, 0.5)",
+    alignSelf: "center",
+    marginTop: -10,
+    marginBottom: 15,
+    padding: 10,
   },
-  biometricText: {
-    color: "#A78BFA",
-    fontSize: 16,
-    fontWeight: "600",
+  fingerprintImage: {
+    width: 95,
+    height: 95,
+    opacity: 0.5,
   },
 });

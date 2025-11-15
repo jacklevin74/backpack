@@ -171,11 +171,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 16,
+    paddingVertical: 10,
     paddingHorizontal: 12,
     backgroundColor: "transparent",
     borderRadius: 12,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   logoContainer: {
     marginRight: 12,
@@ -244,10 +244,10 @@ const styles = StyleSheet.create({
   changeContainer: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4,
+    paddingVertical: 2,
+    paddingLeft: 6,
+    borderRadius: 6,
+    gap: 3,
   },
   changeArrow: {
     fontSize: 10,

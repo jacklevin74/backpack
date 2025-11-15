@@ -70,6 +70,28 @@ export const BalancesTableRow = ({
   const logo = tokenListEntry?.logo;
   const apiPrice = marketData?.price ?? 0;
 
+  // Generate a color for the placeholder based on the first letter
+  const getPlaceholderColor = (symbol: string): string => {
+    const colors = [
+      "#6366F1", // Indigo
+      "#8B5CF6", // Violet
+      "#EC4899", // Pink
+      "#F59E0B", // Amber
+      "#10B981", // Emerald
+      "#06B6D4", // Cyan
+      "#F97316", // Orange
+      "#EF4444", // Red
+    ];
+    const charCode = symbol.charCodeAt(0) || 0;
+    return colors[charCode % colors.length];
+  };
+
+  // Get 2-3 letter abbreviation for placeholder
+  const getPlaceholderText = (symbol: string): string => {
+    if (symbol.length <= 3) return symbol;
+    return symbol.substring(0, 3);
+  };
+
   // State for real-time price (for SOL and other tokens with incorrect API price)
   const [realPrice, setRealPrice] = useState<number>(apiPrice);
 
@@ -130,9 +152,9 @@ export const BalancesTableRow = ({
         {logo ? (
           <Image source={{ uri: logo }} style={styles.logo} />
         ) : (
-          <View style={styles.logoPlaceholder}>
+          <View style={[styles.logoPlaceholder, { backgroundColor: getPlaceholderColor(symbol) }]}>
             <Text style={styles.logoPlaceholderText}>
-              {symbol.charAt(0)}
+              {getPlaceholderText(symbol)}
             </Text>
           </View>
         )}
@@ -182,20 +204,19 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F2F2F7",
   },
   logoPlaceholder: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#007AFF",
     justifyContent: "center",
     alignItems: "center",
   },
   logoPlaceholderText: {
-    color: "#FFF",
-    fontSize: 18,
-    fontWeight: "bold",
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
+    letterSpacing: -0.5,
   },
   infoContainer: {
     flex: 1,

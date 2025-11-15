@@ -3045,6 +3045,13 @@ expo-keep-awake@~15.0.7:
   resolved "https://registry.npmjs.org/expo-keep-awake/-/expo-keep-awake-15.0.7.tgz"
   integrity sha512-CgBNcWVPnrIVII5G54QDqoE125l+zmqR4HR8q+MQaCfHet+dYpS5vX5zii/RMayzGN4jPgA4XYIQ28ePKFjHoA==
 
+expo-local-authentication@^17.0.7:
+  version "17.0.7"
+  resolved "https://registry.npmjs.org/expo-local-authentication/-/expo-local-authentication-17.0.7.tgz"
+  integrity sha512-yRWcgYn/OIwxEDEk7cM7tRjQSHaTp5hpKwzq+g9NmSMJ1etzUzt0yGzkDiOjObj3YqFo0ucyDJ8WfanLhZDtMw==
+  dependencies:
+    invariant "^2.2.4"
+
 expo-modules-autolinking@3.0.21:
   version "3.0.21"
   resolved "https://registry.npmjs.org/expo-modules-autolinking/-/expo-modules-autolinking-3.0.21.tgz"

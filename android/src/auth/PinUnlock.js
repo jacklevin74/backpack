@@ -3,12 +3,18 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import { PinPad } from "./PinPad";
 import { PinDots } from "./PinDots";
 import { AuthManager, PinLockoutError } from "./AuthManager";
+import { Toast } from "./Toast";
 
 export const PinUnlock = ({ onUnlock }) => {
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [lockoutMs, setLockoutMs] = useState(0);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [toast, setToast] = useState({
+    visible: false,
+    message: "",
+    type: "info",
+  });
 
   useEffect(() => {
     checkBiometric();
@@ -32,10 +38,33 @@ export const PinUnlock = ({ onUnlock }) => {
   const handleBiometric = async () => {
     try {
       setError("");
+      // Add delay to ensure activity is fully ready and UI is stable
+      // Increased from 100ms to 500ms to prevent "activity no longer available" errors
+      await new Promise((resolve) => setTimeout(resolve, 500));
       const password = await AuthManager.unlockWithBiometrics();
       onUnlock(password);
     } catch (err) {
-      setError(err.message || "Biometric authentication failed");
+      console.error("Biometric authentication error:", err);
+
+      // Handle specific error for activity no longer available
+      if (err.message && err.message.includes("activity no longer available")) {
+        setError("Please try again");
+        setToast({
+          visible: true,
+          message: "Authentication unavailable, please try again",
+          type: "error",
+        });
+      } else if (err.message && err.message.includes("cancelled")) {
+        // User cancelled, don't show error
+        setError("");
+      } else {
+        setError(err.message || "Biometric authentication failed");
+        setToast({
+          visible: true,
+          message: "Authentication failed",
+          type: "error",
+        });
+      }
     }
   };
 
@@ -53,7 +82,18 @@ export const PinUnlock = ({ onUnlock }) => {
           try {
             setError("");
             const password = await AuthManager.unlockWithPin(newPin);
-            onUnlock(password);
+
+            // Show success toast
+            setToast({
+              visible: true,
+              message: "Unlocking...",
+              type: "success",
+            });
+
+            // Give the toast a moment to appear before navigating
+            setTimeout(() => {
+              onUnlock(password);
+            }, 300);
           } catch (err) {
             if (err instanceof PinLockoutError) {
               setLockoutMs(err.remainingMs);
@@ -62,6 +102,12 @@ export const PinUnlock = ({ onUnlock }) => {
               );
             } else {
               setError(err.message || "Invalid PIN");
+              // Show error toast
+              setToast({
+                visible: true,
+                message: "PIN incorrect",
+                type: "error",
+              });
             }
             setPin("");
           }
@@ -111,6 +157,13 @@ export const PinUnlock = ({ onUnlock }) => {
       )}
 
       <PinPad onNumberPress={handleNumberPress} onBackspace={handleBackspace} />
+
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        visible={toast.visible}
+        onHide={() => setToast({ ...toast, visible: false })}
+      />
     </View>
   );
 };

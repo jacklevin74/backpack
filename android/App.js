@@ -5270,31 +5270,8 @@ export default function App() {
                                 // Clear AsyncStorage
                                 await AsyncStorage.clear();
 
-                                // Clear SecureStore
-                                const secureAvailable =
-                                  await SecureStore.isAvailableAsync();
-                                if (secureAvailable) {
-                                  // Clear all known SecureStore keys
-                                  const keysToDelete = [
-                                    "x1_wallet_secure_store_seed",
-                                    "x1_wallet_secure_store_mnemonic",
-                                    "x1_wallet_secure_store_pin_hash",
-                                    "x1_wallet_secure_store_pin_salt",
-                                    "x1_wallet_secure_store_biometric_key",
-                                  ];
-
-                                  for (const key of keysToDelete) {
-                                    try {
-                                      await SecureStore.deleteItemAsync(key);
-                                    } catch (e) {
-                                      // Key might not exist, continue
-                                      console.log(
-                                        `Could not delete ${key}:`,
-                                        e
-                                      );
-                                    }
-                                  }
-                                }
+                                // Clear SecureStore - use AuthManager to clear all security data
+                                await AuthManager.clearSecurityState();
 
                                 // Reset all state variables
                                 setMasterSeedPhrase(null);
@@ -5308,24 +5285,22 @@ export default function App() {
                                 setShowViewSeedPhraseModal(false);
                                 setShowExportSeedPhraseModal(false);
                                 setShowChangeSeedPhraseModal(false);
-                                setAuthState("loading");
-                                setPassword(null);
                                 setSecurityAuthenticated(false);
                                 setSecurityAuthRequired(false);
                                 setWalletDerivationIndex(0);
 
-                                Alert.alert(
-                                  "Wallet Reset",
-                                  "All wallet data has been cleared. The app will now restart.",
-                                  [
-                                    {
-                                      text: "OK",
-                                      onPress: () => {
-                                        // App will re-initialize from the cleared state
-                                      },
-                                    },
-                                  ]
-                                );
+                                // Generate a random password for PIN setup (same as initial app load)
+                                const randomPassword = Array.from(
+                                  randomBytes(32)
+                                )
+                                  .map((byte) =>
+                                    byte.toString(16).padStart(2, "0")
+                                  )
+                                  .join("");
+                                setPassword(randomPassword);
+
+                                // Go directly to PIN setup screen
+                                setAuthState("setup");
                               } catch (error) {
                                 console.error("Error resetting wallet:", error);
                                 Alert.alert(
@@ -5443,14 +5418,14 @@ export default function App() {
                                 const existingPassword =
                                   await AuthManager.getMasterPassword();
 
-                                // Clear SecureStore authentication data
+                                // Clear PIN and biometric data using correct SecureStore keys
                                 const secureAvailable =
                                   await SecureStore.isAvailableAsync();
                                 if (secureAvailable) {
+                                  // Use the correct SecureStore keys from AuthManager
                                   const authKeys = [
-                                    "x1_wallet_secure_store_pin_hash",
-                                    "x1_wallet_secure_store_pin_salt",
-                                    "x1_wallet_secure_store_biometric_key",
+                                    "pin_config", // Contains PIN hash and salt
+                                    "biometric_password", // Biometric-protected password
                                   ];
 
                                   for (const key of authKeys) {
@@ -5463,6 +5438,19 @@ export default function App() {
                                       );
                                     }
                                   }
+                                }
+
+                                // Also clear biometric preference and lock state from AsyncStorage
+                                try {
+                                  await AsyncStorage.multiRemove([
+                                    "@wallet:biometricPreference",
+                                    "@wallet:pinLockState",
+                                  ]);
+                                } catch (e) {
+                                  console.log(
+                                    "Could not clear AsyncStorage keys:",
+                                    e
+                                  );
                                 }
 
                                 // Reset auth state to setup to trigger new PIN creation

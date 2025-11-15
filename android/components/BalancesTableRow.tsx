@@ -128,9 +128,7 @@ export const BalancesTableRow = ({
       {/* Token Logo */}
       <View style={styles.logoContainer}>
         {logo ? (
-          <View style={styles.logoWrapper}>
-            <Image source={{ uri: logo }} style={styles.logo} />
-          </View>
+          <Image source={{ uri: logo }} style={styles.logo} />
         ) : (
           <View style={styles.logoPlaceholder}>
             <Text style={styles.logoPlaceholderText}>
@@ -179,16 +177,6 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     marginRight: 12,
-  },
-  logoWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5, // For Android
   },
   logo: {
     width: 40,

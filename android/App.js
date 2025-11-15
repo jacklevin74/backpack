@@ -6039,7 +6039,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   balanceChange: {
-    fontSize: 14,
+    fontSize: 21,
     color: "#888888",
   },
   actionsRow: {

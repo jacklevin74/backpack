@@ -3,8 +3,7 @@ import * as SecureStore from "expo-secure-store";
 import * as LocalAuthentication from "expo-local-authentication";
 import { Buffer } from "buffer";
 import { randomBytes } from "tweetnacl";
-import { pbkdf2 } from "@noble/hashes/pbkdf2";
-import { sha256 } from "@noble/hashes/sha256";
+import { pbkdf2Sync } from "react-native-quick-crypto";
 
 const PIN_CONFIG_KEY = "pin_config";
 const MASTER_PASSWORD_KEY = "master_password";
@@ -13,7 +12,7 @@ const BIOMETRIC_PREFERENCE_KEY = "@wallet:biometricPreference";
 const LOCK_STATE_KEY = "@wallet:pinLockState";
 const LOCK_WINDOWS_MS = [30_000, 120_000, 600_000];
 const MAX_FAILED_ATTEMPTS = 5;
-const PIN_KDF_ITERATIONS = 10_000; // Reduced for mobile performance
+const PIN_KDF_ITERATIONS = 250_000; // Maximum security (matches PR-4)
 
 export class PinLockoutError extends Error {
   constructor(remainingMs) {
@@ -220,10 +219,17 @@ export class AuthManager {
   }
 
   static async derivePinHash(pin, salt, iterations) {
-    // Use @noble/hashes for PBKDF2 (React Native compatible)
+    // Use react-native-quick-crypto for native C/C++ JSI PBKDF2 (much faster than JS)
+    console.log(
+      `🔐 PBKDF2 using ${iterations.toLocaleString()} iterations (native C/C++ JSI)`
+    );
+    const startTime = Date.now();
     const saltBytes = salt instanceof Uint8Array ? salt : Buffer.from(salt);
-    const hash = pbkdf2(sha256, pin, saltBytes, { c: iterations, dkLen: 32 });
-    return Buffer.from(hash);
+    // pbkdf2Sync(password, salt, iterations, keylen, digest) - standard Node.js crypto API
+    const hash = pbkdf2Sync(pin, saltBytes, iterations, 32, "sha256");
+    const elapsed = Date.now() - startTime;
+    console.log(`✅ PBKDF2 completed in ${elapsed}ms`);
+    return hash;
   }
 
   static async verifyPin(pin, config) {

@@ -279,6 +279,8 @@ export default function App() {
   // Authentication states
   const [authState, setAuthState] = useState("loading"); // 'loading', 'setup', 'locked', 'unlocked'
   const [password, setPassword] = useState(null);
+  const [securityAuthRequired, setSecurityAuthRequired] = useState(false); // Require auth for security settings
+  const [securityAuthenticated, setSecurityAuthenticated] = useState(false); // Track if authenticated for security
 
   const [wallets, setWallets] = useState([]);
   const [selectedWallet, setSelectedWallet] = useState(null);
@@ -5180,7 +5182,14 @@ export default function App() {
 
                   <TouchableOpacity
                     style={styles.settingsMenuItem}
-                    onPress={() => navigateToSettingsScreen("manageSecurity")}
+                    onPress={() => {
+                      // Require PIN/biometric authentication before accessing security settings
+                      if (!securityAuthenticated) {
+                        setSecurityAuthRequired(true);
+                      } else {
+                        navigateToSettingsScreen("manageSecurity");
+                      }
+                    }}
                   >
                     <Text style={styles.settingsMenuItemText}>
                       Manage Security
@@ -5498,6 +5507,30 @@ export default function App() {
               )}
             </ScrollView>
           </View>
+        </View>
+      )}
+
+      {/* Security Settings Authentication Overlay */}
+      {securityAuthRequired && (
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 10000,
+            elevation: 11,
+            backgroundColor: "#111827",
+          }}
+        >
+          <PinUnlock
+            onUnlock={(recoveredPassword) => {
+              setSecurityAuthRequired(false);
+              setSecurityAuthenticated(true);
+              navigateToSettingsScreen("manageSecurity");
+            }}
+          />
         </View>
       )}
     </>

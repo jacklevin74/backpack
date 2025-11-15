@@ -88,12 +88,17 @@ export const BalancesTableRow = ({
 
   // Get 2-3 letter abbreviation for placeholder
   const getPlaceholderText = (symbol: string): string => {
-    if (symbol.length <= 3) return symbol;
-    return symbol.substring(0, 3);
+    // Remove dollar signs and other special characters
+    const cleanSymbol = symbol.replace(/[$]/g, '');
+    const text = cleanSymbol.length <= 3 ? cleanSymbol : cleanSymbol.substring(0, 3);
+    return text.toUpperCase();
   };
 
   // State for real-time price (for SOL and other tokens with incorrect API price)
   const [realPrice, setRealPrice] = useState<number>(apiPrice);
+
+  // State to track if logo image failed to load
+  const [logoError, setLogoError] = useState<boolean>(false);
 
   // Fetch real SOL price from REST API if GraphQL price is $1 or less
   useEffect(() => {
@@ -149,8 +154,12 @@ export const BalancesTableRow = ({
     >
       {/* Token Logo */}
       <View style={styles.logoContainer}>
-        {logo ? (
-          <Image source={{ uri: logo }} style={styles.logo} />
+        {logo && !logoError ? (
+          <Image
+            source={{ uri: logo }}
+            style={styles.logo}
+            onError={() => setLogoError(true)}
+          />
         ) : (
           <View style={[styles.logoPlaceholder, { backgroundColor: getPlaceholderColor(symbol) }]}>
             <Text style={styles.logoPlaceholderText}>

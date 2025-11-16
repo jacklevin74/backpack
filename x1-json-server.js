@@ -474,7 +474,9 @@ async function getX1Balance(address, rpcUrl) {
       },
     };
 
-    const req = https.request(rpcUrl, options, (res) => {
+    // Choose http or https based on URL protocol
+    const protocol = rpcUrl.startsWith("https://") ? https : http;
+    const req = protocol.request(rpcUrl, options, (res) => {
       let data = "";
 
       res.on("data", (chunk) => {
@@ -559,12 +561,17 @@ async function getWalletData(address, network = "mainnet", blockchain = "x1") {
     const logo = blockchain === "solana" ? "./solana.png" : "./x1.png";
     // Get real SOL price or use fixed XNT price
     const price = blockchain === "solana" ? await getSolPrice() : XNT_PRICE;
+    // Use correct native token mint address based on blockchain
+    const nativeMint =
+      blockchain === "solana"
+        ? "So11111111111111111111111111111111111111112" // SOL native mint
+        : "XNT111111111111111111111111111111111111111"; // XNT native mint
 
     return {
       balance: balance,
       tokens: [
         {
-          mint: "11111111111111111111111111111111", // Native token address for SVM chains
+          mint: nativeMint,
           decimals: 9,
           balance: balance,
           logo: logo,
@@ -616,6 +623,19 @@ const server = http.createServer((req, res) => {
 
   // Log request
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+
+  // Handle feature gates endpoint
+  if (pathname === "/feature-gates/gates" && req.method === "GET") {
+    const response = {
+      gates: {
+        // Default feature gates - all features enabled
+        // This mimics the official Backpack feature gates response
+      },
+    };
+    res.writeHead(200);
+    res.end(JSON.stringify(response));
+    return;
+  }
 
   // Handle GraphQL endpoint for priority fees
   if (pathname === "/v2/graphql" && req.method === "POST") {
@@ -1088,6 +1108,18 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({ error: "Invalid RPC request" }));
       }
     });
+    return;
+  }
+
+  // Handle feature gates endpoint
+  if (pathname === "/feature-gates/gates" && req.method === "GET") {
+    console.log(`🚩 Feature gates request`);
+    // Return empty feature gates for localnet
+    const response = {
+      gates: [],
+    };
+    res.writeHead(200);
+    res.end(JSON.stringify(response));
     return;
   }
 

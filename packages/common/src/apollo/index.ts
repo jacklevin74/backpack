@@ -14,7 +14,11 @@ import {
 import { RetryLink } from "@apollo/client/link/retry";
 import { LocalStorageWrapper, persistCacheSync } from "apollo3-cache-persist";
 
-import { BACKEND_API_URL, X1_JSON_SERVER_URL, BACKPACK_GRAPHQL_API_URL } from "../constants";
+import {
+  BACKEND_API_URL,
+  BACKPACK_GRAPHQL_API_URL,
+  X1_JSON_SERVER_URL,
+} from "../constants";
 
 const cache = new InMemoryCache({
   addTypename: true,
@@ -156,8 +160,12 @@ export const x1InterceptorLink = new ApolloLink((operation, forward) => {
   });
 
   // Check if this is an X1 query by looking at the providerId variable
-  const providerId = variables?.providerId || '';
-  const isX1Query = providerId === "X1" || providerId === "X1-testnet" || providerId === "X1-mainnet";
+  const providerId = variables?.providerId || "";
+  const isX1Query =
+    providerId === "X1" ||
+    providerId === "X1-localnet" ||
+    providerId === "X1-testnet" ||
+    providerId === "X1-mainnet";
 
   if (!isX1Query) {
     console.log("⏭️ [X1Interceptor] Not X1 query, passing through to backend");
@@ -184,7 +192,11 @@ export const x1InterceptorLink = new ApolloLink((operation, forward) => {
 
     // Use the providerId directly - it already contains network info (X1, X1-testnet, or X1-mainnet)
     const url = `${X1_JSON_SERVER_URL}/wallet/${address}?providerId=${providerId}`;
-    console.log("🌐 [X1Interceptor] Fetching from JSON server:", url, `(providerId: ${providerId})`);
+    console.log(
+      "🌐 [X1Interceptor] Fetching from JSON server:",
+      url,
+      `(providerId: ${providerId})`
+    );
 
     // Fetch balance from JSON server
     fetch(url)
@@ -276,7 +288,7 @@ export function createApolloClient(
   headers?: Record<string, string>
 ): ApolloClient<NormalizedCacheObject> {
   const httpLink = createHttpLink({
-    uri: BACKPACK_GRAPHQL_API_URL,  // Use official Backpack GraphQL API
+    uri: BACKPACK_GRAPHQL_API_URL, // Use official Backpack GraphQL API
     headers,
   });
 

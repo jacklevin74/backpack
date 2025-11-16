@@ -96,6 +96,10 @@ export const solanaBlockchainConfig: BlockchainConfig<Blockchain.SOLANA> = {
       name: "Solana Testnet",
       url: SolanaCluster.TESTNET,
     },
+    LOCALNET: {
+      name: "Solana Localnet",
+      url: SolanaCluster.LOCALNET,
+    },
   },
   ConfirmationCommitments: {
     Processed: {

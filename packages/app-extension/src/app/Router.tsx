@@ -48,13 +48,19 @@ function TestnetBanner() {
   // Since we treat Solana networks as alternative RPCs for X1, we check the URL directly
   const getNetworkName = () => {
     // Check X1 URLs
-    if (connectionUrl === "https://rpc.testnet.x1.xyz") {
+    if (connectionUrl === "http://127.0.0.1:8901") {
+      return developerMode ? "X1 LOCALNET • DEVELOPER MODE" : "X1 LOCALNET";
+    } else if (connectionUrl === "https://rpc.testnet.x1.xyz") {
       return developerMode ? "X1 TESTNET • DEVELOPER MODE" : "X1 TESTNET";
     } else if (connectionUrl === "https://rpc.mainnet.x1.xyz") {
       return developerMode ? "X1 MAINNET • DEVELOPER MODE" : "X1 MAINNET";
     }
     // Check Solana URLs (including QuickNode)
-    else if (
+    else if (connectionUrl === "http://127.0.0.1:8899") {
+      return developerMode
+        ? "SOLANA LOCALNET • DEVELOPER MODE"
+        : "SOLANA LOCALNET";
+    } else if (
       connectionUrl === "https://api.mainnet-beta.solana.com" ||
       connectionUrl?.includes("solana-mainnet.quiknode.pro")
     ) {

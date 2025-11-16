@@ -137,8 +137,8 @@ function _TokenBalances({
   const blockchain = providerId.includes("SOLANA")
     ? Blockchain.SOLANA
     : providerId.includes("ETHEREUM")
-    ? Blockchain.ETHEREUM
-    : Blockchain.X1;
+      ? Blockchain.ETHEREUM
+      : Blockchain.X1;
 
   // Get connection URL for the correct blockchain
   const connectionUrl = useBlockchainConnectionUrl(blockchain);
@@ -148,25 +148,45 @@ function _TokenBalances({
   const isSolanaNetwork = blockchain === Blockchain.SOLANA;
   const isX1Network = blockchain === Blockchain.X1;
 
+  // Detect if we're on localnet (for either Solana or X1)
+  const isSolanaLocalnet =
+    connectionUrl &&
+    (connectionUrl.includes("127.0.0.1:8899") ||
+      connectionUrl.includes("localhost:8899"));
+  const isX1Localnet =
+    connectionUrl &&
+    (connectionUrl.includes("127.0.0.1:8901") ||
+      connectionUrl.includes("localhost:8901"));
+
   // Determine the correct providerId based on blockchain
   let finalProviderId = providerId;
 
-  // For Solana: Use simple "SOLANA" - Backpack GraphQL API doesn't support network suffixes
+  // For Solana: Check if localnet first
   if (blockchain === Blockchain.SOLANA) {
-    finalProviderId = "SOLANA" as ProviderId;
+    if (isSolanaLocalnet) {
+      // Use REST API for Solana localnet (via x1-json-server)
+      finalProviderId = "SOLANA-localnet" as ProviderId;
+    } else {
+      // Use GraphQL API for mainnet/devnet/testnet
+      finalProviderId = "SOLANA" as ProviderId;
+    }
   }
   // For X1: Detect network from connection URL (X1 REST API supports network suffixes)
-  else if (connectionUrl && connectionUrl.includes("x1.xyz")) {
-    if (connectionUrl.includes("testnet")) {
-      finalProviderId = "X1-testnet" as ProviderId;
-    } else if (connectionUrl.includes("mainnet")) {
-      finalProviderId = "X1-mainnet" as ProviderId;
+  else if (connectionUrl) {
+    if (isX1Localnet) {
+      finalProviderId = "X1-localnet" as ProviderId;
+    } else if (connectionUrl.includes("x1.xyz")) {
+      if (connectionUrl.includes("testnet")) {
+        finalProviderId = "X1-testnet" as ProviderId;
+      } else if (connectionUrl.includes("mainnet")) {
+        finalProviderId = "X1-mainnet" as ProviderId;
+      }
     }
   }
 
-  // For Solana networks: Use GraphQL
-  // For X1 networks: Use REST API (x1-json-server)
-  return isSolanaNetwork ? (
+  // For Solana non-localnet networks: Use GraphQL
+  // For X1 and Solana localnet: Use REST API (x1-json-server)
+  return isSolanaNetwork && !isSolanaLocalnet ? (
     <SolanaTokenBalances
       address={address}
       fetchPolicy={fetchPolicy}

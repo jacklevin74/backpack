@@ -735,10 +735,24 @@ function AppContent() {
 
       const cacheKey = `${selectedWallet.publicKey}-${activeNetwork.providerId}`;
 
-      // Skip REST API fetch for Solana networks (using GraphQL instead)
+      // For Solana networks, only fetch the SOL price for header display
+      // (TokenBalances component handles full balance via GraphQL)
       if (activeNetwork.providerId.startsWith("SOLANA")) {
-        console.log("Skipping REST API fetch for Solana - using GraphQL pricing");
-        return;
+        console.log("Fetching SOL price for header from REST API");
+        try {
+          const solPriceResponse = await fetch(
+            `${API_SERVER}/wallet/So11111111111111111111111111111111111111112?providerId=${activeNetwork.providerId}`
+          );
+          const solPriceData = await solPriceResponse.json();
+          const solPrice = solPriceData?.tokens?.[0]?.price;
+          if (solPrice && solPrice > 0) {
+            setTokenPrice(solPrice);
+            console.log("Updated SOL header price:", solPrice);
+          }
+        } catch (error) {
+          console.error("Failed to fetch SOL price for header:", error);
+        }
+        return; // Skip full balance fetch - GraphQL handles that
       }
 
       // Load from cache first if requested
@@ -775,7 +789,25 @@ function AppContent() {
           : "$0.00";
 
         // Extract the price from the native token (first token)
-        const price = data.tokens[0]?.price || 0;
+        let price = data.tokens[0]?.price || 0;
+
+        // Fetch real SOL price from REST API if price is $1 or less (incorrect API data)
+        if (activeNetwork.providerId.startsWith("SOLANA") && price <= 1) {
+          try {
+            const solPriceResponse = await fetch(
+              `${API_SERVER}/wallet/So11111111111111111111111111111111111111112?providerId=${activeNetwork.providerId}`
+            );
+            const solPriceData = await solPriceResponse.json();
+            const realSolPrice = solPriceData?.tokens?.[0]?.price;
+            if (realSolPrice && realSolPrice > 0) {
+              price = realSolPrice;
+              console.log("Fetched real SOL price from REST API:", price);
+            }
+          } catch (error) {
+            console.error("Failed to fetch real SOL price:", error);
+            // Keep using the original price as fallback
+          }
+        }
 
         const formattedTokens = data.tokens.map((token, idx) => ({
           id: String(idx + 1),
@@ -2907,7 +2939,7 @@ function AppContent() {
   // Test Browser Page
   if (showTestBrowser) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#111827" }}>
         <StatusBar hidden={true} />
         {/* Header */}
         <View
@@ -3609,7 +3641,7 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#000000" }}
+          backgroundStyle={{ backgroundColor: "#111827" }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -3746,7 +3778,7 @@ function AppContent() {
           onChange={handleSheetChanges}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#000000" }}
+          backgroundStyle={{ backgroundColor: "#111827" }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetScrollView
@@ -3853,7 +3885,7 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#000000" }}
+          backgroundStyle={{ backgroundColor: "#111827" }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -3953,7 +3985,7 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#000000" }}
+          backgroundStyle={{ backgroundColor: "#111827" }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -4014,7 +4046,7 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#000000" }}
+          backgroundStyle={{ backgroundColor: "#111827" }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -4093,7 +4125,7 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#000000" }}
+          backgroundStyle={{ backgroundColor: "#111827" }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -4155,7 +4187,7 @@ function AppContent() {
               ]}
             />
           )}
-          backgroundStyle={{ backgroundColor: "#000000" }}
+          backgroundStyle={{ backgroundColor: "#111827" }}
           handleIndicatorStyle={{ backgroundColor: "#4E5056" }}
         >
           {/* Activity List with BottomSheetScrollView */}
@@ -4481,7 +4513,7 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#000000" }}
+          backgroundStyle={{ backgroundColor: "#111827" }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView
@@ -4688,7 +4720,7 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#000000" }}
+          backgroundStyle={{ backgroundColor: "#111827" }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -4746,7 +4778,7 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#000000" }}
+          backgroundStyle={{ backgroundColor: "#111827" }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -4818,7 +4850,7 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#000000" }}
+          backgroundStyle={{ backgroundColor: "#111827" }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -5772,10 +5804,10 @@ function AppContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#111827",
   },
   safeTopArea: {
-    backgroundColor: "#000000",
+    backgroundColor: "#111827",
     height: 40,
   },
   topBar: {
@@ -5784,14 +5816,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: "#000000",
+    backgroundColor: "#111827",
     position: "relative",
   },
   viewToggle: {
     flexDirection: "row",
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: "#000000",
+    backgroundColor: "#111827",
     gap: 16,
     justifyContent: "center",
     alignItems: "center",
@@ -6054,7 +6086,7 @@ const styles = StyleSheet.create({
   balanceSection: {
     paddingHorizontal: 20,
     paddingTop: 20,
-    backgroundColor: "#000000",
+    backgroundColor: "#111827",
   },
   balanceContent: {
     alignItems: "center",
@@ -6151,7 +6183,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#000000",
+    backgroundColor: "#111827",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -6424,13 +6456,13 @@ const styles = StyleSheet.create({
   bottomSheetContent: {
     flex: 1,
     paddingHorizontal: 20,
-    backgroundColor: "#000000",
+    backgroundColor: "#111827",
   },
   bottomSheetScrollContent: {
     paddingHorizontal: 20,
     paddingTop: 30,
     paddingBottom: 20,
-    backgroundColor: "#000000",
+    backgroundColor: "#111827",
   },
   bottomSheetHeader: {
     flexDirection: "row",
@@ -6647,7 +6679,7 @@ const styles = StyleSheet.create({
   },
   settingsDrawerContent: {
     height: "95%",
-    backgroundColor: "#000000",
+    backgroundColor: "#111827",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
@@ -6713,7 +6745,7 @@ const styles = StyleSheet.create({
   },
   debugFullPageContainer: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#111827",
   },
   debugFullPageHeader: {
     flexDirection: "row",
@@ -6721,7 +6753,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: "#000000",
+    backgroundColor: "#111827",
     borderBottomWidth: 1,
     borderBottomColor: "#1a1a1a",
   },
@@ -6741,7 +6773,7 @@ const styles = StyleSheet.create({
   debugFullPageFooter: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: "#000000",
+    backgroundColor: "#111827",
     borderTopWidth: 1,
     borderTopColor: "#1a1a1a",
   },

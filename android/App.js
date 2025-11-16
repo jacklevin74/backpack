@@ -638,42 +638,43 @@ function AppContent() {
     }
   }, [selectedWallet]);
 
-  // Check network connectivity after 5 seconds
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (hasCheckedNetwork) return;
+  // Network connectivity check disabled - Alert.alert() causes invisible blocking dialogs in production APK
+  // Network errors will be caught by individual API calls instead
+  // useEffect(() => {
+  //   const timer = setTimeout(async () => {
+  //     if (hasCheckedNetwork) return;
 
-      try {
-        const netInfoState = await NetInfo.fetch();
+  //     try {
+  //       const netInfoState = await NetInfo.fetch();
 
-        if (!netInfoState.isConnected || !netInfoState.isInternetReachable) {
-          Alert.alert(
-            "No Network Connection",
-            "Please open Settings and connect to WiFi to use this app.",
-            [
-              {
-                text: "Open Settings",
-                onPress: () => {
-                  if (Platform.OS === "android") {
-                    Linking.openSettings();
-                  } else {
-                    Linking.openURL("app-settings:");
-                  }
-                },
-              },
-              { text: "Cancel", style: "cancel" },
-            ]
-          );
-        }
-        setHasCheckedNetwork(true);
-      } catch (error) {
-        console.log("Network check error:", error);
-        setHasCheckedNetwork(true);
-      }
-    }, 5000);
+  //       if (!netInfoState.isConnected || !netInfoState.isInternetReachable) {
+  //         Alert.alert(
+  //           "No Network Connection",
+  //           "Please open Settings and connect to WiFi to use this app.",
+  //           [
+  //             {
+  //               text: "Open Settings",
+  //               onPress: () => {
+  //                 if (Platform.OS === "android") {
+  //                   Linking.openSettings();
+  //                 } else {
+  //                   Linking.openURL("app-settings:");
+  //                 }
+  //               },
+  //             },
+  //             { text: "Cancel", style: "cancel" },
+  //           ]
+  //         );
+  //       }
+  //       setHasCheckedNetwork(true);
+  //     } catch (error) {
+  //       console.log("Network check error:", error);
+  //       setHasCheckedNetwork(true);
+  //     }
+  //   }, 5000);
 
-    return () => clearTimeout(timer);
-  }, [hasCheckedNetwork]);
+  //   return () => clearTimeout(timer);
+  // }, [hasCheckedNetwork]);
 
   // Monitor network status continuously
   useEffect(() => {
@@ -3176,7 +3177,7 @@ function AppContent() {
           flex: 1,
           backgroundColor: "#111827",
           justifyContent: "center",
-          alignments: "center",
+          alignItems: "center",
         }}
       >
         <Text style={{ color: "#FFFFFF", fontSize: 18 }}>Loading...</Text>

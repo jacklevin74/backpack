@@ -54,24 +54,12 @@ import slip10 from "micro-key-producer/slip10.js";
 import { randomBytes, secretbox } from "tweetnacl";
 import bs58 from "bs58";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import BottomSheetOrig, {
-  BottomSheetBackdrop as BottomSheetBackdropOrig,
-  BottomSheetView as BottomSheetViewOrig,
-  BottomSheetScrollView as BottomSheetScrollViewOrig,
-} from "@gorhom/bottom-sheet";
-
-// Override with dummy components that don't render (for testing)
-const BottomSheet = React.forwardRef((props, ref) => {
-  React.useImperativeHandle(ref, () => ({
-    close: () => {},
-    expand: () => {},
-    snapToIndex: () => {},
-  }));
-  return null; // Don't render anything
-});
-const BottomSheetBackdrop = () => null;
-const BottomSheetView = ({ children }) => null;
-const BottomSheetScrollView = ({ children }) => null;
+// Replaced @gorhom/bottom-sheet with simple Modal-based implementation
+import BottomSheet, {
+  SimpleBottomSheetView as BottomSheetView,
+  SimpleBottomSheetScrollView as BottomSheetScrollView,
+  SimpleBottomSheetBackdrop as BottomSheetBackdrop,
+} from "./components/SimpleBottomSheet";
 
 import QRCode from "react-native-qrcode-svg";
 import TransportBLE from "@ledgerhq/react-native-hw-transport-ble";

@@ -78,6 +78,17 @@ import { BiometricSettings } from "./src/auth/BiometricSettings";
 // Import native USB Ledger module
 const { LedgerUsb } = NativeModules;
 
+// Import TrueSheet
+import { TrueSheet } from "@lodev09/react-native-true-sheet";
+
+// Import screens
+import SendScreen from './screens/SendScreen';
+import ReceiveScreen from './screens/ReceiveScreen';
+import ActivityScreen from './screens/ActivityScreen';
+import WalletManagerScreen from './screens/WalletManagerScreen';
+import WalletSettingsScreen from './screens/WalletSettingsScreen';
+import AddressSelectorScreen from './screens/AddressSelectorScreen';
+
 // Network configurations
 const API_SERVER = "http://162.250.126.66:4000";
 const DEMO_WALLET_ADDRESS = "29dSqUTTH5okWAr3oLkQWrV968FQxgVqPCSqMqRLj8K2";
@@ -396,6 +407,11 @@ function AppContent() {
   const browserSheetRef = useRef(null);
   const privateKeySheetRef = useRef(null);
   const seedPhraseSheetRef = useRef(null);
+
+  // TrueSheet refs for React Navigation replacement
+  const walletManagerSheetRef = useRef(null);
+  const walletSettingsSheetRef = useRef(null);
+  const addressSelectorSheetRef = useRef(null);
 
   const snapPoints = useMemo(() => ["50%", "90%"], []);
 
@@ -1137,8 +1153,8 @@ function AppContent() {
     accountSheetRef.current?.close();
   };
 
-  const showWalletSelector = () => {
-    bottomSheetRef.current?.expand();
+  const showWalletSelector = async () => {
+    await walletManagerSheetRef.current?.present();
   };
 
   const showNetworkSelector = () => {
@@ -1149,12 +1165,12 @@ function AppContent() {
     accountSheetRef.current?.expand();
   };
 
-  const handleReceive = () => {
-    receiveSheetRef.current?.expand();
+  const handleReceive = async () => {
+    await receiveSheetRef.current?.present();
   };
 
-  const handleSend = () => {
-    sendSheetRef.current?.expand();
+  const handleSend = async () => {
+    await sendSheetRef.current?.present();
   };
 
   const copyToClipboard = (text) => {
@@ -1884,20 +1900,21 @@ function AppContent() {
   const handleCreateNewWallet = async () => {
     setShowAddWalletModal(false);
 
-    // If master seed phrase already exists, create wallet directly without showing seed phrase
+    // Always show seed phrase modal for backup
+    // Use existing master seed if available, otherwise generate new one
     if (masterSeedPhrase) {
-      console.log("Master seed phrase exists, creating wallet directly");
-      await handleConfirmCreateWallet();
-      return;
+      console.log("Master seed phrase exists, showing for backup");
+      setNewMnemonic(masterSeedPhrase);
+      setShowCreateWalletModal(true);
+    } else {
+      // First wallet - generate master seed phrase and show it for backup
+      const newMasterSeed = bip39.generateMnemonic();
+      setMasterSeedPhrase(newMasterSeed);
+      await saveMasterSeedPhrase(newMasterSeed);
+      setNewMnemonic(newMasterSeed);
+      console.log("Generated and saved new master seed phrase");
+      setShowCreateWalletModal(true);
     }
-
-    // First wallet - generate master seed phrase and show it for backup
-    const newMasterSeed = bip39.generateMnemonic();
-    setMasterSeedPhrase(newMasterSeed);
-    await saveMasterSeedPhrase(newMasterSeed);
-    setNewMnemonic(newMasterSeed);
-    console.log("Generated and saved new master seed phrase");
-    setShowCreateWalletModal(true);
   };
 
   const handleShowImportWallet = () => {
@@ -2075,6 +2092,10 @@ function AppContent() {
 
       setNewMnemonic("");
       setShowCreateWalletModal(false);
+
+      // Refresh WalletManager screen if it's in the navigation stack
+      // Wallet manager sheet will automatically reflect the updated wallets state
+      await walletManagerSheetRef.current?.present();
     } catch (error) {
       Alert.alert("Error", "Failed to create wallet: " + error.message);
       console.error("Wallet creation error:", error);
@@ -3279,9 +3300,9 @@ function AppContent() {
               )}
               <TouchableOpacity
                 style={styles.activityIcon}
-                onPress={() => {
+                onPress={async () => {
                   triggerHaptic();
-                  activitySheetRef.current?.expand();
+                  await activitySheetRef.current?.present();
                 }}
               >
                 <Image
@@ -5767,6 +5788,58 @@ function AppContent() {
           />
         </View>
       )}
+
+      {/* TrueSheet Modal Screens */}
+      <TrueSheet ref={sendSheetRef} sizes={['auto']} cornerRadius={24}>
+        <SendScreen
+          balance={balance}
+          getNativeTokenInfo={getNativeTokenInfo}
+          handleSendSubmit={handleSendSubmit}
+          wallets={wallets}
+          addressSelectorSheetRef={addressSelectorSheetRef}
+          onDismiss={() => sendSheetRef.current?.dismiss()}
+        />
+      </TrueSheet>
+
+      <TrueSheet ref={receiveSheetRef} sizes={['auto']} cornerRadius={24}>
+        <ReceiveScreen
+          selectedWallet={selectedWallet}
+          getNativeTokenInfo={getNativeTokenInfo}
+          onDismiss={() => receiveSheetRef.current?.dismiss()}
+        />
+      </TrueSheet>
+
+      <TrueSheet ref={activitySheetRef} sizes={['auto']} cornerRadius={24}>
+        <ActivityScreen
+          transactions={transactions}
+          checkTransactions={checkTransactions}
+          openExplorer={openExplorer}
+          onDismiss={() => activitySheetRef.current?.dismiss()}
+        />
+      </TrueSheet>
+
+      <TrueSheet ref={walletManagerSheetRef} sizes={['auto']} cornerRadius={24}>
+        <WalletManagerScreen
+          wallets={wallets}
+          currentNetwork={currentNetwork}
+          selectWallet={selectWallet}
+          handleAddWallet={handleAddWallet}
+          walletSettingsSheetRef={walletSettingsSheetRef}
+          onDismiss={() => walletManagerSheetRef.current?.dismiss()}
+        />
+      </TrueSheet>
+
+      <TrueSheet ref={walletSettingsSheetRef} sizes={['auto']} cornerRadius={24}>
+        <WalletSettingsScreen
+          onDismiss={() => walletSettingsSheetRef.current?.dismiss()}
+        />
+      </TrueSheet>
+
+      <TrueSheet ref={addressSelectorSheetRef} sizes={['auto']} cornerRadius={24}>
+        <AddressSelectorScreen
+          onDismiss={() => addressSelectorSheetRef.current?.dismiss()}
+        />
+      </TrueSheet>
     </>
   );
 }

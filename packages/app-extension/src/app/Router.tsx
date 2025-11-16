@@ -5,12 +5,14 @@ import {
   EXTENSION_HEIGHT,
   EXTENSION_WIDTH,
   getLogger,
+  QUERY_ONBOARDING,
 } from "@coral-xyz/common";
 import { useActiveWallet, useBackgroundClient } from "@coral-xyz/recoil";
 import {
   blockchainConnectionUrl,
   isDeveloperMode,
 } from "@coral-xyz/recoil/src/atoms/preferences";
+import { useAllUsersNullable } from "@coral-xyz/recoil/src/hooks/preferences";
 import {
   AlertTriangleIcon,
   StyledText,
@@ -119,6 +121,9 @@ function PopupRouter() {
 function FullApp() {
   logger.debug("full app");
   const background = useBackgroundClient();
+  const allUsers = useAllUsersNullable();
+  const [hasRedirected, setHasRedirected] = useState(false);
+
   useEffect(() => {
     // Refresh feature gates in background without blocking UI render
     // With caching, this will be instant on subsequent loads
@@ -126,6 +131,29 @@ function FullApp() {
       console.warn("Failed to refresh feature gates:", err);
     });
   }, [background]);
+
+  // Check if there are no users and redirect to onboarding
+  // This handles the case where user started onboarding but didn't finish
+  // When they click the extension icon, they should be sent back to onboarding
+  useEffect(() => {
+    if (allUsers !== null && allUsers.length === 0 && !hasRedirected) {
+      console.log("No users found, redirecting to onboarding");
+      setHasRedirected(true);
+      // Open onboarding in a new tab and close the popup
+      const url = globalThis.chrome?.runtime?.getURL(
+        `options.html?${QUERY_ONBOARDING}`
+      );
+      if (url) {
+        globalThis.chrome?.tabs?.create({ url });
+        window.close();
+      }
+    }
+  }, [allUsers, hasRedirected]);
+
+  // Don't render anything while we're checking for users or redirecting
+  if (allUsers === null || allUsers.length === 0) {
+    return null;
+  }
 
   return <Unlocked />;
 }

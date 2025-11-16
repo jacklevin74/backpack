@@ -1,0 +1,110 @@
+appId: com.anonymous.backpackuionly
+---
+# Test: Browser Wallet Connect and Sign Message
+# This test verifies the complete browser wallet connection flow:
+# 1. Navigate to Browser from home screen
+# 2. Verify X1 Transaction page loads
+# 3. Connect wallet
+# 4. Verify connection status, public key, and balance
+# 5. Sign message
+# 6. Verify message signed dialog
+
+- launchApp
+
+# Wait for app to fully load
+- assertVisible: "X1 Native Token"
+- takeScreenshot: "01-home-screen"
+
+# ========================================
+# Step 1: Navigate to Browser
+# ========================================
+- tapOn: "Browser"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "02-browser-opened"
+
+# ========================================
+# Step 2: Verify X1 Transaction page loaded
+# ========================================
+# Check that the page title/header shows "X1 Transaction Signing Test"
+- assertVisible: "X1 Transaction Signing Test"
+
+# Also verify Wallet Connection section is visible
+- assertVisible: "Wallet Connection"
+
+- takeScreenshot: "03-x1-transaction-page-loaded"
+
+# ========================================
+# Step 3: Connect Wallet
+# ========================================
+# Tap the "Connect Wallet" button
+- tapOn: "Connect Wallet"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "04-connect-wallet-tapped"
+
+# ========================================
+# Step 4: Verify wallet connected successfully
+# ========================================
+# Check for connection status message
+- assertVisible:
+    text: ".*[Cc]onnected.*X1.*[Ww]allet.*"
+
+- takeScreenshot: "05-wallet-connected"
+
+# ========================================
+# Step 5: Verify public key is displayed
+# ========================================
+# Look for text that indicates "Public Key" or similar
+- assertVisible:
+    text: ".*[Pp]ublic.*[Kk]ey.*"
+
+# Verify an actual public key is shown (base58 address format)
+- assertVisible:
+    text: "[1-9A-HJ-NP-Za-km-z]{32,44}"
+
+- takeScreenshot: "06-public-key-displayed"
+
+# ========================================
+# Step 6: Verify balance is displayed and > 0.0
+# ========================================
+# Look for balance text
+- assertVisible:
+    text: ".*[Bb]alance.*"
+
+# We can't easily assert the value is > 0.0 in Maestro,
+# but we can verify a balance is shown
+# The screenshots will capture the actual value
+
+- takeScreenshot: "07-balance-displayed"
+
+# ========================================
+# Step 7: Tap Sign Message button
+# ========================================
+- tapOn: "Sign Message"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "08-sign-message-tapped"
+
+# ========================================
+# Step 8: Verify message signed dialog appears
+# ========================================
+# Look for confirmation text
+- assertVisible:
+    text: ".*[Mm]essage.*[Ss]igned.*"
+
+- takeScreenshot: "09-message-signed-dialog"
+
+# Test complete!
+# Successfully verified the browser wallet connection flow:
+# ✓ Opened Browser from home screen
+# ✓ Verified X1 Transaction page loaded
+# ✓ Connected wallet
+# ✓ Verified "Connected to X1 wallet" status
+# ✓ Verified public key is displayed
+# ✓ Verified balance is displayed
+# ✓ Signed message
+# ✓ Verified message signed dialog appeared

@@ -130,26 +130,20 @@ export function LoginRequest({
           >
             <Stack paddingTop="$9" alignItems="center">
               <img
-                src="x1.png"
+                src="x1-login-logo.png"
                 alt="X1 Wallet"
                 width="96"
                 height="96"
                 style={{ marginBottom: 32 }}
               />
-              <div
-                style={{
-                  fontSize: 48,
-                  fontWeight: 700,
-                  background: "linear-gradient(180deg, #fff, #0ff, #00a8cc)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                  filter: "drop-shadow(0 0 5px rgba(0, 255, 255, 0.5))",
-                  letterSpacing: "0.08em",
-                }}
+              <StyledText
+                fontSize={48}
+                fontWeight="700"
+                color="#FFFFFF"
+                letterSpacing={0.08}
               >
                 X1 WALLET
-              </div>
+              </StyledText>
             </Stack>
             <Stack marginHorizontal="$3" marginTop="$4" zIndex={1}>
               <Stack

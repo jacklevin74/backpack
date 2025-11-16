@@ -14,6 +14,15 @@ import { useRecoilValue } from "recoil";
 import type { Transaction } from "./useCustomTransactions";
 import { useCustomTransactions } from "./useCustomTransactions";
 
+// Debug flag - set to true to enable verbose logging
+const DEBUG_ACTIVITY_PAGE = false;
+
+const debugLog = (...args: any[]) => {
+  if (DEBUG_ACTIVITY_PAGE) {
+    console.log(...args);
+  }
+};
+
 interface ActivityPageProps {
   address: string;
   blockchain: Blockchain;
@@ -30,15 +39,34 @@ export function ActivityPage({
   const theme = useTheme();
   const connectionUrl = useRecoilValue(blockchainConnectionUrl(blockchain));
 
-  // Log when component loads
+  debugLog("📋 [ActivityPage] Component rendering:", {
+    blockchain,
+    connectionUrl,
+    address,
+    transactionCount: transactions.length,
+    loading,
+    hasMore,
+    error,
+  });
+
+  // Log when component loads or values change
   useEffect(() => {
-    console.log("📋 [ActivityPage] Component loaded with:", {
+    debugLog("📋 [ActivityPage] useEffect - values changed:", {
       blockchain,
       connectionUrl,
       address,
       transactionCount: transactions.length,
+      loading,
+      hasMore,
     });
-  }, [blockchain, connectionUrl, address, transactions.length]);
+  }, [
+    blockchain,
+    connectionUrl,
+    address,
+    transactions.length,
+    loading,
+    hasMore,
+  ]);
 
   // Expose refresh function to parent component
   useEffect(() => {
@@ -85,39 +113,44 @@ export function ActivityPage({
   }
 
   return (
-    <ScrollView
-      flex={1}
-      showsVerticalScrollIndicator={false}
-      showsHorizontalScrollIndicator={false}
-    >
-      <YStack padding="$4" gap="$2">
-        {transactions.map((tx, index) => (
-          <TransactionItem
-            key={tx.hash || index}
-            transaction={tx}
-            blockchain={blockchain}
-            connectionUrl={connectionUrl}
-          />
-        ))}
+    <YStack flex={1}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ flexGrow: 1 }}
+      >
+        <YStack padding="$4" gap="$2">
+          {transactions.map((tx, index) => (
+            <TransactionItem
+              key={tx.hash || index}
+              transaction={tx}
+              blockchain={blockchain}
+              connectionUrl={connectionUrl}
+            />
+          ))}
 
-        {hasMore ? (
-          <XStack justifyContent="center" padding="$3">
-            {loading ? (
-              <Loading iconStyle={{ width: 20, height: 20 }} />
-            ) : (
-              <StyledText
-                fontSize="$sm"
-                color="$accentBlue"
-                cursor="pointer"
-                onPress={loadMore}
-              >
-                Load More
-              </StyledText>
-            )}
-          </XStack>
-        ) : null}
-      </YStack>
-    </ScrollView>
+          {hasMore ? (
+            <XStack justifyContent="center" padding="$3">
+              {loading ? (
+                <Loading iconStyle={{ width: 20, height: 20 }} />
+              ) : (
+                <StyledText
+                  fontSize="$sm"
+                  color="$accentBlue"
+                  cursor="pointer"
+                  onPress={() => {
+                    debugLog("🔘 [ActivityPage] Load More button clicked");
+                    loadMore();
+                  }}
+                >
+                  Load More
+                </StyledText>
+              )}
+            </XStack>
+          ) : null}
+        </YStack>
+      </ScrollView>
+    </YStack>
   );
 }
 
@@ -133,7 +166,7 @@ function TransactionItem({
   const theme = useTheme();
 
   const handleClick = () => {
-    console.log("🔍 [ActivityPage] Transaction clicked:", {
+    debugLog("🔍 [ActivityPage] Transaction clicked:", {
       hash: transaction.hash,
       blockchain,
       connectionUrl,
@@ -143,7 +176,7 @@ function TransactionItem({
       blockchain,
       connectionUrl
     );
-    console.log("🌐 [ActivityPage] Opening explorer:", explorerUrl);
+    debugLog("🌐 [ActivityPage] Opening explorer:", explorerUrl);
     window.open(explorerUrl, "_blank");
   };
 

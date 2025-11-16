@@ -6,6 +6,15 @@ import {
 } from "@coral-xyz/recoil/src/atoms/preferences";
 import { useRecoilValue } from "recoil";
 
+// Debug flag - set to true to enable verbose logging
+const DEBUG_TRANSACTIONS = false;
+
+const debugLog = (...args: any[]) => {
+  if (DEBUG_TRANSACTIONS) {
+    console.log(...args);
+  }
+};
+
 export interface Transaction {
   hash: string;
   type: string;
@@ -29,22 +38,27 @@ function getProviderId(blockchain: Blockchain, connectionUrl: string): string {
   }
 
   // Check for Solana networks first (including QuickNode)
-  if (connectionUrl.includes('solana.com') || connectionUrl.includes('solana-mainnet.quiknode.pro') || connectionUrl.includes('solana-devnet') || connectionUrl.includes('solana-testnet')) {
-    if (connectionUrl.includes('mainnet')) {
+  if (
+    connectionUrl.includes("solana.com") ||
+    connectionUrl.includes("solana-mainnet.quiknode.pro") ||
+    connectionUrl.includes("solana-devnet") ||
+    connectionUrl.includes("solana-testnet")
+  ) {
+    if (connectionUrl.includes("mainnet")) {
       return "SOLANA-mainnet";
-    } else if (connectionUrl.includes('devnet')) {
+    } else if (connectionUrl.includes("devnet")) {
       return "SOLANA-devnet";
-    } else if (connectionUrl.includes('testnet')) {
+    } else if (connectionUrl.includes("testnet")) {
       return "SOLANA-testnet";
     }
     return "SOLANA-mainnet";
   }
 
   // Check for X1 networks
-  if (connectionUrl.includes('x1.xyz')) {
-    if (connectionUrl.includes('testnet')) {
+  if (connectionUrl.includes("x1.xyz")) {
+    if (connectionUrl.includes("testnet")) {
       return "X1-testnet";
-    } else if (connectionUrl.includes('mainnet')) {
+    } else if (connectionUrl.includes("mainnet")) {
       return "X1-mainnet";
     }
     return "X1-testnet";
@@ -64,20 +78,46 @@ export function useCustomTransactions(address: string, blockchain: Blockchain) {
   const apiUrl = useRecoilValue(backendApiUrl);
   const connectionUrl = useRecoilValue(blockchainConnectionUrl(blockchain));
 
+  debugLog("🔧 [CustomTransactionHook] Hook called/re-rendered:", {
+    address,
+    blockchain,
+    currentTransactionCount: transactions.length,
+    loading,
+    hasMore,
+    offsetRef: offsetRef.current,
+  });
+
   const fetchTransactions = useCallback(
     async (loadMore = false) => {
+      debugLog("📥 [CustomTransactionHook] fetchTransactions called:", {
+        loadMore,
+        currentOffset: offsetRef.current,
+        currentTransactionCount: transactions.length,
+        hasMore,
+        loading,
+      });
+
       try {
         if (!loadMore) {
+          debugLog(
+            "🔄 [CustomTransactionHook] Setting loading to true (fresh fetch)"
+          );
           setLoading(true);
+        } else {
+          debugLog(
+            "➕ [CustomTransactionHook] Load more request (not setting loading)"
+          );
         }
 
         const providerId = getProviderId(blockchain, connectionUrl);
         const url = `${apiUrl}/transactions`;
+        const offset = loadMore ? offsetRef.current : 0;
 
-        console.log("🌐 [CustomTransactionHook] Fetching from:", url, {
+        debugLog("🌐 [CustomTransactionHook] Fetching from:", url, {
           address,
           providerId,
-          offset: loadMore ? offsetRef.current : 0,
+          offset,
+          loadMore,
         });
 
         const response = await fetch(url, {
@@ -98,19 +138,52 @@ export function useCustomTransactions(address: string, blockchain: Blockchain) {
         }
 
         const result = await response.json();
-        console.log("✅ [CustomTransactionHook] Response:", {
+        debugLog("✅ [CustomTransactionHook] Response received:", {
           count: result.transactions?.length || 0,
           hasMore: result.hasMore,
+          loadMore,
         });
 
         if (loadMore) {
-          setTransactions((prev) => [...prev, ...(result.transactions || [])]);
-          offsetRef.current += result.transactions?.length || 0;
+          debugLog("➕ [CustomTransactionHook] Appending transactions:", {
+            previousCount: transactions.length,
+            newCount: result.transactions?.length || 0,
+            totalAfter:
+              transactions.length + (result.transactions?.length || 0),
+          });
+          setTransactions((prev) => {
+            const updated = [...prev, ...(result.transactions || [])];
+            debugLog("✏️ [CustomTransactionHook] setTransactions (append):", {
+              prevLength: prev.length,
+              appendedLength: result.transactions?.length || 0,
+              newLength: updated.length,
+            });
+            return updated;
+          });
+          const newOffset =
+            offsetRef.current + (result.transactions?.length || 0);
+          debugLog("📊 [CustomTransactionHook] Updating offset:", {
+            oldOffset: offsetRef.current,
+            newOffset,
+          });
+          offsetRef.current = newOffset;
         } else {
+          debugLog("🔄 [CustomTransactionHook] Replacing transactions:", {
+            oldCount: transactions.length,
+            newCount: result.transactions?.length || 0,
+          });
           setTransactions(result.transactions || []);
           offsetRef.current = result.transactions?.length || 0;
+          debugLog(
+            "📊 [CustomTransactionHook] Reset offset to:",
+            offsetRef.current
+          );
         }
 
+        debugLog(
+          "🎯 [CustomTransactionHook] Setting hasMore to:",
+          result.hasMore || false
+        );
         setHasMore(result.hasMore || false);
         setError(null);
       } catch (err) {
@@ -124,21 +197,50 @@ export function useCustomTransactions(address: string, blockchain: Blockchain) {
           setHasMore(false);
         }
       } finally {
+        debugLog("🏁 [CustomTransactionHook] Setting loading to false");
         setLoading(false);
       }
     },
     [address, blockchain, apiUrl, connectionUrl]
   );
 
+  // Log when dependencies change
   useEffect(() => {
-    fetchTransactions();
-
-    // Aggressive polling - poll more frequently when there are no or few transactions
-    const startPolling = () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
+    debugLog(
+      "🔧 [CustomTransactionHook] fetchTransactions dependencies changed:",
+      {
+        address,
+        blockchain,
+        apiUrl,
+        connectionUrl,
       }
+    );
+  }, [address, blockchain, apiUrl, connectionUrl]);
 
+  // Initial fetch effect - only runs when address/blockchain changes
+  useEffect(() => {
+    debugLog("⚡ [CustomTransactionHook] Initial fetch useEffect triggered");
+    offsetRef.current = 0;
+    fetchTransactions();
+  }, [address, blockchain, apiUrl, connectionUrl]);
+
+  // Polling effect - only manages polling interval, doesn't fetch
+  useEffect(() => {
+    debugLog("⏰ [CustomTransactionHook] Polling useEffect triggered");
+
+    // Clear any existing poll
+    if (pollIntervalRef.current) {
+      debugLog("⏰ [CustomTransactionHook] Clearing existing poll interval");
+      clearInterval(pollIntervalRef.current);
+    }
+
+    // Only poll if we haven't loaded additional pages
+    debugLog("⏰ [CustomTransactionHook] Checking if should poll:", {
+      offsetRef: offsetRef.current,
+      shouldPoll: offsetRef.current <= 50,
+    });
+
+    if (offsetRef.current <= 50) {
       // Determine polling interval based on transaction count
       const getPollingInterval = () => {
         if (transactions.length === 0) {
@@ -154,37 +256,60 @@ export function useCustomTransactions(address: string, blockchain: Blockchain) {
       };
 
       const interval = getPollingInterval();
-      console.log(
+      debugLog(
         `🔄 [CustomTransactionHook] Starting polling every ${interval}ms (${transactions.length} transactions)`
       );
 
       pollIntervalRef.current = setInterval(() => {
-        console.log("🔄 [CustomTransactionHook] Auto-refreshing transactions");
-        fetchTransactions();
+        debugLog("🔄 [CustomTransactionHook] Auto-refreshing transactions");
+        // Only poll if still on first page
+        if (offsetRef.current <= 50) {
+          fetchTransactions();
+        }
       }, interval);
-    };
-
-    startPolling();
+    } else {
+      debugLog(
+        `🔄 [CustomTransactionHook] Polling disabled - multiple pages loaded (offset: ${offsetRef.current})`
+      );
+    }
 
     return () => {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
       }
     };
-  }, [fetchTransactions, transactions.length]);
+  }, [transactions.length, fetchTransactions]);
 
   const loadMore = useCallback(() => {
+    debugLog("🔘 [CustomTransactionHook] loadMore called:", {
+      hasMore,
+      loading,
+      currentTransactionCount: transactions.length,
+      currentOffset: offsetRef.current,
+    });
     if (hasMore && !loading) {
+      debugLog(
+        "✅ [CustomTransactionHook] Conditions met, calling fetchTransactions(true)"
+      );
       fetchTransactions(true);
+    } else {
+      debugLog("⛔ [CustomTransactionHook] loadMore conditions NOT met:", {
+        hasMore,
+        loading,
+        reason: !hasMore ? "no more data" : "already loading",
+      });
     }
   }, [hasMore, loading, fetchTransactions]);
 
   const refresh = useCallback(() => {
+    debugLog(
+      "🔄 [CustomTransactionHook] refresh called - resetting offset to 0"
+    );
     offsetRef.current = 0;
     fetchTransactions();
   }, [fetchTransactions]);
 
-  return {
+  const returnValue = {
     transactions,
     loading,
     hasMore,
@@ -192,4 +317,14 @@ export function useCustomTransactions(address: string, blockchain: Blockchain) {
     loadMore,
     refresh,
   };
+
+  debugLog("🔙 [CustomTransactionHook] Returning values:", {
+    transactionCount: transactions.length,
+    loading,
+    hasMore,
+    error,
+    offset: offsetRef.current,
+  });
+
+  return returnValue;
 }

@@ -6,6 +6,7 @@ import {
 } from "@coral-xyz/common";
 
 import { getAllBlockchainConfigs } from "../blockchain-configs/blockchains";
+import { defaultPreferences } from "../blockchain-configs/preferences";
 import type { BlockchainKeyringJson } from "../keyring/types";
 
 import type { SecretPayload } from "./KeyringStore/crypto";
@@ -351,7 +352,7 @@ export class SecureStore {
       )) ?? {};
     const publicKeyInfo =
       publicKeyStore[userId].platforms[blockchain]?.publicKeys[publicKey];
-    if (!publicKey) {
+    if (!publicKeyInfo) {
       throw new Error("Unknown PublicKey");
     }
 
@@ -506,7 +507,9 @@ export class SecureStore {
       this.walletDataKey(uuid)
     );
     if (!data) {
-      throw new Error(`wallet data for user ${uuid} is undefined`);
+      // Return default preferences instead of throwing error
+      // This handles the case where wallet data hasn't been initialized yet (e.g., during onboarding)
+      return defaultPreferences();
     }
 
     const platform = getEnv();
@@ -661,6 +664,47 @@ export class SecureStore {
   async doesCiphertextExist(): Promise<boolean> {
     const ciphertext = await this.getKeyringCiphertext();
     return ciphertext !== undefined && ciphertext !== null;
+  }
+
+  /**
+   * Detects and cleans up incomplete onboarding state.
+   * Returns true if incomplete state was found and cleaned up.
+   */
+  async cleanupIncompleteOnboarding(): Promise<boolean> {
+    try {
+      // Check if user data exists
+      const userData = await this.persistentDB.get<UserData>(
+        PersistentStorageKeys.STORE_KEY_USER_DATA
+      );
+
+      if (!userData || !userData.activeUser) {
+        return false; // No user data, nothing to cleanup
+      }
+
+      // Check if ciphertext (encrypted keyring) exists
+      const hasCiphertext = await this.doesCiphertextExist();
+
+      // Check if user has any public keys
+      const publicKeys = await this.getUserPublicKeys(userData.activeUser.uuid);
+      const hasPublicKeys =
+        publicKeys && Object.keys(publicKeys.platforms || {}).length > 0;
+
+      // If user data exists but no ciphertext or no public keys, it's incomplete
+      if (!hasCiphertext || !hasPublicKeys) {
+        console.log("Detected incomplete onboarding state, cleaning up...");
+
+        // Clean up all partial data
+        await this.reset();
+
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      // If any error occurs during detection, don't cleanup
+      console.error("Error detecting incomplete onboarding:", error);
+      return false;
+    }
   }
 
   async setKeyringStore(

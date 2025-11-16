@@ -125,11 +125,12 @@ function initializeDatabase() {
           db.run(
             `CREATE TABLE IF NOT EXISTS wallets (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
-              address TEXT NOT NULL UNIQUE,
+              address TEXT NOT NULL,
               network TEXT NOT NULL DEFAULT 'testnet',
               enabled INTEGER NOT NULL DEFAULT 1,
               last_indexed TEXT,
-              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE(address, network)
             )`,
             (err) => {
               if (err) {
@@ -144,6 +145,17 @@ function initializeDatabase() {
                   if (err)
                     console.error(
                       "Warning: Error creating wallet_address index:",
+                      err
+                    );
+                }
+              );
+
+              db.run(
+                `CREATE INDEX IF NOT EXISTS idx_wallet_network ON wallets(address, network)`,
+                (err) => {
+                  if (err)
+                    console.error(
+                      "Warning: Error creating wallet_network index:",
                       err
                     );
                 }
@@ -303,12 +315,12 @@ function getRegisteredWallets() {
 }
 
 // Update last indexed timestamp
-function updateLastIndexed(address) {
+function updateLastIndexed(address, network) {
   return new Promise((resolve, reject) => {
-    const sql = `UPDATE wallets SET last_indexed = ? WHERE address = ?`;
+    const sql = `UPDATE wallets SET last_indexed = ? WHERE address = ? AND network = ?`;
     const timestamp = new Date().toISOString();
 
-    db.run(sql, [timestamp, address], function (err) {
+    db.run(sql, [timestamp, address, network], function (err) {
       if (err) {
         reject(err);
       } else {
@@ -1007,20 +1019,20 @@ const server = http.createServer((req, res) => {
     req.on("end", async () => {
       try {
         const requestData = JSON.parse(body);
-        const { address } = requestData;
+        const { address, network } = requestData;
 
-        if (!address) {
+        if (!address || !network) {
           res.writeHead(400);
           res.end(
             JSON.stringify({
               error: "Bad Request",
-              message: "Required field: address",
+              message: "Required fields: address, network",
             })
           );
           return;
         }
 
-        await updateLastIndexed(address);
+        await updateLastIndexed(address, network);
 
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(

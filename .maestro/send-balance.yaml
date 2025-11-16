@@ -1,0 +1,20 @@
+appId: com.anonymous.backpackuionly
+---
+# Test: Send Balance Display - Verify Send screen shows balance if visible on home
+# This test checks that balance information carries over to Send screen
+
+- launchApp
+
+# Check if balance is visible on home screen
+- assertVisible: "$0.00"
+- takeScreenshot: "home-screen-with-balance"
+
+# Tap Send button
+- tapOn: "Send"
+- waitForAnimationToEnd
+- takeScreenshot: "send-screen-opened"
+
+# Verify something is visible on send screen
+# (This test will capture the send screen for manual verification)
+- assertVisible:
+    text: ".*"

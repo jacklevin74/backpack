@@ -1,0 +1,25 @@
+appId: com.anonymous.backpackuionly
+---
+# Smoke Test: Verify app launches and basic UI works
+# This is a simple test that should always pass
+
+- launchApp
+
+# Verify main UI elements are visible
+- assertVisible: "X1 Native Token"
+- assertVisible: "Send"
+- assertVisible: "Receive"
+- assertVisible: "Swap"
+- assertVisible: "Stake"
+- assertVisible: "Browser"
+
+# Test tapping buttons (avoiding back button since it exits app)
+# Tap Receive to verify navigation works
+- tapOn: "Receive"
+- waitForAnimationToEnd
+
+# Verify receive screen opened
+- assertVisible: "Receive XNT"
+
+# Simple smoke test complete!
+# NOTE: Back button exits app instead of returning to main screen - this is a bug

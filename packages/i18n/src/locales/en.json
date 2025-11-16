@@ -1,6 +1,6 @@
 {
   "a_physical_copy_or_legible_scan": "A physical copy or legible scan of your passport or other government-issued ID.",
-  "about_backpack": "About Backpack",
+  "about_backpack": "About X1 Wallet",
   "accept_offer": "Accept Offer",
   "accepting_offer_on_tensor": "Accepting offer on Tensor",
   "account": "Account",
@@ -58,7 +58,7 @@
   "advanced_wallet_import": "Advanced wallet import",
   "alias": "Alias",
   "all_done": {
-    "subtitle": "Your wallet has been removed from Backpack.",
+    "subtitle": "Your wallet has been removed from X1 Wallet.",
     "title": "All done"
   },
   "already_have_wallet": "I already have a wallet",
@@ -77,11 +77,11 @@
   "attributes": "Attributes",
   "authorized_withdrawer": "Authorized Withdrawer",
   "auto_lock_timer": "Auto Lock",
-  "autolock_title": "Require password to view Backpack after",
+  "autolock_title": "Require password to view X1 Wallet after",
   "available": "Available",
   "backpack_exchange": "Backpack Exchange",
-  "backpack_recovery_phrase": "Backpack recovery phrase",
-  "backpack_supports_identity_verification": "Backpack supports identity verification through SumSub. You'll need the following:",
+  "backpack_recovery_phrase": "X1 Wallet recovery phrase",
+  "backpack_supports_identity_verification": "X1 Wallet supports identity verification through SumSub. You'll need the following:",
   "bid_on": "Bid on",
   "biometric_settings": "Pin / {{biometricName}} settings",
   "blockchain_commitment": "Blockchain Commitment",
@@ -215,7 +215,7 @@
   "error": "Error",
   "error_fetching_accounts": "Error fetching accounts",
   "estimated_fees": "Estimated Fees",
-  "every_time_close_backpack": "Every time I close Backpack",
+  "every_time_close_backpack": "Every time I close X1 Wallet",
   "exchange": "Exchange",
   "exchange_receive_warning": "This address can only receive {{symbol}} tokens on {{blockchain}}.",
   "exchange_settings": "Exchange Settings",
@@ -276,7 +276,7 @@
   "highest_offer": "Highest Offer",
   "history": "History",
   "how_long_it_takes": "How long it takes",
-  "how_would_you_like_to_use_backpack": "How would you like to use Backpack?",
+  "how_would_you_like_to_use_backpack": "How would you like to use X1 Wallet?",
   "i_agree_to_the": "I agree to the",
   "identity_verification": "Identity Verification",
   "im_done": "I'm done",
@@ -346,7 +346,7 @@
   "lock": "Lock",
   "lockup_custodian": "Lockup Custodian",
   "lockup_until": "Lockup until",
-  "make_sure_that_your_answers_are_accurate": "Make sure that your answers are accurate as they make impact how you're able to use Backpack",
+  "make_sure_that_your_answers_are_accurate": "Make sure that your answers are accurate as they make impact how you're able to use X1 Wallet",
   "make_sure_to_allow": "Make sure to tap 'allow' when prompted.",
   "manage_token_display": "Manage token display",
   "market": "Market",
@@ -373,7 +373,7 @@
     "title": "Name your Account"
   },
   "new_pin_ready": {
-    "subtitle": "You can now use this to log in to your Backpack account.",
+    "subtitle": "You can now use this to log in to your X1 Wallet account.",
     "title": "Your new PIN is ready"
   },
   "new_stake": "New Stake",
@@ -395,7 +395,7 @@
   "no_open_orders": "No open orders",
   "no_other_addresses": "No additional wallets found",
   "no_recent_activity": {
-    "subtitle": "Your transactions and app activity will show up here when you start using Backpack.",
+    "subtitle": "Your transactions and app activity will show up here when you start using X1 Wallet.",
     "title": "No Recent Activity"
   },
   "no_results_for": "No results for '{{searchFilter}}'",
@@ -418,8 +418,8 @@
   "one_time_passcode_from_email": "One Time Passcode From Email",
   "only_way_to_recover": "This is the only way to recover your account if you lose your device. Write it down and store it in a safe place.",
   "open": "Open",
-  "open_backpack": "Open Backpack",
-  "open_backpack_with": "Open Backpack with <blue>Shift</blue> + <blue>{{alt}}</blue> + <blue>B</blue>",
+  "open_backpack": "Open X1 Wallet",
+  "open_backpack_with": "Open X1 Wallet with <blue>Shift</blue> + <blue>{{alt}}</blue> + <blue>B</blue>",
   "open_email_app": {
     "subtitle": "Which app would you like to open?",
     "title": "Open your mail app"
@@ -441,13 +441,13 @@
   "paste_from_clipboard": "Paste",
   "pay_with": "Pay with",
   "permission_denied": "Permission Denied",
-  "pin_extension": "Pin the Backpack Extension",
+  "pin_extension": "Pin the X1 Wallet Extension",
   "placing_order": "Placing Order...",
   "please_try_again_later": "Please try again later.",
   "popular": "Popular",
   "post_setup": {
     "description": "We recommend downloading a few xNFTs to get started.",
-    "title": "You've set up Backpack!"
+    "title": "You've set up X1 Wallet!"
   },
   "preferences": "Preferences",
   "price": "Price",
@@ -471,16 +471,16 @@
   "recovery_phrase": "Recovery Phrase",
   "recovery_phrase_subtitle1": "Use these {{length}} words to recover your wallet",
   "recovery_warning": {
-    "warn1": "Backpack support will never ask for your secret phrase.",
+    "warn1": "X1 Wallet support will never ask for your secret phrase.",
     "warn2": "Never share your secret phrase or enter it into an app or website.",
     "warn3": "Anyone with your secret phrase will have complete control of your account."
   },
   "region": "Region",
   "removal_warning": {
-    "subtitle1": "Removing from Backpack will not delete the wallet’s contents. It will still be available by importing your secret recovery phrase in a new Backpack.",
-    "subtitle2": "Removing from Backpack will not delete the wallet’s contents. It will still be available by connecting your ledger.",
-    "subtitle3": "Removing from Backpack will remove the connection between your username and this public key. You can always add it back later by adding the wallet to Backpack.",
-    "subtitle4": "Removing from Backpack will delete the wallet’s keypair. Make sure you have exported and saved the private key before removing.",
+    "subtitle1": "Removing from X1 Wallet will not delete the wallet's contents. It will still be available by importing your secret recovery phrase in a new X1 Wallet.",
+    "subtitle2": "Removing from X1 Wallet will not delete the wallet's contents. It will still be available by connecting your ledger.",
+    "subtitle3": "Removing from X1 Wallet will remove the connection between your username and this public key. You can always add it back later by adding the wallet to X1 Wallet.",
+    "subtitle4": "Removing from X1 Wallet will delete the wallet's keypair. Make sure you have exported and saved the private key before removing.",
     "title": "Are you sure you want to remove {{address}}?"
   },
   "remove": "Remove",
@@ -496,7 +496,7 @@
   "require_pin_biometrics": "Require Pin / {{biometricName}}",
   "require_to_open": "Require to open app",
   "reset": "Reset",
-  "reset_backpack": "Reset Backpack",
+  "reset_backpack": "Reset X1 Wallet",
   "reset_backpack_subtitle": "This will remove all the user accounts you have created or imported. Make sure you have your existing secret recovery phrase and private keys saved.",
   "reset_password": "Reset Password",
   "reset_password_screen": {
@@ -540,7 +540,7 @@
   "select_item": "Select {{item}}",
   "select_network": "Select a network",
   "select_network_subtitle": "Choose a network for your wallet.",
-  "select_one_or_more_blockchains2": "Select one or more networks to use on Backpack. You can always change this later.",
+  "select_one_or_more_blockchains2": "Select one or more networks to use on X1 Wallet. You can always change this later.",
   "select_one_or_more_wallets": "Select one or more wallets to import",
   "select_token": "Select Token",
   "select_validator": "Select Validator",
@@ -624,7 +624,7 @@
   "support": "Support",
   "swap": "Swap",
   "swap_confirmed": "Swap Confirmed!",
-  "swap_fees_warning": "Quote includes a {{pct}}% Backpack fee",
+  "swap_fees_warning": "Quote includes a {{pct}}% X1 Wallet fee",
   "swapped": "Swapped",
   "swapping": "Swapping for {{symbol}}...",
   "swaps_unavailable": "Swaps unavailable",
@@ -665,7 +665,7 @@
   "unknown_error": "Unknown error.",
   "unknown_reason": "Unknown reason",
   "unknown_token": "Unknown Token",
-  "unlock_backpack": "You’ll need this to unlock Backpack.",
+  "unlock_backpack": "You'll need this to unlock X1 Wallet.",
   "unlock_epoch": "Unlock Epoch",
   "unstake": "Unstake",
   "unstaked": "Unstaked",
@@ -697,10 +697,10 @@
   "warning": "Warning",
   "we_couldnt_load_any_tokens_try_again": "We couldn't load any tokens. Try closing and trying again.",
   "website": "Website",
-  "welcome_to_backpack": "Welcome to Backpack",
+  "welcome_to_backpack": "Welcome to X1 Wallet",
   "what_you_need": "What you need",
   "which_network": {
-    "subtitle": "Backpack supports multiple blockchains.\nWhich do you want to use? You can add more later.",
+    "subtitle": "X1 Wallet supports multiple blockchains.\nWhich do you want to use? You can add more later.",
     "title": "Select Network(s)"
   },
   "which_network_recovery": {

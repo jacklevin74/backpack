@@ -1,0 +1,142 @@
+appId: com.anonymous.backpackuionly
+---
+# Test: Send Transaction Flow - Complete send transaction with wallet selection
+# This test verifies the full flow of sending a transaction:
+# 1. Open Send screen
+# 2. Tap "Select address" to choose recipient
+# 3. Verify wallet selection window loads
+# 4. Choose "Wallet 1" as destination
+# 5. Verify recipient address shows actual Solana pubkey
+# 6. Enter amount (0.00001)
+# 7. Verify both pubkey and amount are correct
+# 8. Tap Send button
+# 9. Verify transaction processing
+
+- launchApp
+
+# Wait for app to load
+- assertVisible: "X1 Native Token"
+- assertVisible: "Send"
+
+- takeScreenshot: "01-home-screen"
+
+# ========================================
+# Step 1: Open Send screen
+# ========================================
+- tapOn: "Send"
+- waitForAnimationToEnd
+
+- takeScreenshot: "02-send-screen-opened"
+
+# ========================================
+# Step 2: Tap "Select address" button for recipient
+# ========================================
+# Look for the button/field to select recipient address
+- tapOn:
+    text: ".*[Ss]elect.*[Aa]ddress.*"
+- waitForAnimationToEnd
+
+- takeScreenshot: "03-select-address-tapped"
+
+# ========================================
+# Step 3: Verify wallet selection window loaded
+# ========================================
+# The wallet selector should show a list with multiple wallets
+# Check that we can see wallet names
+- assertVisible:
+    text: ".*[Ww]allet.*"
+
+- takeScreenshot: "04-wallet-selector-loaded"
+
+# ========================================
+# Step 4: Select first wallet as destination
+# ========================================
+# Tap on the first wallet item (entire area)
+- tapOn:
+    point: "50%,25%"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "05-wallet-1-selected"
+
+# Verify we're still on Send screen
+- assertVisible: "Send XNT"
+
+# ========================================
+# Step 5: Verify recipient address shows Solana pubkey
+# ========================================
+# After selecting wallet, the recipient field should show a BS58 address
+- assertVisible:
+    text: "[1-9A-HJ-NP-Za-km-z]+"
+
+- takeScreenshot: "06-recipient-pubkey-visible"
+
+# ========================================
+# Step 6: Enter amount 0.00001
+# ========================================
+# Tap directly on the amount input field (not the label)
+# The input field is below the "Amount" label
+- tapOn:
+    text: "0.00"
+- waitForAnimationToEnd
+
+# Clear any existing text in the field
+- eraseText
+
+# Type the amount
+- inputText: "0.00001"
+
+# Wait for input to complete
+- waitForAnimationToEnd
+
+- takeScreenshot: "07-amount-entered"
+
+# ========================================
+# Step 7: Verify amount is entered
+# ========================================
+# Verify amount 0.00001 is visible
+- assertVisible: "0.00001"
+
+- takeScreenshot: "08-ready-to-send"
+
+# ========================================
+# Step 8: Tap Send button
+# ========================================
+- tapOn: "Send"
+- waitForAnimationToEnd
+
+- takeScreenshot: "09-after-send-tapped"
+
+# ========================================
+# Step 9: Verify transaction success dialog
+# ========================================
+# Wait for transaction to complete and success dialog to appear
+- waitForAnimationToEnd
+
+- takeScreenshot: "10-transaction-processing"
+
+# Verify "Transaction Successful" dialog is visible
+- assertVisible: "Transaction Successful"
+
+- takeScreenshot: "11-transaction-successful"
+
+# ========================================
+# Step 10: Close the success dialog
+# ========================================
+- tapOn: "Close"
+- waitForAnimationToEnd
+
+- takeScreenshot: "12-final-state"
+
+# Test complete!
+# Successfully verified the complete send transaction flow:
+# ✓ Opened Send screen
+# ✓ Tapped "Select address"
+# ✓ Verified wallet selection window loaded
+# ✓ Selected first wallet as destination
+# ✓ Verified recipient shows Solana pubkey
+# ✓ Entered amount (0.00001)
+# ✓ Verified amount is entered correctly
+# ✓ Tapped Send button
+# ✓ Verified "Transaction Successful" dialog appeared
+# ✓ Closed success dialog

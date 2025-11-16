@@ -131,7 +131,7 @@ type SettingsScreenStackNavigatorParamList = {
     blockchain: Blockchain;
   };
   [Routes.WalletAddHardwareScreen]: {
-    blockchain: Blockchain;
+    blockchain?: Blockchain; // Optional - defaults to X1 if not provided
   };
 
   [Routes.YourAccountScreen]: undefined;

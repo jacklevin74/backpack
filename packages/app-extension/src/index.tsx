@@ -39,7 +39,7 @@ const windowId = requestWindowId ?? v4();
 const extensionTransportSender =
   new FromExtensionTransportSender<SECURE_EVENTS>({
     origin: {
-      name: "Backpack Extension",
+      name: "X1 Wallet Extension",
       address: "https://backpack.app",
       context: "extension",
     },
@@ -53,7 +53,7 @@ const secureUITransportReceiver = new ToSecureUITransportReceiver<
 const secureUITransportSender = new FromExtensionTransportSender<SECURE_EVENTS>(
   {
     origin: {
-      name: "Backpack Extension",
+      name: "X1 Wallet Extension",
       address: "https://backpack.app",
       context: "secureUI",
     },

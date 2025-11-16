@@ -4,7 +4,7 @@ import {
   UI_RPC_METHOD_SET_FEATURE_GATES,
 } from "@coral-xyz/common";
 
-const FEATURE_GATE_URL = "http://162.250.126.66:4000/feature-gates";
+const FEATURE_GATE_URL = "https://backpack-api.xnfts.dev/v2/feature-gates";
 const CACHE_KEY = "backpack_feature_gates_cache";
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 

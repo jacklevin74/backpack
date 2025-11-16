@@ -16,13 +16,18 @@ export const CreateOrImportWallet = ({
     <YStack gap={40}>
       <div style={{ textAlign: "center" }}>
         <img
-          src="x1.png"
+          src="x1-login-logo.png"
           alt="X1 Wallet"
           style={{ width: 96, height: 96 }}
         />
       </div>
       <YStack gap={8}>
-        <StyledText fontSize={36} fontWeight="$semiBold" textAlign="center">
+        <StyledText
+          fontSize={36}
+          fontWeight="$semiBold"
+          textAlign="center"
+          color="#FFFFFF"
+        >
           Welcome to X1 Wallet
         </StyledText>
         <StyledText color="$baseTextMedEmphasis" textAlign="center">

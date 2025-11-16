@@ -1,0 +1,52 @@
+appId: com.anonymous.backpackuionly
+---
+# Test: Network Switching - Switch between X1 and Solana
+# This test verifies network switching works correctly by:
+# 1. Tapping Solana round button on top
+# 2. Verifying XNT changed to SOL
+# 3. Tapping X1 round button again
+# 4. Verifying SOL changed back to XNT
+
+- launchApp
+
+# Wait for app to fully load and verify we start on X1
+- assertVisible: "X1 Native Token"
+- takeScreenshot: "01-initial-x1-network"
+
+# Step 1: Tap the Solana round network button (right button)
+- tapOn:
+    id: "solana-network-button"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "02-switched-to-solana"
+
+# Step 2: Verify XNT changed to SOL
+- assertVisible: "Solana"
+
+# Verify the native token icon changed to Solana
+- assertVisible:
+    id: "native-token-icon-solana"
+
+# Verify X1 Native Token is no longer visible
+- assertNotVisible: "X1 Native Token"
+
+# Step 3: Tap the X1 round network button to switch back (left button)
+- tapOn:
+    id: "x1-network-button"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "03-switched-back-to-x1"
+
+# Step 4: Verify SOL changed back to XNT
+- assertVisible: "X1 Native Token"
+
+# Verify the native token icon changed back to X1
+- assertVisible:
+    id: "native-token-icon-x1"
+
+# Verify Solana text is no longer the main token
+- assertNotVisible: "Solana"
+
+# Test complete - network switching works!

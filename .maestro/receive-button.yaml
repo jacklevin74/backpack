@@ -1,0 +1,18 @@
+appId: com.anonymous.backpackuionly
+---
+# Test: Receive Button - Verify Receive button is tappable
+# This test ensures the Receive button works and opens receive screen
+
+- launchApp
+
+# Wait for app to fully load
+- assertVisible: "X1 Native Token"
+
+# Tap the Receive button
+- tapOn: "Receive"
+- waitForAnimationToEnd
+
+# Verify receive screen opened with its specific elements
+- assertVisible: "Receive XNT"
+- assertVisible: "Copy Address"
+- takeScreenshot: "receive-screen-opened"

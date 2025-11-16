@@ -42,6 +42,7 @@ export function ImportWallets({
   onNext,
   // onError,
   allowMultiple = true,
+  autoSelect = false,
   fullscreen = true,
 }: {
   blockchain: Blockchain;
@@ -243,10 +244,12 @@ export function ImportWallets({
           setBalances(balancesObj);
           setWalletDescriptors(
             newWalletDescriptors
-              .filter((walletDescriptor) => {
+              .filter((walletDescriptor, index) => {
                 if (isFundedAddresses) {
                   const balance = balancesObj[walletDescriptor.publicKey];
-                  return balance !== undefined && balance.gt(0);
+                  // Always include first 5 accounts even if unfunded
+                  // to allow users to create wallets without requiring funds
+                  return index < 5 || (balance !== undefined && balance.gt(0));
                 }
                 return true;
               })
@@ -355,6 +358,35 @@ export function ImportWallets({
     },
     [importedPublicKeys]
   );
+
+  // Auto-select first wallet when autoSelect prop is true
+  useEffect(() => {
+    if (
+      autoSelect &&
+      walletDescriptors &&
+      walletDescriptors.length > 0 &&
+      checkedWalletDescriptors.length === 0
+    ) {
+      const firstNonDisabledWallet = walletDescriptors.find(
+        (descriptor) => !isDisabledPublicKey(descriptor.publicKey)
+      );
+      if (firstNonDisabledWallet) {
+        setCheckedWalletDescriptors([
+          {
+            blockchain,
+            derivationPath: firstNonDisabledWallet.derivationPath,
+            publicKey: firstNonDisabledWallet.publicKey,
+          },
+        ]);
+      }
+    }
+  }, [
+    autoSelect,
+    walletDescriptors,
+    checkedWalletDescriptors.length,
+    isDisabledPublicKey,
+    blockchain,
+  ]);
 
   const handleSelect = useCallback(
     (publicKey: string, derivationPath: string) => {
@@ -525,11 +557,19 @@ export function ImportWallets({
             <YStack space="$2" paddingHorizontal="$4">
               {walletDescriptors?.map(renderItem)}
             </YStack>
+          ) : loadPublicKeysError ? (
+            <YStack paddingVertical="$4">
+              <EmptyState
+                icon={(props: any) => <Search name="error" {...props} />}
+                title={t("error_loading_wallets")}
+                subtitle={t("select_derivation_path")}
+              />
+            </YStack>
           ) : (
             <YStack paddingVertical="$4">
               <EmptyState
                 icon={(props: any) => <Search name="error" {...props} />}
-                title={t("no_funded_wallets")}
+                title={t("no_wallets_found")}
                 subtitle={t("select_derivation_path")}
               />
             </YStack>

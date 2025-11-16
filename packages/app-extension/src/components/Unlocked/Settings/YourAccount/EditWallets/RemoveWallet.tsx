@@ -93,24 +93,24 @@ export const RemoveWallet: React.FC<{
         >
           {type === "derived" ? (
             <>
-              Removing from Backpack will not delete the wallet’s contents. It
+              Removing from X1 Wallet will not delete the wallet's contents. It
               will still be available by importing your secret recovery phrase
-              in a new Backpack.
+              in a new X1 Wallet.
             </>
           ) : type === "ledger" ? (
             <>
-              Removing from Backpack will not delete the wallet’s contents. It
+              Removing from X1 Wallet will not delete the wallet's contents. It
               will still be available by connecting your ledger.
             </>
           ) : type === "dehydrated" ? (
             <>
-              Removing from Backpack will remove the connection between your
+              Removing from X1 Wallet will remove the connection between your
               username and this public key. You can always add it back later by
-              adding the wallet to Backpack.
+              adding the wallet to X1 Wallet.
             </>
           ) : (
             <>
-              Removing from Backpack will delete the wallet’s keypair. Make sure
+              Removing from X1 Wallet will delete the wallet's keypair. Make sure
               you have exported and saved the private key before removing.
             </>
           )}

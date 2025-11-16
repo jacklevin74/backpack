@@ -85,7 +85,8 @@ export const allWalletsDisplayed = selector<Wallet[]>({
     if (_isAggregateWallets) {
       return get(allWallets);
     } else {
-      return [get(activeWallet)];
+      const wallet = get(activeWalletNullable);
+      return wallet ? [wallet] : [];
     }
   },
 });

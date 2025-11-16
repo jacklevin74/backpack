@@ -3,4 +3,4 @@
 
 npx lint-staged
 node scripts/sync-expo-deps.js --dry-run
-source scripts/verify_workspace_package.sh
+. scripts/verify_workspace_package.sh

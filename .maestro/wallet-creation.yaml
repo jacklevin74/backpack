@@ -1,0 +1,79 @@
+appId: com.anonymous.backpackuionly
+---
+# Test: Wallet Creation Flow
+# Verifies creating a new wallet and seeing it in the wallet list
+
+- launchApp
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Tap bottom center to dismiss any notification drawer
+- tapOn:
+    point: "50%,90%"
+- waitForAnimationToEnd
+
+- takeScreenshot: "00-home-screen"
+
+# Tap the wallet name in top left to open wallet list
+- tapOn:
+    text: "Wallet .*"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "01-wallet-list-opened"
+
+- assertVisible: "Wallets"
+
+# Open wallet creation by tapping the + button in top right
+- tapOn: "+"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "02-wallet-options-dialog"
+
+# Verify the wallet creation options dialog is visible
+- assertVisible: "Create New Wallet"
+- assertVisible: "Import Wallet"
+- assertVisible: "Connect Ledger"
+
+# Tap "Create New Wallet" button
+- tapOn: "Create New Wallet"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "03-seed-phrase-screen"
+
+# Verify we're on the seed phrase screen
+- assertVisible: "Your Seed Phrase"
+- assertVisible: "Tap anywhere to copy to clipboard"
+- assertVisible: "I've Saved My Seed Phrase"
+
+# Tap anywhere on the seed phrase to copy it
+- tapOn:
+    point: "50%,50%"
+- waitForAnimationToEnd
+
+# Verify toast message appears confirming copy
+- assertVisible: "Copied"
+
+- takeScreenshot: "04-seed-phrase-copied"
+
+# Confirm we've saved the seed phrase
+- tapOn: "I've Saved My Seed Phrase"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "05-wallet-created"
+
+# Verify we're back on the wallet list and a new wallet appears
+- assertVisible: "Wallets"
+
+# Verify at least one wallet is visible (the newly created one)
+# Note: The wallet gets a default name like "Wallet 3", "Wallet 4", etc.
+- assertVisible:
+    text: "Wallet [0-9]+"
+
+- takeScreenshot: "06-final-wallet-list"
+
+# Test complete - wallet was successfully created with seed phrase!

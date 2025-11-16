@@ -1,0 +1,46 @@
+appId: com.anonymous.backpackuionly
+---
+# Test: Send Transaction Flow
+# Verifies the complete send transaction flow
+
+- launchApp
+- assertVisible: "Wallets"
+
+# Select a wallet with balance
+- tapOn: "Wallet 1"  # Assuming first wallet has balance
+
+# Initiate send
+- tapOn: "Send"
+- assertVisible: "Send XNT"
+
+# Enter recipient address
+- tapOn:
+    id: "recipient-input"
+- inputText: "29dSqUTTH5okWAr3oLkQWrV968FQxgVqPCSqMqRLj8K2"
+
+# Enter amount
+- tapOn:
+    id: "amount-input"
+- inputText: "0.001"
+
+# Verify fee is displayed
+- assertVisible: "Fee: 0.000005 XNT"
+
+# Review transaction
+- tapOn: "Review"
+- assertVisible: "Confirm Transaction"
+- assertVisible: "0.001 XNT"
+- assertVisible: "Total: 0.001005 XNT"  # Amount + fee
+
+# Confirm transaction
+- tapOn: "Confirm"
+- assertVisible: "Transaction confirmed!"
+
+# Verify transaction toast appears
+- assertVisible:
+    text: ".*[A-Za-z0-9]{8}.*"  # Transaction hash pattern
+
+# Verify we can click to view on explorer
+- tapOn: "View Transaction"
+- waitForAnimationToEnd
+- assertVisible: "explorer.x1.xyz"

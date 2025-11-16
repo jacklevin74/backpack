@@ -16,7 +16,7 @@ import {
 } from "@coral-xyz/tamagui";
 import { Typography } from "@mui/material";
 
-export function SetupComplete({ onClose }: { onClose: () => void }) {
+export function SetupComplete() {
   const { t } = useTranslation();
   const isMac = window.navigator.userAgent.includes("Mac OS");
 
@@ -60,7 +60,7 @@ export function SetupComplete({ onClose }: { onClose: () => void }) {
           />
           <_CallToAction
             icon={<XTwitterIcon style={{ height: 24 }} />}
-            title="@Backpack"
+            title="@X1Wallet"
             onClick={() => window.open(TWITTER_LINK, "_blank")}
           />
           <_CallToAction
@@ -74,11 +74,6 @@ export function SetupComplete({ onClose }: { onClose: () => void }) {
             onClick={() => window.open(DISCORD_INVITE_LINK, "_blank")}
           />
         </XStack>
-        <BpPrimaryButton
-          label={`${t("open_backpack")}`}
-          labelProps={{ fontWeight: "$semiBold" }}
-          onPress={onClose}
-        />
       </YStack>
     </>
   );

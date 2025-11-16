@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ledger Bridge</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            padding: 20px;
+            margin: 0;
+        }
+        button {
+            background: #4A90E2;
+            color: white;
+            border: none;
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 12px;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 12px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .account {
+            background: #1a1a1a;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .account:hover {
+            background: #2a2a2a;
+        }
+        .account-index {
+            color: #888;
+            font-size: 12px;
+        }
+        .account-address {
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        .error {
+            color: #FF6B6B;
+        }
+    </style>
+</head>
+<body>
+    <h2>Connect Ledger Wallet</h2>
+    <button id="connectBtn" onclick="connectLedger()">Connect Ledger Device</button>
+    <div id="status">
+        <strong>Important:</strong> This feature requires:
+        <ul>
+            <li>Chrome browser with WebUSB support</li>
+            <li>Ledger device connected via USB</li>
+            <li>Solana app open on Ledger</li>
+        </ul>
+        <p class="error">Note: WebUSB may not be fully supported in WebView. For best results, this feature works better in a full browser.</p>
+        <p>Alternative: You can import your Ledger's public key manually using the "Import Wallet" option with your Ledger-derived public key.</p>
+    </div>
+    <div id="accounts"></div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const connectBtn = document.getElementById('connectBtn');
+
+        // Check for WebUSB support
+        if (!navigator.usb) {
+            statusDiv.innerHTML = '<p class="error">WebUSB is not supported in this WebView. Please use the Import Wallet option instead and manually enter your Ledger public key.</p>';
+            connectBtn.disabled = true;
+        }
+
+        async function connectLedger() {
+            try {
+                connectBtn.disabled = true;
+                statusDiv.innerHTML = '<p class="error">WebUSB API is not fully supported in React Native WebView. Please use Import Wallet to manually add your Ledger public key instead.</p><p>You can find your Solana public key using Ledger Live or the Solana CLI.</p>';
+            } catch (error) {
+                statusDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+                connectBtn.disabled = false;
+            }
+        }
+
+        // Inform React Native that WebUSB is not available
+        if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'webusb-unavailable',
+                message: 'WebUSB is not supported in WebView'
+            }));
+        }
+    </script>
+</body>
+</html>

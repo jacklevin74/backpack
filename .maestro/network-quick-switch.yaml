@@ -1,0 +1,36 @@
+appId: com.anonymous.backpackuionly
+---
+# Test: Network Quick Switch - Verify round buttons switch between X1 and Solana
+# This test verifies that the quick switch buttons at the top work correctly
+# Bug: After adding X1 Testnet, Solana button was switching to X1 Testnet instead
+
+- launchApp
+
+# Wait for app to load - should default to X1 network
+- assertVisible: "X1 Native Token"
+- takeScreenshot: "default-x1-network"
+
+# Tap the Solana network icon (right round button at top)
+# The Solana button is the second round button in the top bar
+- tapOn:
+    point: "60%,7%"  # Approximate location of Solana button
+- waitForAnimationToEnd
+
+# Verify we switched to Solana network
+# The token name should change from "X1 Native Token" to "Solana"
+- assertVisible: "Solana"
+- assertNotVisible: "X1 Native Token"
+- takeScreenshot: "switched-to-solana"
+
+# Tap the X1 network icon (left round button at top)
+- tapOn:
+    point: "40%,7%"  # Approximate location of X1 button
+- waitForAnimationToEnd
+
+# Verify we switched back to X1 network
+- assertVisible: "X1 Native Token"
+- assertNotVisible:
+    text: "Solana"
+- takeScreenshot: "switched-back-to-x1"
+
+# Test complete! Both quick switch buttons work correctly.

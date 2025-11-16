@@ -61,3 +61,13 @@ test-ledger/
 *.apk
 *.abb
 .envrc
+
+# Gradle cache
+.gradle/
+
+# Playwright user data
+.playwright-user-data*/
+
+# General cache directories
+**/Cache/
+**/cache/

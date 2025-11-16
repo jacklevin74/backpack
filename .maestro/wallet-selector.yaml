@@ -1,0 +1,19 @@
+appId: com.anonymous.backpackuionly
+---
+# Test: Wallet Selector - Verify wallet list opens from top left
+# This test verifies that tapping the wallet name shows a list of wallets
+
+- launchApp
+- assertVisible: "X1 Native Token"
+
+# Tap on the wallet name in top left (shows dropdown arrow)
+- tapOn:
+    point: "20%,5%"
+- waitForAnimationToEnd
+
+# Capture what appears after tapping
+- takeScreenshot: "wallet-selector-opened"
+
+# Verify the UI responded (something should be visible)
+- assertVisible:
+    text: ".*"

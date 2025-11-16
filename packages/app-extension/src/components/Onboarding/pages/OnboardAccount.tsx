@@ -4,9 +4,10 @@ import type {
   PrivateKeyWalletDescriptor,
   WalletDescriptor,
 } from "@coral-xyz/common";
+import { Blockchain } from "@coral-xyz/common";
 import { useTranslation } from "@coral-xyz/i18n";
 import { useOnboarding } from "@coral-xyz/recoil";
-import { useTheme,XStack, YStack } from "@coral-xyz/tamagui";
+import { useTheme, XStack, YStack } from "@coral-xyz/tamagui";
 
 import { useSteps } from "../../../hooks/useSteps";
 import { CreatePassword } from "../../common/Account/CreatePassword";
@@ -17,7 +18,6 @@ import { PrivateKeyInput } from "../../common/Account/PrivateKeyInput";
 import { AccountName } from "./AccountName";
 import { AlreadyOnboarded } from "./AlreadyOnboarded";
 import { BackupInput } from "./BackupInput";
-import { BlockchainSelector } from "./BlockchainSelector";
 import { CreateOrImportWallet } from "./CreateOrImportWallet";
 import { Finish } from "./Finish";
 import { KeyringTypeSelector } from "./KeyringTypeSelector";
@@ -53,6 +53,13 @@ export const OnboardAccount = ({
       signedWalletDescriptors: [],
     });
   }, [action, keyringType, mnemonic, setOnboardingData]);
+
+  // Automatically select X1 blockchain when keyringType is set
+  useEffect(() => {
+    if (keyringType && !selectedBlockchains.includes(Blockchain.X1)) {
+      handleSelectBlockchain({ blockchain: Blockchain.X1 });
+    }
+  }, [keyringType, selectedBlockchains, handleSelectBlockchain]);
 
   const steps = [
     <CreateOrImportWallet
@@ -117,20 +124,10 @@ export const OnboardAccount = ({
         ]
       : []),
     ...(keyringType === "private-key"
-      ? // If keyring type is a private key we don't need to display the blockchain
-        // selector
+      ? // X1 blockchain is auto-selected, skip blockchain selector
         [
-          <BlockchainSelector
-            key="BlockchainSelector"
-            selectedBlockchains={selectedBlockchains}
-            onClick={async (blockchain) => {
-              await handleSelectBlockchain({ blockchain });
-              nextStep();
-            }}
-            onNext={() => {}}
-          />,
           <PrivateKeyInput
-            blockchain={blockchain!}
+            blockchain={blockchain || Blockchain.X1}
             key="PrivateKeyInput"
             onNext={async (result: PrivateKeyWalletDescriptor) => {
               await handlePrivateKeyInput(result);
@@ -140,32 +137,26 @@ export const OnboardAccount = ({
         ]
       : []),
     ...(keyringType === "mnemonic" || keyringType === "ledger"
-      ? // if were importing mnemonic of ledger we need to select the blockchiain
+      ? // X1 blockchain is auto-selected, skip blockchain selector
         [
-          <BlockchainSelector
-            key="BlockchainSelector"
-            selectedBlockchains={selectedBlockchains}
-            onClick={async (blockchain) => {
-              await handleSelectBlockchain({ blockchain });
-              nextStep();
-            }}
-            onNext={nextStep}
-          />,
-          ...(keyringType === "ledger" || action === "import"
+          ...(keyringType === "ledger" ||
+          action === "import" ||
+          action === "create"
             ? [
               <ImportWallets
                 allowMultiple
                 autoSelect
                 newAccount
                 key="ImportWallets"
-                blockchain={blockchain!}
+                blockchain={blockchain || Blockchain.X1}
                 mnemonic={mnemonic!}
                 onNext={(walletDescriptors: Array<WalletDescriptor>) => {
+                    // Only add the first wallet to avoid creating duplicate accounts
                     setOnboardingData({
-                      signedWalletDescriptors: [
-                        ...signedWalletDescriptors,
-                        ...walletDescriptors,
-                      ],
+                      signedWalletDescriptors:
+                        walletDescriptors.length > 0
+                          ? [walletDescriptors[0]]
+                          : [],
                     });
                     nextStep();
                   }}

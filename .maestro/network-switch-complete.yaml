@@ -1,0 +1,70 @@
+appId: com.anonymous.backpackuionly
+---
+# Test: Complete Network Switch - Verify all UI elements change when switching networks
+# This test verifies that switching between X1 and Solana updates:
+# - Token name (X1 Native Token <-> Solana)
+# - Token symbol (XNT <-> SOL)
+# - Token icon
+# - Balances
+
+- launchApp
+
+# ========================================
+# Verify initial X1 network state
+# ========================================
+- assertVisible: "X1 Native Token"
+- takeScreenshot: "01-x1-initial-state"
+
+# Verify balance display exists
+- assertVisible: "$0.00"
+
+# ========================================
+# Switch to Solana network (tap right button)
+# ========================================
+- tapOn:
+    point: "62%,8%"  # Solana button location
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "02-after-tapping-solana"
+
+# ========================================
+# Verify Solana network state (if switch worked)
+# ========================================
+# After switching to Solana, "X1 Native Token" should disappear
+# and "Solana" should appear
+- assertNotVisible: "X1 Native Token"
+- assertVisible: "Solana"
+
+# Verify token symbols and balances changed
+- takeScreenshot: "03-solana-full-screen"
+
+# ========================================
+# Switch back to X1 network (tap left button)
+# ========================================
+- tapOn:
+    point: "38%,8%"  # X1 button location
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "04-after-tapping-x1"
+
+# ========================================
+# Verify we're back to X1 network
+# ========================================
+# After switching back, "Solana" should disappear
+# and "X1 Native Token" should reappear
+- assertVisible: "X1 Native Token"
+- assertNotVisible: "Solana"
+
+# Balance should still be visible
+- assertVisible: "$0.00"
+
+- takeScreenshot: "05-back-to-x1-complete"
+
+# ========================================
+# Test complete!
+# ========================================
+# Verified that switching networks changes:
+# - Token name (X1 Native Token <-> Solana)
+# - All UI updates correctly when using quick switch buttons

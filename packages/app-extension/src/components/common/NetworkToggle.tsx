@@ -91,8 +91,8 @@ export function NetworkToggle() {
             src="./x1.png"
             alt="X1"
             style={{
-              width: "20px",
-              height: "20px",
+              width: "25px",
+              height: "25px",
             }}
           />
         ) : (
@@ -101,8 +101,8 @@ export function NetworkToggle() {
             src="./solana.png"
             alt="Solana"
             style={{
-              width: "20px",
-              height: "20px",
+              width: "25px",
+              height: "25px",
             }}
           />
         )}

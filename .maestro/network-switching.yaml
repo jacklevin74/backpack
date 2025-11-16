@@ -1,0 +1,31 @@
+appId: com.anonymous.backpackuionly
+---
+# Test: Network Switching - Verify all networks are accessible
+# This test would have caught the Solana button bug!
+
+- launchApp
+- assertVisible: "X1 Mainnet"  # Default network should be visible
+
+# Test switching to X1 Testnet
+- tapOn: "X1 Mainnet"  # Tap network selector
+- assertVisible: "X1 Testnet"
+- tapOn: "X1 Testnet"
+- assertVisible: "X1 Testnet"  # Verify switch happened
+
+# Test switching to Solana
+- tapOn: "X1 Testnet"  # Tap network selector again
+- assertVisible: "Solana"
+- tapOn: "Solana"  # THIS WOULD FAIL if button is broken
+- assertVisible: "Solana"  # Verify we're on Solana
+
+# Switch back to X1 Mainnet
+- tapOn: "Solana"
+- assertVisible: "X1 Mainnet"
+- tapOn: "X1 Mainnet"
+- assertVisible: "X1 Mainnet"
+
+# Verify balance displays correctly on each network
+- tapOn: "X1 Mainnet"
+- assertVisible: "XNT"  # X1 native token
+- tapOn: "Solana"
+- assertVisible: "SOL"  # Solana token

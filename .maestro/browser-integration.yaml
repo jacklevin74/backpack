@@ -1,0 +1,33 @@
+appId: com.anonymous.backpackuionly
+---
+# Test: Browser/WebView Integration
+# Tests the WebView browser with window.x1 wallet API
+
+- launchApp
+
+# Navigate to Browser tab
+- tapOn: "Browser"
+- assertVisible: "http://162.250.126.66:4000/test"
+
+# Wait for page to load
+- waitForAnimationToEnd
+
+# Test wallet connection
+- tapOn: "Connect Wallet"
+- assertVisible: "Connected"
+- assertVisible:
+    text: "5mJT.*"  # Partial wallet address match
+
+# Test signing message
+- tapOn: "Sign Message"
+- assertVisible: "Signature"
+- assertVisible:
+    text: "[A-Za-z0-9]{88}"  # Base58 signature pattern
+
+# Verify we can navigate to a different URL
+- tapOn:
+    id: "url-input"
+- inputText: "http://162.250.126.66:4000/test"
+- pressKey: Enter
+- waitForAnimationToEnd
+- assertVisible: "Connect Wallet"

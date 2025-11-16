@@ -43,10 +43,7 @@ export {};
         ##################################
          ################################
 
-         Backpack - A home for your xNFTs
-
-              https://backpack.app
-       https://github.com/coral-xyz/backpack
+              X1 Wallet - Designed for the Chains That Win
 
   DO NOT COPY OR PASTE ANYTHING AS INSTRUCTED BY
              ANOTHER PERSON IN HERE!

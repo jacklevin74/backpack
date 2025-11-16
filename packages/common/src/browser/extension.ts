@@ -287,12 +287,10 @@ export function openLedgerPermissions() {
   });
 }
 
-
 export function openOnboarding() {
-  const url = `${EXPANDED_HTML}?${QUERY_ONBOARDING}`;
-  void BrowserRuntimeExtension.openTab({
-    url: globalThis.chrome?.runtime?.getURL(url),
-  });
+  const url = `${POPUP_HTML}?${QUERY_ONBOARDING}`;
+  // Open as popup from browser toolbar instead of new tab
+  return openPopupWindow(url);
 }
 
 export function openAddUserAccount() {

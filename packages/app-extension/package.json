@@ -1,8 +1,8 @@
 {
   "private": true,
   "name": "@coral-xyz/app-extension",
-  "version": "0.10.61",
-  "description": "A next level crypto wallet for Solana and Ethereum",
+  "version": "0.10.63",
+  "description": "Designed for the Chains That Win",
   "bundlewatch": {
     "files": [
       {
@@ -17,6 +17,11 @@
     "build": "cross-env NODE_ENV=production webpack",
     "build:release": "cross-env NODE_ENV=production webpack",
     "e2e": "jest --maxWorkers 1 --detectOpenHandles --forceExit --verbose",
+    "e2e:playwright": "playwright test",
+    "e2e:playwright:ui": "playwright test --ui",
+    "e2e:playwright:debug": "playwright test --debug",
+    "e2e:playwright:video": "playwright test e2e/video-recording-demo.spec.ts",
+    "e2e:playwright:report": "playwright show-report",
     "lint": "eslint ./src --ext .js,.jsx,.ts,.tsx --cache",
     "lint:fix": "yarn run lint --fix",
     "format": "npx prettier --write --config ../../.prettierrc --ignore-path ../../.prettierignore --log-level error",
@@ -82,6 +87,7 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@pmmmwh/react-refresh-webpack-plugin": "^0.5.11",
     "@swc/core": "^1.3.22",
     "@types/bn.js": "^5.1.1",

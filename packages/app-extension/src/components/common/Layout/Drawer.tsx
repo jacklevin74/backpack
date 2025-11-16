@@ -22,7 +22,8 @@ const useStyles = temporarilyMakeStylesForBrowserExtension((theme) => ({
     flex: 1,
   },
   drawerPaper: {
-    height: "100%",
+    maxHeight: "100%",
+    height: "auto",
   },
   miniDrawerRoot: {
     background: "transparent",
@@ -37,6 +38,10 @@ const useStyles = temporarilyMakeStylesForBrowserExtension((theme) => ({
     backgroundColor: "transparent",
     borderTopLeftRadius: "12px",
     borderTopRightRadius: "12px",
+    maxHeight: "80vh",
+    height: "auto",
+    display: "flex",
+    flexDirection: "column",
   },
   rightButtonIcon: {
     color: theme.baseIcon.val,

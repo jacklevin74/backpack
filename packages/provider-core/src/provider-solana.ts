@@ -113,7 +113,7 @@ export class ProviderSolanaInjection
     const rpcUrl =
       blockchain === Blockchain.X1 ? DEFAULT_X1_CLUSTER : defaultRpcUrl;
     console.log(
-      `[ProviderSolanaInjection.constructor] ext:0.10.61 Creating SolanaClient for ${blockchain} with initial RPC URL: ${rpcUrl}`
+      `[ProviderSolanaInjection.constructor] ext:0.10.62 Creating SolanaClient for ${blockchain} with initial RPC URL: ${rpcUrl}`
     );
 
     this.#secureSolanaClient = new SolanaClient(

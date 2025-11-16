@@ -144,6 +144,129 @@ async function getTransaction(rpcUrl, signature) {
   ]);
 }
 
+function formatTokenAmount(rawAmount, decimals) {
+  if (rawAmount === 0n) {
+    return "0";
+  }
+
+  if (!decimals || decimals === 0) {
+    return rawAmount.toString();
+  }
+
+  const divisor = BigInt(10) ** BigInt(decimals);
+  const whole = rawAmount / divisor;
+  const fraction = rawAmount % divisor;
+
+  if (fraction === 0n) {
+    return whole.toString();
+  }
+
+  const fractionStr = fraction
+    .toString()
+    .padStart(decimals, "0")
+    .replace(/0+$/, "");
+
+  return fractionStr ? `${whole.toString()}.${fractionStr}` : whole.toString();
+}
+
+function resolveTokenOwner(balance, accountKeys = []) {
+  if (!balance) {
+    return null;
+  }
+
+  if (balance.owner) {
+    return balance.owner;
+  }
+
+  if (
+    typeof balance.accountIndex === "number" &&
+    accountKeys[balance.accountIndex]
+  ) {
+    return accountKeys[balance.accountIndex].pubkey;
+  }
+
+  return null;
+}
+
+function abbreviateMint(mint) {
+  if (!mint) {
+    return null;
+  }
+
+  if (mint.length <= 10) {
+    return mint;
+  }
+
+  return `${mint.slice(0, 4)}...${mint.slice(-4)}`;
+}
+
+function extractTokenBalanceChange(meta, walletAddress, accountKeys = []) {
+  if (!meta) {
+    return null;
+  }
+
+  const preBalances = meta.preTokenBalances || [];
+  const postBalances = meta.postTokenBalances || [];
+
+  if (!preBalances.length && !postBalances.length) {
+    return null;
+  }
+
+  const balanceMap = new Map();
+
+  const addBalance = (balance, phase) => {
+    const owner = resolveTokenOwner(balance, accountKeys);
+    if (!owner) {
+      return;
+    }
+
+    const key = `${balance.mint}:${owner}`;
+    const entry = balanceMap.get(key) || {
+      mint: balance.mint,
+      owner,
+    };
+
+    entry[phase] = balance;
+    balanceMap.set(key, entry);
+  };
+
+  preBalances.forEach((balance) => addBalance(balance, "pre"));
+  postBalances.forEach((balance) => addBalance(balance, "post"));
+
+  for (const entry of balanceMap.values()) {
+    if (entry.owner !== walletAddress) {
+      continue;
+    }
+
+    const decimals =
+      entry.post?.uiTokenAmount?.decimals ??
+      entry.pre?.uiTokenAmount?.decimals ??
+      0;
+
+    const preAmount =
+      entry.pre?.uiTokenAmount?.amount !== undefined
+        ? BigInt(entry.pre.uiTokenAmount.amount)
+        : 0n;
+    const postAmount =
+      entry.post?.uiTokenAmount?.amount !== undefined
+        ? BigInt(entry.post.uiTokenAmount.amount)
+        : 0n;
+
+    const diff = postAmount - preAmount;
+    if (diff === 0n) {
+      continue;
+    }
+
+    return {
+      amount: formatTokenAmount(diff < 0n ? -diff : diff, decimals),
+      type: diff > 0n ? "RECEIVE" : "SEND",
+      mint: entry.mint,
+    };
+  }
+
+  return null;
+}
+
 /**
  * Parse and format transaction for storage
  * @param {object} txData - Transaction data from RPC
@@ -157,8 +280,8 @@ function parseTransaction(txData, signature, walletAddress, blockchain = "x1") {
     const meta = txData.meta;
 
     // Determine token name and symbol based on blockchain
-    const tokenName = blockchain === "solana" ? "Solana" : "X1 Token";
-    const tokenSymbol = blockchain === "solana" ? "SOL" : "XNT";
+    let tokenName = blockchain === "solana" ? "Solana" : "X1 Token";
+    let tokenSymbol = blockchain === "solana" ? "SOL" : "XNT";
 
     // Determine transaction type based on instructions
     let type = "UNKNOWN";
@@ -173,25 +296,44 @@ function parseTransaction(txData, signature, walletAddress, blockchain = "x1") {
       );
     }
 
-    // Determine type based on balance change for THIS wallet
+    let nativeBalanceChange = null;
     if (
       meta &&
       meta.postBalances &&
       meta.preBalances &&
       walletAccountIndex >= 0
     ) {
-      const balanceChange =
+      nativeBalanceChange =
         meta.postBalances[walletAccountIndex] -
         meta.preBalances[walletAccountIndex];
-      if (balanceChange > 0) {
-        type = "RECEIVE";
-        amount = (balanceChange / 1e9).toFixed(9);
-        description = `Received ${tokenSymbol}`;
-      } else if (balanceChange < 0) {
-        type = "SEND";
-        amount = (Math.abs(balanceChange) / 1e9).toFixed(9);
-        description = `Sent ${tokenSymbol}`;
+    }
+
+    const tokenChange = extractTokenBalanceChange(
+      meta,
+      walletAddress,
+      tx.message?.accountKeys || []
+    );
+
+    if (tokenChange) {
+      type = tokenChange.type;
+      amount = tokenChange.amount;
+      const displayMint = abbreviateMint(tokenChange.mint);
+      if (displayMint) {
+        tokenName = displayMint;
+        tokenSymbol = displayMint;
       }
+      description =
+        tokenChange.type === "SEND"
+          ? `Sent ${displayMint || tokenSymbol}`
+          : `Received ${displayMint || tokenSymbol}`;
+    } else if (nativeBalanceChange > 0) {
+      type = "RECEIVE";
+      amount = (nativeBalanceChange / 1e9).toFixed(9);
+      description = `Received ${tokenSymbol}`;
+    } else if (nativeBalanceChange < 0) {
+      type = "SEND";
+      amount = (Math.abs(nativeBalanceChange) / 1e9).toFixed(9);
+      description = `Sent ${tokenSymbol}`;
     }
 
     // Get timestamp
@@ -279,9 +421,9 @@ async function fetchRegisteredWallets() {
 /**
  * Update last indexed timestamp for a wallet
  */
-async function updateLastIndexed(address) {
+async function updateLastIndexed(address, network) {
   return new Promise((resolve, reject) => {
-    const postData = JSON.stringify({ address });
+    const postData = JSON.stringify({ address, network });
     const url = new URL(`${CONFIG.API_SERVER}/wallets/update-indexed`);
 
     const options = {
@@ -464,7 +606,7 @@ async function indexWallet(wallet) {
     }
 
     // Update last indexed timestamp in database
-    await updateLastIndexed(address);
+    await updateLastIndexed(address, network);
   } catch (error) {
     console.error(`   ❌ Error indexing wallet:`, error.message);
   }
@@ -540,8 +682,15 @@ process.on("unhandledRejection", (error) => {
   console.error("❌ Unhandled rejection:", error);
 });
 
-// Start the indexer
-start().catch((error) => {
-  console.error("❌ Failed to start indexer:", error);
-  process.exit(1);
-});
+if (require.main === module) {
+  start().catch((error) => {
+    console.error("❌ Failed to start indexer:", error);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  parseTransaction,
+  extractTokenBalanceChange,
+  formatTokenAmount,
+};

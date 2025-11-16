@@ -57,7 +57,7 @@ export function createBlockchainClient<B extends Blockchain>(
         user?.preferences.blockchains.x1.commitment ??
         preferences.PreferencesDefault.commitment;
       console.log(
-        `[createBlockchainClient] ext:0.10.61 X1 client with URL: ${connectionUrl}, commitment: ${commitment}`
+        `[createBlockchainClient] ext:0.10.62 X1 client with URL: ${connectionUrl}, commitment: ${commitment}`
       );
       const client: BlockchainClient<Blockchain.X1> = new SolanaClient(
         transportSender,

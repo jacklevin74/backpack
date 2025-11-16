@@ -1,0 +1,6 @@
+appId: com.anonymous.backpackuionly
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "X1 Native Token"
+    timeout: 10000

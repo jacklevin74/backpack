@@ -1,0 +1,109 @@
+appId: com.anonymous.backpackuionly
+---
+# Test: Wallet Security Info - Verify private key and seed phrase dialogs
+# This test verifies:
+# 1. Opening wallet dropdown
+# 2. Opening 3-dot menu
+# 3. Opening private key bottom sheet
+# 4. Copying private key
+# 5. Closing private key sheet
+# 6. Opening seed phrase bottom sheet
+# 7. Copying seed phrase
+# 8. Closing seed phrase sheet
+
+- launchApp
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Tap bottom center to dismiss any notification drawer
+- tapOn:
+    point: "50%,90%"
+- waitForAnimationToEnd
+
+- takeScreenshot: "01-initial-state"
+
+# Step 1: Tap the wallet selector button in top left using testID
+- tapOn:
+    id: "wallet-selector-button"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "02-wallet-list-opened"
+
+# Step 2: Verify the bottom sheet opened and at least one wallet is visible
+- assertVisible: "Wallets"
+- assertVisible: "Wallet 1"
+
+# Step 3: Tap the 3-dot menu button on the first wallet
+- tapOn:
+    id: "first-wallet-menu-button"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "03-menu-opened"
+
+# Step 4: Verify the edit wallet sheet opened with all menu options
+- assertVisible: "Edit Wallet"
+- assertVisible: "Change Account Name"
+- assertVisible: "Show Private Key"
+- assertVisible: "Show Seed Phrase"
+- assertVisible: "Delete Account"
+
+# Step 5: Tap "Show Private Key" button
+- tapOn:
+    id: "show-private-key-button"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "04-private-key-sheet-opened"
+
+# Step 6: Verify private key bottom sheet is visible
+- assertVisible: "Private Key"
+- assertVisible: "Private Key:"
+
+# Step 7: Verify private key is displayed (should contain base58 encoded key)
+# Private keys are typically 88 characters in base58 encoding
+- assertVisible:
+    text: "[1-9A-HJ-NP-Za-km-z]{50,}"  # Match base58 pattern (at least 50 chars)
+
+# Step 8: Tap copy button (the ⧉ icon) to copy private key
+- tapOn:
+    point: "90%,15%"  # Copy icon is in top right of the sheet
+- waitForAnimationToEnd
+
+# Step 10: Open the 3-dot menu again to access seed phrase
+- tapOn:
+    id: "first-wallet-menu-button"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "07-menu-reopened"
+
+# Step 11: Verify the edit wallet sheet opened
+- assertVisible: "Edit Wallet"
+- assertVisible: "Show Seed Phrase"
+
+# Step 12: Tap "Show Seed Phrase" button
+- tapOn:
+    id: "show-seed-phrase-button"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd  # Extra wait for sheet to fully open
+
+- takeScreenshot: "08-seed-phrase-sheet-opened"
+
+# Step 13: Verify seed phrase bottom sheet is visible
+- assertVisible: "Seed Phrase"
+
+# Step 14: Verify seed phrase is displayed (should contain 12 or 24 words)
+- assertVisible:
+    text: "[a-z]+ [a-z]+ [a-z]+"  # Match at least 3 words
+
+# Step 15: Tap copy button (the ⧉ icon) to copy seed phrase
+- tapOn:
+    point: "90%,15%"  # Copy icon is in top right of the sheet
+- waitForAnimationToEnd
+
+- takeScreenshot: "09-seed-phrase-copied"
+
+# Test complete - both private key and seed phrase verified!

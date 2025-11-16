@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { WalletDescriptor } from "@coral-xyz/common";
+import { Blockchain } from "@coral-xyz/common";
 import { useOnboarding } from "@coral-xyz/recoil";
 import { YStack } from "@coral-xyz/tamagui";
 
@@ -32,6 +33,13 @@ export const ConnectHardware = (_props: {
     setOnboardingData({ action: "import", keyringType: "ledger" });
   }, []);
 
+  // Automatically select X1 blockchain for hardware wallet
+  useEffect(() => {
+    if (!selectedBlockchains.includes(Blockchain.X1)) {
+      handleSelectBlockchain({ blockchain: Blockchain.X1 });
+    }
+  }, [selectedBlockchains, handleSelectBlockchain]);
+
   useEffect(() => {
     // Reset blockchain keyrings on certain changes that invalidate the addresses
     setOnboardingData({
@@ -49,21 +57,13 @@ export const ConnectHardware = (_props: {
   // return null;
 
   const steps = [
-    <BlockchainSelector
-      key="BlockchainSelector"
-      selectedBlockchains={selectedBlockchains}
-      onClick={async (blockchain) => {
-        await handleSelectBlockchain({ blockchain });
-        nextStep();
-      }}
-      onNext={nextStep}
-    />,
+    // Skip BlockchainSelector - X1 is auto-selected above
     <ImportWallets
       allowMultiple
       autoSelect
       newAccount
       key="ImportWallets"
-      blockchain={blockchain!}
+      blockchain={blockchain || Blockchain.X1}
       mnemonic={mnemonic}
       onNext={(walletDescriptors: Array<WalletDescriptor>) => {
         setOnboardingData({

@@ -1,0 +1,24 @@
+{
+  "extends": "@tsconfig/react-native/tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "jsx": "react-native",
+    "target": "ESNext",
+    "lib": ["ESNext"],
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "paths": {
+      "crypto": ["node_modules/crypto-browserify"],
+      "stream": ["node_modules/stream-browserify"],
+      "buffer": ["node_modules/buffer"]
+    }
+  },
+  "include": ["src/**/*", "index.js"],
+  "exclude": ["node_modules"]
+}

@@ -1,0 +1,28 @@
+appId: com.anonymous.backpackuionly
+---
+# Test: Ledger Hardware Wallet Connection
+# Verifies Ledger wallet can be connected via BLE
+
+- launchApp
+
+# Open Ledger connection
+- tapOn: "Add Hardware Wallet"
+- assertVisible: "Connect Ledger"
+
+# Start BLE scan
+- tapOn: "Scan for Devices"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Verify scan is working
+- assertVisible: "Scanning for Ledger devices..."
+
+# When device is found (this part requires actual Ledger)
+# - tapOn: "Ledger Nano.*"
+# - assertVisible: "Connecting..."
+# - assertVisible: "Connected"
+# - assertVisible: "Ledger Wallet"
+
+# For now, just verify the scan UI works
+- assertVisible: "Make sure Bluetooth is enabled"
+- assertVisible: "Make sure Solana app is open on Ledger"

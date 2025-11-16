@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, memo } from "react";
 import {
   View,
   Text,
@@ -44,6 +44,30 @@ function formatDisplayAmount(amount: string, decimals: number): string {
 }
 
 /**
+ * Generate a color for the placeholder based on the first letter
+ */
+function getPlaceholderColor(symbol: string, enableColorfulIcons: boolean): string {
+  if (!enableColorfulIcons) {
+    return "#FFFFFF";
+  }
+
+  const colors = [
+    "#6366F1", "#8B5CF6", "#EC4899", "#F59E0B",
+    "#10B981", "#06B6D4", "#F97316", "#EF4444",
+  ];
+  const charCode = symbol.charCodeAt(0) || 0;
+  return colors[charCode % colors.length];
+}
+
+/**
+ * Get 2-3 letter abbreviation for placeholder
+ */
+function getPlaceholderText(symbol: string): string {
+  const cleanSymbol = symbol.replace(/[$]/g, '');
+  return cleanSymbol.length <= 3 ? cleanSymbol : cleanSymbol.substring(0, 3);
+}
+
+/**
  * BalancesTableRow Component
  * Displays a single token balance row
  *
@@ -55,7 +79,7 @@ function formatDisplayAmount(amount: string, decimals: number): string {
  * - 24h percentage change (color-coded)
  * - Touchable for navigation
  */
-export const BalancesTableRow = ({
+const BalancesTableRowComponent = ({
   balance,
   enableColorfulIcons = false,
   onPress,
@@ -72,41 +96,23 @@ export const BalancesTableRow = ({
   const logo = tokenListEntry?.logo;
   const apiPrice = marketData?.price ?? 0;
 
-  // Generate a color for the placeholder based on the first letter
-  const getPlaceholderColor = (symbol: string): string => {
-    // If colorful icons are disabled, return white
-    if (!enableColorfulIcons) {
-      return "#FFFFFF";
-    }
+  // Memoize placeholder color and text to avoid recalculation
+  const placeholderColor = useMemo(() =>
+    getPlaceholderColor(symbol, enableColorfulIcons),
+    [symbol, enableColorfulIcons]
+  );
 
-    // Otherwise use colorful placeholders
-    const colors = [
-      "#6366F1", // Indigo
-      "#8B5CF6", // Violet
-      "#EC4899", // Pink
-      "#F59E0B", // Amber
-      "#10B981", // Emerald
-      "#06B6D4", // Cyan
-      "#F97316", // Orange
-      "#EF4444", // Red
-    ];
-    const charCode = symbol.charCodeAt(0) || 0;
-    return colors[charCode % colors.length];
-  };
-
-  // Get 2-3 letter abbreviation for placeholder
-  const getPlaceholderText = (symbol: string): string => {
-    // Remove dollar signs and other special characters
-    const cleanSymbol = symbol.replace(/[$]/g, '');
-    const text = cleanSymbol.length <= 3 ? cleanSymbol : cleanSymbol.substring(0, 3);
-    return text.toUpperCase();
-  };
+  const placeholderText = useMemo(() =>
+    getPlaceholderText(symbol).toUpperCase(),
+    [symbol]
+  );
 
   // State for real-time price (for SOL and other tokens with incorrect API price)
   const [realPrice, setRealPrice] = useState<number>(apiPrice);
 
-  // State to track if logo image failed to load
-  const [logoError, setLogoError] = useState<boolean>(false);
+  // State to track if logo image loaded successfully
+  // Start with true (show placeholder), set to false when image loads
+  const [logoError, setLogoError] = useState<boolean>(true);
 
   // Fetch real SOL price from REST API if GraphQL price is $1 or less
   useEffect(() => {
@@ -161,16 +167,20 @@ export const BalancesTableRow = ({
     >
       {/* Token Logo */}
       <View style={styles.logoContainer}>
-        {logo && !logoError ? (
+        {/* Always try to load the image if logo exists */}
+        {logo && (
           <Image
             source={{ uri: logo }}
-            style={styles.logo}
+            style={[styles.logo, logoError && { opacity: 0, position: 'absolute' }]}
+            onLoad={() => setLogoError(false)}
             onError={() => setLogoError(true)}
           />
-        ) : (
-          <View style={[styles.logoPlaceholder, { backgroundColor: getPlaceholderColor(symbol) }]}>
+        )}
+        {/* Show placeholder immediately, hide when image loads */}
+        {(!logo || logoError) && (
+          <View style={[styles.logoPlaceholder, { backgroundColor: placeholderColor }]}>
             <Text style={[styles.logoPlaceholderText, { color: enableColorfulIcons ? "#FFFFFF" : "#000000" }]}>
-              {getPlaceholderText(symbol)}
+              {placeholderText}
             </Text>
           </View>
         )}
@@ -201,6 +211,9 @@ export const BalancesTableRow = ({
     </Container>
   );
 };
+
+// Export memoized version to prevent unnecessary re-renders
+export const BalancesTableRow = memo(BalancesTableRowComponent);
 
 const styles = StyleSheet.create({
   row: {

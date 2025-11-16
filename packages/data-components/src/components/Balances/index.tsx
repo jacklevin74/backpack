@@ -1,4 +1,8 @@
-import { Blockchain } from "@coral-xyz/common";
+import {
+  Blockchain,
+  X1_JSON_SERVER_URL_LOCAL,
+  X1_JSON_SERVER_URL,
+} from "@coral-xyz/common";
 import {
   hiddenTokenAddresses,
   useBlockchainConnectionUrl,
@@ -133,30 +137,52 @@ function _TokenBalances({
     hiddenTokenAddresses(providerId.toLowerCase() as Blockchain)
   );
 
-  // Determine blockchain from providerId
-  const blockchain = providerId.includes("SOLANA")
+  // Determine initial blockchain from providerId
+  let blockchain = providerId.includes("SOLANA")
     ? Blockchain.SOLANA
     : providerId.includes("ETHEREUM")
       ? Blockchain.ETHEREUM
       : Blockchain.X1;
 
-  // Get connection URL for the correct blockchain
+  // Get connection URL for the current blockchain
   const connectionUrl = useBlockchainConnectionUrl(blockchain);
   const apiUrl = useRecoilValue(backendApiUrl);
+
+  // IMPORTANT: Override blockchain detection based on connection URL
+  // This handles the case where Solana networks are stored under X1 blockchain config
+  const isSolanaUrl =
+    connectionUrl?.includes("solana.com") ||
+    connectionUrl?.includes("solana-mainnet.quiknode.pro") ||
+    connectionUrl?.includes("solana-devnet") ||
+    connectionUrl?.includes("solana-testnet") ||
+    connectionUrl === "http://127.0.0.1:8899" ||
+    connectionUrl === "http://localhost:8899";
+
+  if (isSolanaUrl) {
+    blockchain = Blockchain.SOLANA;
+  }
 
   // Detect if this is a Solana network or X1 network
   const isSolanaNetwork = blockchain === Blockchain.SOLANA;
   const isX1Network = blockchain === Blockchain.X1;
 
   // Detect if we're on localnet (for either Solana or X1)
-  const isSolanaLocalnet =
+  // Check for any localhost/127.0.0.1 URL, not just specific ports
+  const isLocalhostUrl =
     connectionUrl &&
+    (connectionUrl.includes("localhost") ||
+      connectionUrl.includes("127.0.0.1"));
+  const isSolanaLocalnet =
+    isLocalhostUrl &&
     (connectionUrl.includes("127.0.0.1:8899") ||
       connectionUrl.includes("localhost:8899"));
   const isX1Localnet =
-    connectionUrl &&
+    isLocalhostUrl &&
     (connectionUrl.includes("127.0.0.1:8901") ||
       connectionUrl.includes("localhost:8901"));
+  // For custom localhost ports, default to X1 if not Solana
+  const isCustomLocalhost =
+    isLocalhostUrl && !isSolanaLocalnet && !isX1Localnet;
 
   // Determine the correct providerId based on blockchain
   let finalProviderId = providerId;
@@ -173,7 +199,8 @@ function _TokenBalances({
   }
   // For X1: Detect network from connection URL (X1 REST API supports network suffixes)
   else if (connectionUrl) {
-    if (isX1Localnet) {
+    if (isX1Localnet || isCustomLocalhost) {
+      // Custom localhost URLs are treated as X1-localnet
       finalProviderId = "X1-localnet" as ProviderId;
     } else if (connectionUrl.includes("x1.xyz")) {
       if (connectionUrl.includes("testnet")) {
@@ -210,6 +237,7 @@ function _TokenBalances({
       hidden={hidden}
       connectionUrl={connectionUrl}
       apiUrl={apiUrl}
+      blockchain={blockchain}
     />
   );
 }
@@ -299,6 +327,7 @@ function SolanaTokenBalances({
 }
 
 // X1 token balances using REST API (x1-json-server)
+// Also used for Solana localnet
 function X1TokenBalances({
   address,
   pollingIntervalSeconds,
@@ -310,17 +339,31 @@ function X1TokenBalances({
   hidden,
   connectionUrl,
   apiUrl,
+  blockchain,
 }: Omit<TokenBalancesProps, "tableLoaderComponent" | "fetchPolicy"> & {
   hidden: string[] | null;
   connectionUrl: string | null;
   apiUrl: string;
+  blockchain: Blockchain;
 }) {
   const [rawBalances, setRawBalances] = useState<ResponseTokenBalance[]>([]);
 
   useEffect(() => {
     const fetchBalances = async () => {
       try {
-        const url = `${apiUrl}/wallet/${address}?providerId=${providerId}`;
+        // Detect localnet: check both providerId and connectionUrl for localhost/127.0.0.1
+        const isLocalhostUrl =
+          connectionUrl &&
+          (connectionUrl.includes("localhost") ||
+            connectionUrl.includes("127.0.0.1"));
+        const isLocalnet = providerId.includes("localnet") || isLocalhostUrl;
+        const serverUrl = isLocalnet ? X1_JSON_SERVER_URL_LOCAL : apiUrl;
+        const url = `${serverUrl}/wallet/${address}?providerId=${providerId}`;
+        console.log(
+          `🌐 [X1TokenBalances] Fetching from:`,
+          url,
+          `(blockchain: ${blockchain}, providerId: ${providerId}, connectionUrl: ${connectionUrl}, server: ${isLocalnet ? "local" : "remote"})`
+        );
         const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -373,7 +416,14 @@ function X1TokenBalances({
       return () => clearInterval(interval);
     }
     return undefined;
-  }, [address, providerId, pollingIntervalSeconds, apiUrl]);
+  }, [
+    address,
+    providerId,
+    pollingIntervalSeconds,
+    apiUrl,
+    connectionUrl,
+    blockchain,
+  ]);
 
   const { balances, omissions } = useMemo<{
     balances: ResponseTokenBalance[];
@@ -381,10 +431,12 @@ function X1TokenBalances({
   }>(() => {
     let balances = rawBalances;
 
-    // Override native token price to $1.00 for X1 blockchain (XNT)
+    // Override native token price to $1.00 ONLY for X1 blockchain (XNT)
+    // Do NOT apply this to Solana localnet
     const nativeMintAddress = "11111111111111111111111111111111";
     balances = balances.map((balance) => {
       if (
+        blockchain === Blockchain.X1 &&
         balance.token === nativeMintAddress &&
         balance.tokenListEntry?.symbol === "XNT"
       ) {
@@ -421,7 +473,7 @@ function X1TokenBalances({
     }
 
     return { balances, omissions };
-  }, [rawBalances, hidden]);
+  }, [rawBalances, hidden, blockchain]);
 
   const aggregate: ResponseBalanceSummary = useMemo(() => {
     const totalValue = balances.reduce(

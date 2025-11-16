@@ -76,6 +76,7 @@ export const x1BlockchainConfig: BlockchainConfig<Blockchain.X1> = {
     LOCALNET: {
       name: "X1 Localnet",
       url: X1Cluster.LOCALNET,
+      description: "Local validator on port 8901",
     },
   },
   ConfirmationCommitments: {

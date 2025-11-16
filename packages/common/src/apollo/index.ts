@@ -19,6 +19,7 @@ import {
   getGraphQLApiUrl,
   USE_X1_JSON_SERVER_FOR_SOLANA,
   X1_JSON_SERVER_URL,
+  X1_JSON_SERVER_URL_LOCAL,
 } from "../constants";
 
 const cache = new InMemoryCache({
@@ -207,11 +208,16 @@ export const x1InterceptorLink = new ApolloLink((operation, forward) => {
     }
 
     // Use the providerId directly - it contains network info
-    const url = `${X1_JSON_SERVER_URL}/wallet/${address}?providerId=${providerId}`;
+    // For localnet, use localhost server; otherwise use remote server
+    const isLocalnet = providerId.includes("localnet");
+    const serverUrl = isLocalnet
+      ? X1_JSON_SERVER_URL_LOCAL
+      : X1_JSON_SERVER_URL;
+    const url = `${serverUrl}/wallet/${address}?providerId=${providerId}`;
     console.log(
       `🌐 [Interceptor] Fetching ${networkType} from JSON server:`,
       url,
-      `(providerId: ${providerId})`
+      `(providerId: ${providerId}, server: ${isLocalnet ? "local" : "remote"})`
     );
 
     // Fetch balance from X1 JSON server

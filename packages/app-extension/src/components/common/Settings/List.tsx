@@ -20,7 +20,7 @@ export function SettingsList({
       classes?: any;
       button?: boolean;
       icon?: any;
-      label?: string;
+      label?: string | React.ReactNode;
       allowOnclickPropagation?: boolean;
     };
   };

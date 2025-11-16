@@ -441,6 +441,7 @@ export const BACKEND_API_URL_PROD = "http://162.250.126.66:4000";
 export const BACKEND_API_URL_DEV = "http://localhost:4000";
 export const BACKEND_API_URL = BACKEND_API_URL_PROD; // Default for build - use production
 export const X1_JSON_SERVER_URL = "http://162.250.126.66:4000";
+export const X1_JSON_SERVER_URL_LOCAL = "http://localhost:4000";
 
 // GraphQL API Configuration
 // Official Backpack GraphQL API endpoint for Solana token data

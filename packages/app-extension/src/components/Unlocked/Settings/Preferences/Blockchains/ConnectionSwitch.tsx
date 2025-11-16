@@ -33,13 +33,25 @@ export function PreferencesBlockchainConnection({
   const menuItems = Object.fromEntries(
     new Map(
       Object.entries(blockchainConfig!.RpcConnectionUrls).map(
-        ([, { name, url, chainId }]) => [
+        ([, { name, url, chainId, description }]) => [
           name,
           {
             onClick: () => {
               changeNetwork(background, blockchain, url, chainId);
             },
             detail: currentUrl === url ? <Checkmark /> : null,
+            label: description ? (
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: "2px" }}
+              >
+                <div style={{ fontWeight: 500 }}>{name}</div>
+                <div style={{ fontSize: "12px", opacity: 0.7 }}>
+                  {description}
+                </div>
+              </div>
+            ) : (
+              name
+            ),
           },
         ]
       )
@@ -51,6 +63,7 @@ export function PreferencesBlockchainConnection({
       navigation.push(Routes.PreferencesBlockchainRpcConnectionCustomScreen, {
         blockchain,
       }),
+    label: "Custom",
     detail:
       Object.values(blockchainConfig!.RpcConnectionUrls)
         .map(({ url }) => url)

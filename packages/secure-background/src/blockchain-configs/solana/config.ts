@@ -99,6 +99,7 @@ export const solanaBlockchainConfig: BlockchainConfig<Blockchain.SOLANA> = {
     LOCALNET: {
       name: "Solana Localnet",
       url: SolanaCluster.LOCALNET,
+      description: "Local validator on port 8899",
     },
   },
   ConfirmationCommitments: {

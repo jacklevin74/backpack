@@ -2942,7 +2942,9 @@ function AppContent() {
   // Test Browser Page
   if (showTestBrowser) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: easterEggMode ? "#111827" : "#000" }}>
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: easterEggMode ? "#111827" : "#000" }}
+      >
         <StatusBar hidden={true} />
         {/* Header */}
         <View
@@ -3222,11 +3224,26 @@ function AppContent() {
   return (
     <>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView
+          style={[
+            styles.container,
+            { backgroundColor: easterEggMode ? "#111827" : "#000" },
+          ]}
+        >
           <StatusBar hidden={true} />
           {/* Top Header with Safe Area */}
-          <View style={styles.safeTopArea} />
-          <View style={styles.topBar}>
+          <View
+            style={[
+              styles.safeTopArea,
+              { backgroundColor: easterEggMode ? "#111827" : "#000" },
+            ]}
+          />
+          <View
+            style={[
+              styles.topBar,
+              { backgroundColor: easterEggMode ? "#111827" : "#000" },
+            ]}
+          >
             {/* Wallet selector on the left */}
             <View style={styles.walletSelectorLeft}>
               <TouchableOpacity
@@ -3347,7 +3364,10 @@ function AppContent() {
 
           {/* Main Scrollable Content */}
           <ScrollView
-            style={styles.mainContent}
+            style={[
+              styles.mainContent,
+              { backgroundColor: easterEggMode ? "#111827" : "#000" },
+            ]}
             contentContainerStyle={styles.mainContentContainer}
             showsVerticalScrollIndicator={false}
             refreshControl={
@@ -3360,7 +3380,12 @@ function AppContent() {
             }
           >
             {/* Balance Section with all content */}
-            <View style={styles.balanceSection}>
+            <View
+              style={[
+                styles.balanceSection,
+                { backgroundColor: easterEggMode ? "#111827" : "#000" },
+              ]}
+            >
               {/* Balance display - shown for all chains */}
               {currentNetwork && (
                 <TouchableOpacity
@@ -3506,7 +3531,9 @@ function AppContent() {
               </View>
 
               {/* Token List - Use GraphQL for Solana, REST for others */}
-              {selectedWallet && currentNetwork && currentNetwork.providerId.startsWith("SOLANA") ? (
+              {selectedWallet &&
+              currentNetwork &&
+              currentNetwork.providerId.startsWith("SOLANA") ? (
                 <View style={styles.tokenSection}>
                   <TokenBalances
                     address={selectedWallet.publicKey}
@@ -3645,7 +3672,9 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
+          backgroundStyle={{
+            backgroundColor: easterEggMode ? "#111827" : "#000",
+          }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -3782,7 +3811,9 @@ function AppContent() {
           onChange={handleSheetChanges}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
+          backgroundStyle={{
+            backgroundColor: easterEggMode ? "#111827" : "#000",
+          }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetScrollView
@@ -3889,7 +3920,9 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
+          backgroundStyle={{
+            backgroundColor: easterEggMode ? "#111827" : "#000",
+          }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -3989,7 +4022,9 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
+          backgroundStyle={{
+            backgroundColor: easterEggMode ? "#111827" : "#000",
+          }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -4050,7 +4085,9 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
+          backgroundStyle={{
+            backgroundColor: easterEggMode ? "#111827" : "#000",
+          }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -4129,7 +4166,9 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
+          backgroundStyle={{
+            backgroundColor: easterEggMode ? "#111827" : "#000",
+          }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -4191,7 +4230,9 @@ function AppContent() {
               ]}
             />
           )}
-          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
+          backgroundStyle={{
+            backgroundColor: easterEggMode ? "#111827" : "#000",
+          }}
           handleIndicatorStyle={{ backgroundColor: "#4E5056" }}
         >
           {/* Activity List with BottomSheetScrollView */}
@@ -4517,7 +4558,9 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
+          backgroundStyle={{
+            backgroundColor: easterEggMode ? "#111827" : "#000",
+          }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView
@@ -4724,7 +4767,9 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
+          backgroundStyle={{
+            backgroundColor: easterEggMode ? "#111827" : "#000",
+          }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -4782,7 +4827,9 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
+          backgroundStyle={{
+            backgroundColor: easterEggMode ? "#111827" : "#000",
+          }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -4827,7 +4874,8 @@ function AppContent() {
                 {editingWallet.derivationPath ? (
                   <Text style={styles.privateKeyText}>
                     This wallet is derived from your master seed phrase. Go to
-                    Manage Security {'->'} Export Seed Phrase to view or back it up.
+                    Manage Security {"->"} Export Seed Phrase to view or back it
+                    up.
                   </Text>
                 ) : walletSeedPhraseLoading ? (
                   <Text style={styles.privateKeyText}>
@@ -4854,7 +4902,9 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
+          backgroundStyle={{
+            backgroundColor: easterEggMode ? "#111827" : "#000",
+          }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -5808,10 +5858,10 @@ function AppContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: easterEggMode ? "#111827" : "#000",
+    backgroundColor: "#000",
   },
   safeTopArea: {
-    backgroundColor: easterEggMode ? "#111827" : "#000",
+    backgroundColor: "#000",
     height: 40,
   },
   topBar: {
@@ -5820,14 +5870,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: easterEggMode ? "#111827" : "#000",
+    backgroundColor: "#000",
     position: "relative",
   },
   viewToggle: {
     flexDirection: "row",
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: easterEggMode ? "#111827" : "#000",
+    backgroundColor: "#000",
     gap: 16,
     justifyContent: "center",
     alignItems: "center",
@@ -6090,7 +6140,7 @@ const styles = StyleSheet.create({
   balanceSection: {
     paddingHorizontal: 20,
     paddingTop: 20,
-    backgroundColor: easterEggMode ? "#111827" : "#000",
+    backgroundColor: "#000",
   },
   balanceContent: {
     alignItems: "center",
@@ -6187,7 +6237,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: easterEggMode ? "#111827" : "#000",
+    backgroundColor: "#000",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -6460,13 +6510,13 @@ const styles = StyleSheet.create({
   bottomSheetContent: {
     flex: 1,
     paddingHorizontal: 20,
-    backgroundColor: easterEggMode ? "#111827" : "#000",
+    backgroundColor: "#000",
   },
   bottomSheetScrollContent: {
     paddingHorizontal: 20,
     paddingTop: 30,
     paddingBottom: 20,
-    backgroundColor: easterEggMode ? "#111827" : "#000",
+    backgroundColor: "#000",
   },
   bottomSheetHeader: {
     flexDirection: "row",
@@ -6683,7 +6733,7 @@ const styles = StyleSheet.create({
   },
   settingsDrawerContent: {
     height: "95%",
-    backgroundColor: easterEggMode ? "#111827" : "#000",
+    backgroundColor: "#000",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
@@ -6749,7 +6799,7 @@ const styles = StyleSheet.create({
   },
   debugFullPageContainer: {
     flex: 1,
-    backgroundColor: easterEggMode ? "#111827" : "#000",
+    backgroundColor: "#000",
   },
   debugFullPageHeader: {
     flexDirection: "row",
@@ -6757,7 +6807,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: easterEggMode ? "#111827" : "#000",
+    backgroundColor: "#000",
     borderBottomWidth: 1,
     borderBottomColor: "#1a1a1a",
   },
@@ -6777,7 +6827,7 @@ const styles = StyleSheet.create({
   debugFullPageFooter: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: easterEggMode ? "#111827" : "#000",
+    backgroundColor: "#000",
     borderTopWidth: 1,
     borderTopColor: "#1a1a1a",
   },

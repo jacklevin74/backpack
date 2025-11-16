@@ -377,6 +377,7 @@ function AppContent() {
 
   // Haptic feedback mode toggle (secret easter egg)
   const [hapticMode, setHapticMode] = useState(false);
+  const [easterEggMode, setEasterEggMode] = useState(false); // Easter egg: gray background + colorful icons
   const [tapCount, setTapCount] = useState(0);
   const tapTimerRef = useRef(null);
 
@@ -410,7 +411,7 @@ function AppContent() {
     }
   }, [hapticMode]);
 
-  // Handle rapid taps on balance to toggle haptic mode
+  // Handle rapid taps on balance to toggle easter egg mode
   const handleBalanceTap = useCallback(() => {
     const newCount = tapCount + 1;
     setTapCount(newCount);
@@ -420,16 +421,18 @@ function AppContent() {
       clearTimeout(tapTimerRef.current);
     }
 
-    // If 5 taps within time window, toggle haptic mode
+    // If 5 taps within time window, toggle easter egg mode
     if (newCount >= 5) {
-      setHapticMode((prev) => !prev);
+      const newEasterEggMode = !easterEggMode;
+      setEasterEggMode(newEasterEggMode);
+      setHapticMode(newEasterEggMode); // Also enable haptic mode with easter egg
       setTapCount(0);
       // Give strong haptic feedback for toggle
       if (Platform.OS === "android") {
         Vibration.vibrate([0, 50, 50, 50]); // Pattern: wait, vibrate, wait, vibrate
       }
       ToastAndroid.show(
-        `Haptic Mode ${!hapticMode ? "ON" : "OFF"}`,
+        newEasterEggMode ? "🎨 Easter Egg Mode ON" : "Easter Egg Mode OFF",
         ToastAndroid.SHORT
       );
     } else {
@@ -438,7 +441,7 @@ function AppContent() {
         setTapCount(0);
       }, 1000);
     }
-  }, [tapCount, hapticMode]);
+  }, [tapCount, easterEggMode]);
 
   // Button press animation
   const animateButtonPress = useCallback((scale) => {
@@ -2939,7 +2942,7 @@ function AppContent() {
   // Test Browser Page
   if (showTestBrowser) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#111827" }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: easterEggMode ? "#111827" : "#000" }}>
         <StatusBar hidden={true} />
         {/* Header */}
         <View
@@ -3206,7 +3209,7 @@ function AppContent() {
       <View
         style={{
           flex: 1,
-          backgroundColor: "#111827",
+          backgroundColor: easterEggMode ? "#111827" : "#000",
           justifyContent: "center",
           alignments: "center",
         }}
@@ -3509,6 +3512,7 @@ function AppContent() {
                     address={selectedWallet.publicKey}
                     providerId={currentNetwork.providerId}
                     pollingIntervalSeconds={60}
+                    enableColorfulIcons={easterEggMode}
                     onBalanceUpdate={(balanceUSD) => setBalanceUSD(balanceUSD)}
                   />
                 </View>
@@ -3641,7 +3645,7 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#111827" }}
+          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -3778,7 +3782,7 @@ function AppContent() {
           onChange={handleSheetChanges}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#111827" }}
+          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetScrollView
@@ -3885,7 +3889,7 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#111827" }}
+          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -3985,7 +3989,7 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#111827" }}
+          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -4046,7 +4050,7 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#111827" }}
+          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -4125,7 +4129,7 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#111827" }}
+          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -4187,7 +4191,7 @@ function AppContent() {
               ]}
             />
           )}
-          backgroundStyle={{ backgroundColor: "#111827" }}
+          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
           handleIndicatorStyle={{ backgroundColor: "#4E5056" }}
         >
           {/* Activity List with BottomSheetScrollView */}
@@ -4513,7 +4517,7 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#111827" }}
+          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView
@@ -4720,7 +4724,7 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#111827" }}
+          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -4778,7 +4782,7 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#111827" }}
+          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -4850,7 +4854,7 @@ function AppContent() {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#111827" }}
+          backgroundStyle={{ backgroundColor: easterEggMode ? "#111827" : "#000" }}
           handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
@@ -5785,7 +5789,7 @@ function AppContent() {
             bottom: 0,
             zIndex: 10000,
             elevation: 11,
-            backgroundColor: "#111827",
+            backgroundColor: easterEggMode ? "#111827" : "#000",
           }}
         >
           <PinUnlock
@@ -5804,10 +5808,10 @@ function AppContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#111827",
+    backgroundColor: easterEggMode ? "#111827" : "#000",
   },
   safeTopArea: {
-    backgroundColor: "#111827",
+    backgroundColor: easterEggMode ? "#111827" : "#000",
     height: 40,
   },
   topBar: {
@@ -5816,14 +5820,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: "#111827",
+    backgroundColor: easterEggMode ? "#111827" : "#000",
     position: "relative",
   },
   viewToggle: {
     flexDirection: "row",
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: "#111827",
+    backgroundColor: easterEggMode ? "#111827" : "#000",
     gap: 16,
     justifyContent: "center",
     alignItems: "center",
@@ -6086,7 +6090,7 @@ const styles = StyleSheet.create({
   balanceSection: {
     paddingHorizontal: 20,
     paddingTop: 20,
-    backgroundColor: "#111827",
+    backgroundColor: easterEggMode ? "#111827" : "#000",
   },
   balanceContent: {
     alignItems: "center",
@@ -6183,7 +6187,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#111827",
+    backgroundColor: easterEggMode ? "#111827" : "#000",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -6456,13 +6460,13 @@ const styles = StyleSheet.create({
   bottomSheetContent: {
     flex: 1,
     paddingHorizontal: 20,
-    backgroundColor: "#111827",
+    backgroundColor: easterEggMode ? "#111827" : "#000",
   },
   bottomSheetScrollContent: {
     paddingHorizontal: 20,
     paddingTop: 30,
     paddingBottom: 20,
-    backgroundColor: "#111827",
+    backgroundColor: easterEggMode ? "#111827" : "#000",
   },
   bottomSheetHeader: {
     flexDirection: "row",
@@ -6679,7 +6683,7 @@ const styles = StyleSheet.create({
   },
   settingsDrawerContent: {
     height: "95%",
-    backgroundColor: "#111827",
+    backgroundColor: easterEggMode ? "#111827" : "#000",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
@@ -6745,7 +6749,7 @@ const styles = StyleSheet.create({
   },
   debugFullPageContainer: {
     flex: 1,
-    backgroundColor: "#111827",
+    backgroundColor: easterEggMode ? "#111827" : "#000",
   },
   debugFullPageHeader: {
     flexDirection: "row",
@@ -6753,7 +6757,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: "#111827",
+    backgroundColor: easterEggMode ? "#111827" : "#000",
     borderBottomWidth: 1,
     borderBottomColor: "#1a1a1a",
   },
@@ -6773,7 +6777,7 @@ const styles = StyleSheet.create({
   debugFullPageFooter: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: "#111827",
+    backgroundColor: easterEggMode ? "#111827" : "#000",
     borderTopWidth: 1,
     borderTopColor: "#1a1a1a",
   },

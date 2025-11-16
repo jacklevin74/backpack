@@ -11,6 +11,7 @@ import type { ResponseTokenBalance } from "../apollo/types";
 
 export type BalancesTableRowProps = {
   balance: ResponseTokenBalance;
+  enableColorfulIcons?: boolean;
   onPress?: () => void;
 };
 
@@ -56,6 +57,7 @@ function formatDisplayAmount(amount: string, decimals: number): string {
  */
 export const BalancesTableRow = ({
   balance,
+  enableColorfulIcons = false,
   onPress,
 }: BalancesTableRowProps) => {
   const {
@@ -72,6 +74,12 @@ export const BalancesTableRow = ({
 
   // Generate a color for the placeholder based on the first letter
   const getPlaceholderColor = (symbol: string): string => {
+    // If colorful icons are disabled, return white
+    if (!enableColorfulIcons) {
+      return "#FFFFFF";
+    }
+
+    // Otherwise use colorful placeholders
     const colors = [
       "#6366F1", // Indigo
       "#8B5CF6", // Violet
@@ -162,7 +170,7 @@ export const BalancesTableRow = ({
           />
         ) : (
           <View style={[styles.logoPlaceholder, { backgroundColor: getPlaceholderColor(symbol) }]}>
-            <Text style={styles.logoPlaceholderText}>
+            <Text style={[styles.logoPlaceholderText, { color: enableColorfulIcons ? "#FFFFFF" : "#000000" }]}>
               {getPlaceholderText(symbol)}
             </Text>
           </View>

@@ -5,6 +5,7 @@ import { BalancesTableRow } from "./BalancesTableRow";
 
 export type BalancesTableProps = {
   balances: ResponseTokenBalance[];
+  enableColorfulIcons?: boolean;
   onItemClick?: (args: {
     id: string;
     displayAmount: string;
@@ -26,6 +27,7 @@ export type BalancesTableProps = {
  */
 export const BalancesTable = ({
   balances,
+  enableColorfulIcons = false,
   onItemClick,
 }: BalancesTableProps) => {
   // Handle empty state
@@ -43,6 +45,7 @@ export const BalancesTable = ({
         <BalancesTableRow
           key={item.id}
           balance={item}
+          enableColorfulIcons={enableColorfulIcons}
           onPress={
             onItemClick
               ? () =>

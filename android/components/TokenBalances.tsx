@@ -19,6 +19,7 @@ export type TokenBalancesProps = {
   address: string;
   providerId: ProviderId;
   pollingIntervalSeconds?: number;
+  enableColorfulIcons?: boolean;
   onBalanceUpdate?: (balanceUSD: string) => void;
   onItemClick?: (args: {
     id: string;
@@ -37,6 +38,7 @@ export const TokenBalances = ({
   address,
   providerId,
   pollingIntervalSeconds,
+  enableColorfulIcons,
   onBalanceUpdate,
   onItemClick,
 }: TokenBalancesProps) => {
@@ -52,6 +54,7 @@ export const TokenBalances = ({
         address={address}
         providerId={providerId}
         pollingIntervalSeconds={pollingIntervalSeconds}
+        enableColorfulIcons={enableColorfulIcons}
         onBalanceUpdate={onBalanceUpdate}
         onItemClick={onItemClick}
       />
@@ -67,6 +70,7 @@ function _TokenBalances({
   address,
   providerId,
   pollingIntervalSeconds,
+  enableColorfulIcons,
   onBalanceUpdate,
   onItemClick,
 }: TokenBalancesProps) {
@@ -128,7 +132,7 @@ function _TokenBalances({
 
   return (
     <View style={{ flex: 1, alignItems: "center", padding: 16 }}>
-      <BalancesTable balances={balances} onItemClick={onItemClick} />
+      <BalancesTable balances={balances} enableColorfulIcons={enableColorfulIcons} onItemClick={onItemClick} />
     </View>
   );
 }

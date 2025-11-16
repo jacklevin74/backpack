@@ -102,28 +102,41 @@ export const BalancesTableRow = ({
 
   // Fetch real SOL price from REST API if GraphQL price is $1 or less
   useEffect(() => {
+    // Only fetch if this is SOL and API price is suspiciously low
+    if (symbol !== "SOL" || apiPrice > 1) {
+      return;
+    }
+
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => abortController.abort(), 3000); // 3s timeout
+
     const fetchRealPrice = async () => {
-      // Check if this is SOL and API price is suspiciously low
-      if (symbol === "SOL" && apiPrice <= 1) {
-        try {
-          // Use a sample Solana address to fetch current SOL price from REST API
-          const response = await fetch(
-            "http://162.250.126.66:4000/wallet/So11111111111111111111111111111111111111112?providerId=SOLANA-mainnet"
-          );
-          const data = await response.json();
-          // Extract SOL price from first token in response
-          const solPrice = data?.tokens?.[0]?.price;
-          if (solPrice && solPrice > 0) {
-            setRealPrice(solPrice);
-          }
-        } catch (error) {
-          console.error("Failed to fetch SOL price from REST API:", error);
-          // Keep using API price as fallback
+      try {
+        const response = await fetch(
+          "http://162.250.126.66:4000/wallet/So11111111111111111111111111111111111111112?providerId=SOLANA-mainnet",
+          { signal: abortController.signal }
+        );
+        const data = await response.json();
+        const solPrice = data?.tokens?.[0]?.price;
+        if (solPrice && solPrice > 0) {
+          setRealPrice(solPrice);
         }
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error("Failed to fetch SOL price:", error);
+        }
+        // Keep using API price as fallback
+      } finally {
+        clearTimeout(timeoutId);
       }
     };
 
     fetchRealPrice();
+
+    return () => {
+      clearTimeout(timeoutId);
+      abortController.abort();
+    };
   }, [symbol, apiPrice]);
 
   // Use real price (fetched or API)

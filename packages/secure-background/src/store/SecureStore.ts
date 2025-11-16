@@ -666,6 +666,47 @@ export class SecureStore {
     return ciphertext !== undefined && ciphertext !== null;
   }
 
+  /**
+   * Detects and cleans up incomplete onboarding state.
+   * Returns true if incomplete state was found and cleaned up.
+   */
+  async cleanupIncompleteOnboarding(): Promise<boolean> {
+    try {
+      // Check if user data exists
+      const userData = await this.persistentDB.get<UserData>(
+        PersistentStorageKeys.STORE_KEY_USER_DATA
+      );
+
+      if (!userData || !userData.activeUser) {
+        return false; // No user data, nothing to cleanup
+      }
+
+      // Check if ciphertext (encrypted keyring) exists
+      const hasCiphertext = await this.doesCiphertextExist();
+
+      // Check if user has any public keys
+      const publicKeys = await this.getUserPublicKeys(userData.activeUser.uuid);
+      const hasPublicKeys =
+        publicKeys && Object.keys(publicKeys.platforms || {}).length > 0;
+
+      // If user data exists but no ciphertext or no public keys, it's incomplete
+      if (!hasCiphertext || !hasPublicKeys) {
+        console.log("Detected incomplete onboarding state, cleaning up...");
+
+        // Clean up all partial data
+        await this.reset();
+
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      // If any error occurs during detection, don't cleanup
+      console.error("Error detecting incomplete onboarding:", error);
+      return false;
+    }
+  }
+
   async setKeyringStore(
     json: KeyringStoreJson,
     password: string

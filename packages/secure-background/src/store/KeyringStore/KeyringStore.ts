@@ -126,6 +126,10 @@ export class KeyringStore {
     if (await this.isLocked()) {
       return KeyringStoreState.Locked;
     }
+
+    // Before returning NeedsOnboarding, check for and cleanup incomplete onboarding state
+    await this.store.cleanupIncompleteOnboarding();
+
     return KeyringStoreState.NeedsOnboarding;
   }
 

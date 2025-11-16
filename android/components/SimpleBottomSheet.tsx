@@ -92,7 +92,7 @@ export const SimpleBottomSheetBackdrop: React.FC<any> = () => null;
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'flex-end',
   },
   bottomSheet: {

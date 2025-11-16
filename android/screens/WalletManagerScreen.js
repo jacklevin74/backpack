@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,24 @@ export default function WalletManagerScreen({
   onDismiss
 }) {
   const [copiedWalletId, setCopiedWalletId] = useState(null);
+  const scrollViewRef = useRef(null);
+  const walletRefs = useRef({});
+
+  // Auto-scroll to selected wallet when component mounts or wallets change
+  useEffect(() => {
+    const selectedIndex = wallets.findIndex(w => w.selected);
+    if (selectedIndex !== -1 && scrollViewRef.current && walletRefs.current[selectedIndex]) {
+      setTimeout(() => {
+        walletRefs.current[selectedIndex]?.measureLayout(
+          scrollViewRef.current,
+          (x, y) => {
+            scrollViewRef.current?.scrollTo({ y: y - 50, animated: true });
+          },
+          () => {}
+        );
+      }, 300);
+    }
+  }, [wallets]);
 
   return (
     <View style={styles.container}>
@@ -40,10 +58,15 @@ export default function WalletManagerScreen({
         </View>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {wallets.map((wallet, index) => (
           <TouchableOpacity
             key={wallet.id}
+            ref={(ref) => (walletRefs.current[index] = ref)}
             style={[
               styles.walletItem,
               wallet.selected && styles.walletItemSelected,

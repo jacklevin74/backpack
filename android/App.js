@@ -88,6 +88,7 @@ import ActivityScreen from './screens/ActivityScreen';
 import WalletManagerScreen from './screens/WalletManagerScreen';
 import WalletSettingsScreen from './screens/WalletSettingsScreen';
 import AddressSelectorScreen from './screens/AddressSelectorScreen';
+import LedgerConnectionScreen from './screens/LedgerConnectionScreen';
 
 // Network configurations
 const API_SERVER = "http://162.250.126.66:4000";
@@ -401,8 +402,6 @@ function AppContent() {
   const settingsSheetRef = useRef(null);
   const networkSheetRef = useRef(null);
   const accountSheetRef = useRef(null);
-  const addressSheetRef = useRef(null);
-  const ledgerSheetRef = useRef(null);
   const editWalletSheetRef = useRef(null);
   const browserSheetRef = useRef(null);
   const privateKeySheetRef = useRef(null);
@@ -412,6 +411,7 @@ function AppContent() {
   const walletManagerSheetRef = useRef(null);
   const walletSettingsSheetRef = useRef(null);
   const addressSelectorSheetRef = useRef(null);
+  const ledgerSheetRef = useRef(null);
 
   const snapPoints = useMemo(() => ["50%", "90%"], []);
 
@@ -1155,6 +1155,12 @@ function AppContent() {
 
   const showWalletSelector = async () => {
     await walletManagerSheetRef.current?.present();
+    // Auto-expand to full size if there are more than 2 wallets
+    if (wallets.length > 2) {
+      setTimeout(() => {
+        walletManagerSheetRef.current?.resize(1);
+      }, 100);
+    }
   };
 
   const showNetworkSelector = () => {
@@ -2074,14 +2080,16 @@ function AppContent() {
         name: `Wallet ${wallets.length + 1}`,
         address: publicKeyStr,
         publicKey: publicKeyStr,
-        selected: false,
+        selected: true, // Auto-select newly created wallet
         secretKey: Array.from(keypair.secretKey), // Store as array for JSON serialization
         keypair: keypair, // Keep in memory for immediate use
         derivationPath: path, // Store the derivation path used
       };
 
-      const updatedWallets = [...wallets, newWallet];
+      // Deselect all other wallets and add the new selected wallet
+      const updatedWallets = wallets.map(w => ({ ...w, selected: false })).concat(newWallet);
       setWallets(updatedWallets);
+      setSelectedWallet(newWallet);
       await saveWalletsToStorage(updatedWallets);
 
       // Increment and save derivation index for next wallet
@@ -2090,12 +2098,21 @@ function AppContent() {
       await saveDerivationIndex(nextIndex);
       console.log(`Wallet created at ${path}, next index: ${nextIndex}`);
 
+      // Register the wallet with the transaction indexer
+      await registerWalletWithIndexer(publicKeyStr, currentNetwork.providerId);
+
       setNewMnemonic("");
       setShowCreateWalletModal(false);
 
       // Refresh WalletManager screen if it's in the navigation stack
       // Wallet manager sheet will automatically reflect the updated wallets state
       await walletManagerSheetRef.current?.present();
+      // Auto-expand to full size if there are more than 2 wallets
+      if (updatedWallets.length > 2) {
+        setTimeout(() => {
+          walletManagerSheetRef.current?.resize(1);
+        }, 100);
+      }
     } catch (error) {
       Alert.alert("Error", "Failed to create wallet: " + error.message);
       console.error("Wallet creation error:", error);
@@ -2234,7 +2251,7 @@ function AppContent() {
     // If Bluetooth device is already stored/connected, skip setup instructions
     if (ledgerDeviceInfo || ledgerDeviceId) {
       console.log("Bluetooth device already known, skipping setup dialog");
-      ledgerSheetRef.current?.expand();
+      ledgerSheetRef.current?.present();
       scanForLedger();
       return;
     }
@@ -2252,7 +2269,7 @@ function AppContent() {
         {
           text: "Continue",
           onPress: () => {
-            ledgerSheetRef.current?.expand();
+            ledgerSheetRef.current?.present();
             scanForLedger();
           },
         },
@@ -2888,7 +2905,7 @@ function AppContent() {
     // Set the new wallet as the selected wallet
     setSelectedWallet(newWallet);
 
-    ledgerSheetRef.current?.close();
+    ledgerSheetRef.current?.dismiss();
     setLedgerAccounts([]);
 
     // Register the wallet with the transaction indexer
@@ -3749,7 +3766,7 @@ function AppContent() {
                     style={styles.bluetoothRefreshButton}
                     onPress={async () => {
                       setShowBluetoothDrawer(false);
-                      ledgerSheetRef.current?.expand();
+                      ledgerSheetRef.current?.present();
                       await scanForLedger();
                     }}
                   >
@@ -3968,300 +3985,6 @@ function AppContent() {
             </View>
           </SafeAreaView>
         </Modal>
-
-        {/* Receive Drawer */}
-        <BottomSheet
-          ref={receiveSheetRef}
-          index={-1}
-          snapPoints={snapPoints}
-          enablePanDownToClose={true}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#000000" }}
-          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
-        >
-          <BottomSheetView style={styles.bottomSheetContent}>
-            {/* Header */}
-            <View style={styles.bottomSheetHeader}>
-              <Text style={styles.bottomSheetTitle}>
-                Receive {getNativeTokenInfo().symbol}
-              </Text>
-              <TouchableOpacity
-                onPress={() => receiveSheetRef.current?.close()}
-              >
-                <Text style={styles.bottomSheetClose}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* QR Code */}
-            <View style={styles.receiveQRContainer}>
-              <View style={styles.receiveQRWrapper}>
-                <QRCode
-                  value={selectedWallet?.publicKey || "No wallet"}
-                  size={200}
-                  backgroundColor="white"
-                  color="black"
-                />
-              </View>
-            </View>
-
-            {/* Address */}
-            <View style={styles.receiveAddressContainer}>
-              <Text style={styles.receiveAddressLabel}>Your Address</Text>
-              <Text style={styles.receiveAddressText} numberOfLines={1}>
-                {addressCopied
-                  ? "Copied"
-                  : selectedWallet?.publicKey || "No wallet selected"}
-              </Text>
-            </View>
-
-            {/* Copy Button */}
-            <TouchableOpacity
-              style={styles.receiveCopyButton}
-              onPress={() => {
-                copyToClipboard(selectedWallet.publicKey);
-                setAddressCopied(true);
-                setTimeout(() => {
-                  setAddressCopied(false);
-                }, 4000);
-              }}
-            >
-              <Text style={styles.receiveCopyButtonText}>Copy Address</Text>
-            </TouchableOpacity>
-          </BottomSheetView>
-        </BottomSheet>
-
-        {/* Send Drawer */}
-        <BottomSheet
-          ref={sendSheetRef}
-          index={-1}
-          snapPoints={snapPoints}
-          enablePanDownToClose={true}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#000000" }}
-          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
-        >
-          <BottomSheetView style={styles.bottomSheetContent}>
-            {/* Header */}
-            <View style={styles.bottomSheetHeader}>
-              <TouchableOpacity onPress={() => sendSheetRef.current?.close()}>
-                <Text style={styles.bottomSheetClose}>✕</Text>
-              </TouchableOpacity>
-              <View style={styles.bottomSheetTitleContainer}>
-                <Text style={styles.bottomSheetTitle}>
-                  Send {getNativeTokenInfo().symbol}
-                </Text>
-              </View>
-              <View style={{ width: 24 }} />
-            </View>
-
-            {/* Balance Display */}
-            <View style={styles.sendBalanceContainer}>
-              <Text style={styles.sendBalanceLabel}>Available Balance</Text>
-              <TouchableOpacity onPress={() => setSendAmount(balance)}>
-                <Text style={styles.sendBalanceText}>
-                  {balance} {getNativeTokenInfo().symbol}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Amount Input */}
-            <View style={styles.sendInputContainer}>
-              <Text style={styles.sendInputLabel}>Amount</Text>
-              <TextInput
-                style={styles.sendInput}
-                placeholder="0.00"
-                placeholderTextColor="#666666"
-                value={sendAmount}
-                onChangeText={setSendAmount}
-                keyboardType="decimal-pad"
-              />
-            </View>
-
-            {/* Address Input */}
-            <View style={styles.sendInputContainer}>
-              <View style={styles.sendAddressHeader}>
-                <Text style={styles.sendInputLabel}>Recipient Address</Text>
-                <TouchableOpacity
-                  onPress={() => addressSheetRef.current?.expand()}
-                >
-                  <Text style={styles.sendSelectAddressText}>
-                    Select Address
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              <TextInput
-                style={styles.sendInput}
-                placeholder="Enter address..."
-                placeholderTextColor="#666666"
-                value={sendAddress}
-                onChangeText={setSendAddress}
-                autoCapitalize="none"
-              />
-            </View>
-
-            {/* Send Button */}
-            <TouchableOpacity
-              style={styles.sendSubmitButton}
-              onPress={handleSendSubmit}
-            >
-              <Text style={styles.sendSubmitButtonText}>Send</Text>
-            </TouchableOpacity>
-          </BottomSheetView>
-        </BottomSheet>
-
-        {/* Address Selector Modal */}
-        <BottomSheet
-          ref={addressSheetRef}
-          index={-1}
-          snapPoints={snapPoints}
-          enablePanDownToClose={true}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#000000" }}
-          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
-        >
-          <BottomSheetView style={styles.bottomSheetContent}>
-            {/* Header */}
-            <View style={styles.bottomSheetHeader}>
-              <Text style={styles.bottomSheetTitle}>Select Address</Text>
-              <TouchableOpacity
-                onPress={() => addressSheetRef.current?.close()}
-              >
-                <Text style={styles.bottomSheetClose}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Address List */}
-            <ScrollView style={styles.addressList}>
-              {wallets.map((wallet, index) => (
-                <TouchableOpacity
-                  key={wallet.id}
-                  style={styles.addressItem}
-                  testID={
-                    index === 0
-                      ? "first-address-selector-wallet"
-                      : `address-selector-wallet-${index}`
-                  }
-                  onPress={() => {
-                    setSendAddress(wallet.publicKey);
-                    addressSheetRef.current?.close();
-                  }}
-                >
-                  <View style={styles.addressItemContent}>
-                    <Text style={styles.addressItemName}>{wallet.name}</Text>
-                    <Text style={styles.addressItemAddress} numberOfLines={1}>
-                      {wallet.address}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </BottomSheetView>
-        </BottomSheet>
-
-        {/* Activity Drawer */}
-        {/* Activity Bottom Sheet */}
-        <BottomSheet
-          ref={activitySheetRef}
-          index={-1}
-          snapPoints={["75%"]}
-          enablePanDownToClose={true}
-          backdropComponent={(props) => (
-            <BottomSheetBackdrop
-              {...props}
-              opacity={0.5}
-              enableTouchThrough={false}
-              appearsOnIndex={0}
-              disappearsOnIndex={-1}
-              style={[
-                { backgroundColor: "rgba(0, 0, 0, 1)" },
-                StyleSheet.absoluteFillObject,
-              ]}
-            />
-          )}
-          backgroundStyle={{ backgroundColor: "#000000" }}
-          handleIndicatorStyle={{ backgroundColor: "#4E5056" }}
-        >
-          {/* Activity List with BottomSheetScrollView */}
-          <BottomSheetScrollView
-            contentContainerStyle={styles.sheetScrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Header */}
-            <View style={styles.activitySheetHeader}>
-              <TouchableOpacity onPress={() => checkTransactions()}>
-                <Text style={styles.sheetHeaderButton}>↻</Text>
-              </TouchableOpacity>
-              <Text style={styles.activitySheetTitle}>Activity</Text>
-              <View style={{ width: 32 }} />
-            </View>
-
-            {/* Transactions List */}
-            {transactions.length === 0 ? (
-              <View style={styles.emptyStateContainer}>
-                <Text style={styles.emptyStateText}>No transactions yet</Text>
-                <Text style={styles.emptyStateSubtext}>
-                  Your transaction history will appear here
-                </Text>
-              </View>
-            ) : (
-              transactions.map((tx) => (
-                <TouchableOpacity
-                  key={tx.id}
-                  style={styles.activityCard}
-                  onPress={() => openExplorer(tx.signature)}
-                >
-                  {/* Token logo */}
-                  <Image
-                    source={
-                      tx.token === "XNT"
-                        ? require("./assets/x1.png")
-                        : require("./assets/solana.png")
-                    }
-                    style={styles.activityCardLogo}
-                  />
-
-                  <View style={styles.activityCardContent}>
-                    {/* Header with title and time */}
-                    <View style={styles.activityCardHeader}>
-                      <Text style={styles.activityCardTitle}>
-                        {tx.type === "received" ? "Received" : "Sent"}{" "}
-                        {tx.token}
-                      </Text>
-                      <Text style={styles.activityCardTime}>
-                        {tx.timestamp}
-                      </Text>
-                    </View>
-
-                    {/* Amount row */}
-                    <View style={styles.activityCardRow}>
-                      <Text style={styles.activityCardLabel}>Amount</Text>
-                      <Text
-                        style={[
-                          styles.activityCardValue,
-                          {
-                            color:
-                              tx.type === "received" ? "#00D084" : "#FF6B6B",
-                          },
-                        ]}
-                      >
-                        {tx.type === "received" ? "+" : "-"}
-                        {tx.amount} {tx.token}
-                      </Text>
-                    </View>
-
-                    {/* Fee row */}
-                    <View style={styles.activityCardRow}>
-                      <Text style={styles.activityCardLabel}>Fee</Text>
-                      <Text style={styles.activityCardValue}>
-                        {tx.fee || "0.000001650"} {tx.token}
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))
-            )}
-          </BottomSheetScrollView>
-        </BottomSheet>
 
         {/* Add Wallet Modal - Choice */}
         <Modal
@@ -4829,82 +4552,6 @@ function AppContent() {
                     No stored recovery phrase was found for this wallet.
                   </Text>
                 )}
-              </View>
-            )}
-          </BottomSheetView>
-        </BottomSheet>
-
-        {/* Ledger Connection Bottom Sheet */}
-        <BottomSheet
-          ref={ledgerSheetRef}
-          index={-1}
-          snapPoints={snapPoints}
-          enablePanDownToClose={true}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#000000" }}
-          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
-        >
-          <BottomSheetView style={styles.bottomSheetContent}>
-            <View style={styles.bottomSheetHeader}>
-              <View style={{ width: 32 }} />
-              <Text style={styles.bottomSheetTitle}>Connect Ledger</Text>
-              <TouchableOpacity onPress={() => ledgerSheetRef.current?.close()}>
-                <Text style={styles.bottomSheetClose}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            {ledgerScanning ? (
-              <View style={styles.ledgerStatus}>
-                <Text style={styles.ledgerStatusText}>Scanning...</Text>
-                <Text style={styles.ledgerStatusSubtext}>
-                  Make sure Bluetooth is on and Solana app is open
-                </Text>
-              </View>
-            ) : ledgerConnecting ? (
-              <View style={styles.ledgerStatus}>
-                <Text style={styles.ledgerStatusText}>
-                  {ledgerDeviceName
-                    ? `Connecting to ${ledgerDeviceName}...`
-                    : "Connecting..."}
-                </Text>
-              </View>
-            ) : Array.isArray(ledgerAccounts) && ledgerAccounts.length > 0 ? (
-              <>
-                <Text style={styles.ledgerAccountsTitle}>
-                  Select an account:
-                </Text>
-                <ScrollView style={styles.ledgerAccountsList}>
-                  {ledgerAccounts.map((account) => (
-                    <TouchableOpacity
-                      key={`ledger-${account.index}`}
-                      style={styles.ledgerAccount}
-                      onPress={() => handleSelectLedgerAccount(account)}
-                    >
-                      <View style={styles.ledgerAccountLeft}>
-                        <Image
-                          source={currentNetwork.logo}
-                          style={styles.x1LogoLarge}
-                        />
-                        <View style={styles.ledgerAccountInfo}>
-                          <Text style={styles.ledgerAccountIndex}>
-                            Account {account.index + 1}
-                          </Text>
-                          <Text
-                            style={styles.ledgerAccountAddress}
-                            numberOfLines={1}
-                            ellipsizeMode="middle"
-                          >
-                            {account.address || "Unknown address"}
-                          </Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </>
-            ) : (
-              <View style={styles.ledgerStatus}>
-                <Text style={styles.ledgerStatusText}>Scanning...</Text>
               </View>
             )}
           </BottomSheetView>
@@ -5790,7 +5437,14 @@ function AppContent() {
       )}
 
       {/* TrueSheet Modal Screens */}
-      <TrueSheet ref={sendSheetRef} sizes={['auto']} cornerRadius={24}>
+      <TrueSheet
+        ref={sendSheetRef}
+        sizes={['auto', 'large']}
+        cornerRadius={24}
+        initialIndexAnimated={false}
+        grabber={true}
+        backgroundColor="#000000"
+      >
         <SendScreen
           balance={balance}
           getNativeTokenInfo={getNativeTokenInfo}
@@ -5801,7 +5455,14 @@ function AppContent() {
         />
       </TrueSheet>
 
-      <TrueSheet ref={receiveSheetRef} sizes={['auto']} cornerRadius={24}>
+      <TrueSheet
+        ref={receiveSheetRef}
+        sizes={['auto']}
+        cornerRadius={24}
+        initialIndexAnimated={false}
+        grabber={true}
+        backgroundColor="#000000"
+      >
         <ReceiveScreen
           selectedWallet={selectedWallet}
           getNativeTokenInfo={getNativeTokenInfo}
@@ -5809,7 +5470,14 @@ function AppContent() {
         />
       </TrueSheet>
 
-      <TrueSheet ref={activitySheetRef} sizes={['auto']} cornerRadius={24}>
+      <TrueSheet
+        ref={activitySheetRef}
+        sizes={['medium', 'large']}
+        cornerRadius={24}
+        initialIndexAnimated={false}
+        grabber={true}
+        backgroundColor="#000000"
+      >
         <ActivityScreen
           transactions={transactions}
           checkTransactions={checkTransactions}
@@ -5818,7 +5486,14 @@ function AppContent() {
         />
       </TrueSheet>
 
-      <TrueSheet ref={walletManagerSheetRef} sizes={['auto']} cornerRadius={24}>
+      <TrueSheet
+        ref={walletManagerSheetRef}
+        sizes={['medium', 'large']}
+        cornerRadius={24}
+        initialIndexAnimated={false}
+        grabber={true}
+        backgroundColor="#000000"
+      >
         <WalletManagerScreen
           wallets={wallets}
           currentNetwork={currentNetwork}
@@ -5829,15 +5504,48 @@ function AppContent() {
         />
       </TrueSheet>
 
-      <TrueSheet ref={walletSettingsSheetRef} sizes={['auto']} cornerRadius={24}>
+      <TrueSheet
+        ref={walletSettingsSheetRef}
+        sizes={['auto']}
+        cornerRadius={24}
+        initialIndexAnimated={false}
+        grabber={true}
+        backgroundColor="#000000"
+      >
         <WalletSettingsScreen
           onDismiss={() => walletSettingsSheetRef.current?.dismiss()}
         />
       </TrueSheet>
 
-      <TrueSheet ref={addressSelectorSheetRef} sizes={['auto']} cornerRadius={24}>
+      <TrueSheet
+        ref={addressSelectorSheetRef}
+        sizes={['medium', 'large']}
+        cornerRadius={24}
+        initialIndexAnimated={false}
+        grabber={true}
+        backgroundColor="#000000"
+      >
         <AddressSelectorScreen
           onDismiss={() => addressSelectorSheetRef.current?.dismiss()}
+        />
+      </TrueSheet>
+
+      <TrueSheet
+        ref={ledgerSheetRef}
+        sizes={['auto', 'large']}
+        cornerRadius={24}
+        initialIndexAnimated={false}
+        grabber={true}
+        backgroundColor="#000000"
+      >
+        <LedgerConnectionScreen
+          ledgerScanning={ledgerScanning}
+          ledgerConnecting={ledgerConnecting}
+          ledgerDeviceName={ledgerDeviceName}
+          ledgerAccounts={ledgerAccounts}
+          currentNetwork={currentNetwork}
+          handleSelectLedgerAccount={handleSelectLedgerAccount}
+          onDismiss={() => ledgerSheetRef.current?.dismiss()}
         />
       </TrueSheet>
     </>

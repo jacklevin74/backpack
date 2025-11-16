@@ -147,7 +147,6 @@ export const BalancesTableRow = ({
 
   const isPositive = percentChange >= 0;
   const changeColor = isPositive ? "#00C853" : "#FF3B30"; // Green or Red
-  const changeBackgroundColor = isPositive ? "rgba(0, 200, 83, 0.1)" : "rgba(255, 59, 48, 0.1)";
 
   const Container = onPress ? TouchableOpacity : View;
 
@@ -189,7 +188,7 @@ export const BalancesTableRow = ({
       <View style={styles.valueContainer}>
         <Text style={styles.usdValue}>{formatUSD(value)}</Text>
         {percentChange !== 0 && (
-          <View style={[styles.changeContainer, { backgroundColor: changeBackgroundColor }]}>
+          <View style={styles.changeContainer}>
             <Text style={[styles.changeArrow, { color: changeColor }]}>
               {isPositive ? "▲" : "▼"}
             </Text>

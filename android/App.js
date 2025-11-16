@@ -36,6 +36,7 @@ import {
   Keyboard,
   Vibration,
   Animated,
+  Switch,
 } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import {
@@ -499,6 +500,10 @@ function AppContent() {
         // Reconstruct keypairs from stored secret keys
         const walletsWithKeypairs = parsed.map((wallet) => {
           const { mnemonic, ...walletWithoutMnemonic } = wallet;
+          // Add default value for hideZeroBalanceTokens if not present (backward compatibility)
+          if (walletWithoutMnemonic.hideZeroBalanceTokens === undefined) {
+            walletWithoutMnemonic.hideZeroBalanceTokens = false;
+          }
           if (wallet.secretKey && !wallet.isLedger) {
             try {
               const secretKeyArray = new Uint8Array(wallet.secretKey);
@@ -2036,6 +2041,7 @@ function AppContent() {
         secretKey: Array.from(keypair.secretKey), // Store as array for JSON serialization
         keypair: keypair, // Keep in memory for immediate use
         derivationPath,
+        hideZeroBalanceTokens: false, // User preference for hiding zero balance tokens
       };
 
       const updatedWallets = [...wallets, newWallet];
@@ -2094,6 +2100,7 @@ function AppContent() {
         secretKey: Array.from(keypair.secretKey), // Store as array for JSON serialization
         keypair: keypair, // Keep in memory for immediate use
         derivationPath: path, // Store the derivation path used
+        hideZeroBalanceTokens: false, // User preference for hiding zero balance tokens
       };
 
       const updatedWallets = [...wallets, newWallet];
@@ -2883,6 +2890,7 @@ function AppContent() {
       isLedger: true,
       derivationPath: account.derivationPath,
       ledgerDeviceId: ledgerDeviceId, // Store device ID for later signing
+      hideZeroBalanceTokens: false, // User preference for hiding zero balance tokens
     };
 
     console.log("New wallet object:", JSON.stringify(newWallet, null, 2));
@@ -3540,6 +3548,7 @@ function AppContent() {
                     providerId={currentNetwork.providerId}
                     pollingIntervalSeconds={60}
                     enableColorfulIcons={easterEggMode}
+                    hideZeroBalanceTokens={selectedWallet.hideZeroBalanceTokens || false}
                     onBalanceUpdate={(balanceUSD) => setBalanceUSD(balanceUSD)}
                   />
                 </View>
@@ -4595,6 +4604,42 @@ function AppContent() {
                 </Text>
                 <Text style={styles.settingsMenuItemArrow}>›</Text>
               </TouchableOpacity>
+
+              {/* Hide Zero Balance Tokens Toggle */}
+              <View
+                testID="hide-zero-balance-toggle"
+                style={styles.settingsMenuItem}
+              >
+                <Text style={styles.settingsMenuItemText}>
+                  Hide Zero Balance Tokens
+                </Text>
+                <Switch
+                  value={editingWallet?.hideZeroBalanceTokens || false}
+                  onValueChange={(value) => {
+                    if (editingWallet) {
+                      // Update states immediately for instant UI response
+                      const updatedEditingWallet = { ...editingWallet, hideZeroBalanceTokens: value };
+                      setEditingWallet(updatedEditingWallet);
+
+                      // Update selected wallet immediately if it's the one being edited
+                      if (selectedWallet?.id === editingWallet.id) {
+                        setSelectedWallet({ ...selectedWallet, hideZeroBalanceTokens: value });
+                      }
+
+                      // Update wallets array and save to storage in background
+                      const updatedWallets = wallets.map((w) =>
+                        w.id === editingWallet.id
+                          ? { ...w, hideZeroBalanceTokens: value }
+                          : w
+                      );
+                      setWallets(updatedWallets);
+                      saveWalletsToStorage(updatedWallets);
+                    }
+                  }}
+                  trackColor={{ false: "#767577", true: "#4A90E2" }}
+                  thumbColor={editingWallet?.hideZeroBalanceTokens ? "#ffffff" : "#f4f3f4"}
+                />
+              </View>
 
               <TouchableOpacity
                 testID="show-private-key-button"

@@ -175,36 +175,8 @@ export function OnboardingProvider({
         // });
       } else {
         // Blockchain is being selected
-
-        // TODO: we shouldn't use the same handler for both paths here.
-        if (
-          keyringType === "ledger" ||
-          action === "import" ||
-          keyringType === "private-key"
-        ) {
-          setOnboardingData({ blockchain });
-        } else if (action === "create") {
-          try {
-            const wallets = await safeClientResponse(
-              userClient.previewWallets({
-                type: BlockchainWalletPreviewType.MNEMONIC_NEXT,
-                blockchain,
-                mnemonic,
-              })
-            );
-            const walletDescriptors = wallets.wallets[0]
-              .walletDescriptors as BlockchainWalletDescriptor<BlockchainWalletDescriptorType.MNEMONIC>[];
-
-            setOnboardingData({
-              signedWalletDescriptors: [
-                ...signedWalletDescriptors,
-                ...walletDescriptors,
-              ],
-            });
-          } catch (err) {
-            console.error(err);
-          }
-        }
+        // Just set the blockchain - wallet generation is handled by ImportWallets component
+        setOnboardingData({ blockchain });
       }
     },
     [data, setOnboardingData, userClient]

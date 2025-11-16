@@ -161,10 +161,15 @@ export class UserService {
   private handlePreviewWallets: TransportHandler<"SECURE_USER_PREVIEW_WALLETS"> =
     async ({ request, event, respond, error }) => {
       const keyringStoreState = await this.keyringStore.state();
-      const userKeyring =
-        keyringStoreState !== KeyringStoreState.NeedsOnboarding
-          ? await this.keyringStore.activeUserKeyring()
-          : null;
+      let userKeyring: UserKeyring | null = null;
+      if (keyringStoreState !== KeyringStoreState.NeedsOnboarding) {
+        try {
+          userKeyring = await this.keyringStore.activeUserKeyring();
+        } catch (e) {
+          // During initial onboarding, user data might not exist yet
+          userKeyring = null;
+        }
+      }
 
       const emptyBlockchainKeyring = keyringForBlockchain(
         request.blockchain,
@@ -371,6 +376,34 @@ export class UserService {
       this.secureStore.getSessionPassword(user.uuid),
     ]);
 
+    // Validate active wallets and fallback to first wallet if active is invalid
+    // This prevents the app from crashing if the active wallet doesn't exist
+    if (publicKeys) {
+      for (const [blockchain, platformData] of Object.entries(
+        publicKeys.platforms
+      )) {
+        if (platformData && platformData.publicKeys) {
+          const activePublicKey = platformData.activePublicKey;
+          const publicKeysList = Object.keys(platformData.publicKeys);
+
+          // If active wallet doesn't exist or no active wallet is set, use the first one
+          if (
+            publicKeysList.length > 0 &&
+            (!activePublicKey || !platformData.publicKeys[activePublicKey])
+          ) {
+            const firstPublicKey = publicKeysList[0];
+            await this.secureStore.setUserActivePublicKey(
+              user.uuid,
+              blockchain as any,
+              firstPublicKey
+            );
+            // Update the publicKeys object to reflect the change
+            platformData.activePublicKey = firstPublicKey;
+          }
+        }
+      }
+    }
+
     // if we have a session password (autolock:unlocked) but keyring is locked -> unlock
     if (sessionPassword && keyringStoreState === KeyringStoreState.Locked) {
       try {
@@ -517,6 +550,29 @@ export class UserService {
         } catch (e) {
           // if a wallet fails, do nothing to make sure were cleaning up everything else
         }
+      }
+
+      // Check if user has any remaining wallets after cleanup
+      let hasAnyWallets = false;
+      try {
+        const userPublicKeys = await this.secureStore.getUserPublicKeys(
+          request.uuid
+        );
+        hasAnyWallets = userPublicKeys
+          ? Object.values(userPublicKeys.platforms).some(
+              (platform) =>
+                platform && Object.keys(platform.publicKeys).length > 0
+            )
+          : false;
+      } catch (e) {
+        // User public keys don't exist yet, so no wallets
+        hasAnyWallets = false;
+      }
+
+      // If no wallets remain, remove the user entirely to avoid orphaned accounts
+      if (!hasAnyWallets) {
+        await this.userRemove({ uuid: request.uuid });
+        return;
       }
 
       // if there is still a keyring, persist our changes.

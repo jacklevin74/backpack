@@ -1,4 +1,4 @@
-import { openOnboarding } from "@coral-xyz/common";
+import { QUERY_ONBOARDING } from "@coral-xyz/common";
 import {
   userClientAtom,
   userKeyringStoreStateAtom,
@@ -57,11 +57,11 @@ export function RequireUserUnlocked({
     if (!disabled && keyringState === KeyringStoreState.NeedsOnboarding) {
       // Check if we're not already on the onboarding page
       const isOnOnboardingPage =
-        window.location.search.includes("onboarding=true"); // eslint-disable-line no-restricted-properties
+        window.location.search.includes(QUERY_ONBOARDING); // eslint-disable-line no-restricted-properties
       if (!isOnOnboardingPage) {
         // Open onboarding in full tab (like first install) instead of popup
         const url = globalThis.chrome?.runtime?.getURL(
-          "options.html?onboarding=true"
+          `options.html?${QUERY_ONBOARDING}`
         );
         if (url) {
           globalThis.chrome?.tabs?.create({ url });

@@ -6,6 +6,7 @@ import {
 } from "@coral-xyz/common";
 
 import { getAllBlockchainConfigs } from "../blockchain-configs/blockchains";
+import { defaultPreferences } from "../blockchain-configs/preferences";
 import type { BlockchainKeyringJson } from "../keyring/types";
 
 import type { SecretPayload } from "./KeyringStore/crypto";
@@ -506,7 +507,9 @@ export class SecureStore {
       this.walletDataKey(uuid)
     );
     if (!data) {
-      throw new Error(`wallet data for user ${uuid} is undefined`);
+      // Return default preferences instead of throwing error
+      // This handles the case where wallet data hasn't been initialized yet (e.g., during onboarding)
+      return defaultPreferences();
     }
 
     const platform = getEnv();

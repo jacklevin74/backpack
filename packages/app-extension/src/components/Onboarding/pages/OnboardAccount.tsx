@@ -139,7 +139,9 @@ export const OnboardAccount = ({
     ...(keyringType === "mnemonic" || keyringType === "ledger"
       ? // X1 blockchain is auto-selected, skip blockchain selector
         [
-          ...(keyringType === "ledger" || action === "import"
+          ...(keyringType === "ledger" ||
+          action === "import" ||
+          action === "create"
             ? [
               <ImportWallets
                 allowMultiple
@@ -149,8 +151,12 @@ export const OnboardAccount = ({
                 blockchain={blockchain || Blockchain.X1}
                 mnemonic={mnemonic!}
                 onNext={(walletDescriptors: Array<WalletDescriptor>) => {
+                    // Only add the first wallet to avoid creating duplicate accounts
                     setOnboardingData({
-                      signedWalletDescriptors: walletDescriptors,
+                      signedWalletDescriptors:
+                        walletDescriptors.length > 0
+                          ? [walletDescriptors[0]]
+                          : [],
                     });
                     nextStep();
                   }}

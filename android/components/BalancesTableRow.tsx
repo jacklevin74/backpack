@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -68,14 +68,83 @@ export const BalancesTableRow = ({
   const symbol = tokenListEntry?.symbol ?? "Unknown";
   const name = tokenListEntry?.name ?? "Unknown Token";
   const logo = tokenListEntry?.logo;
-  const price = marketData?.price ?? 0;
-  const value = marketData?.value ?? 0;
+  const apiPrice = marketData?.price ?? 0;
+
+  // Generate a color for the placeholder based on the first letter
+  const getPlaceholderColor = (symbol: string): string => {
+    const colors = [
+      "#6366F1", // Indigo
+      "#8B5CF6", // Violet
+      "#EC4899", // Pink
+      "#F59E0B", // Amber
+      "#10B981", // Emerald
+      "#06B6D4", // Cyan
+      "#F97316", // Orange
+      "#EF4444", // Red
+    ];
+    const charCode = symbol.charCodeAt(0) || 0;
+    return colors[charCode % colors.length];
+  };
+
+  // Get 2-3 letter abbreviation for placeholder
+  const getPlaceholderText = (symbol: string): string => {
+    // Remove dollar signs and other special characters
+    const cleanSymbol = symbol.replace(/[$]/g, '');
+    const text = cleanSymbol.length <= 3 ? cleanSymbol : cleanSymbol.substring(0, 3);
+    return text.toUpperCase();
+  };
+
+  // State for real-time price (for SOL and other tokens with incorrect API price)
+  const [realPrice, setRealPrice] = useState<number>(apiPrice);
+
+  // State to track if logo image failed to load
+  const [logoError, setLogoError] = useState<boolean>(false);
+
+  // Fetch real SOL price from REST API if GraphQL price is $1 or less
+  useEffect(() => {
+    const fetchRealPrice = async () => {
+      // Check if this is SOL and API price is suspiciously low
+      if (symbol === "SOL" && apiPrice <= 1) {
+        try {
+          // Use a sample Solana address to fetch current SOL price from REST API
+          const response = await fetch(
+            "http://162.250.126.66:4000/wallet/So11111111111111111111111111111111111111112?providerId=SOLANA-mainnet"
+          );
+          const data = await response.json();
+          // Extract SOL price from first token in response
+          const solPrice = data?.tokens?.[0]?.price;
+          if (solPrice && solPrice > 0) {
+            setRealPrice(solPrice);
+          }
+        } catch (error) {
+          console.error("Failed to fetch SOL price from REST API:", error);
+          // Keep using API price as fallback
+        }
+      }
+    };
+
+    fetchRealPrice();
+  }, [symbol, apiPrice]);
+
+  // Use real price (fetched or API)
+  const price = realPrice;
+
+  // Calculate USD value: displayAmount * price
+  // Use API value if available, otherwise calculate it
+  const apiValue = marketData?.value ?? 0;
+  const calculatedValue = parseFloat(displayAmount) * price;
+  const value = apiValue > 0 && apiPrice > 1 ? apiValue : calculatedValue;
+
   const percentChange = marketData?.percentChange ?? 0;
 
   const isPositive = percentChange >= 0;
   const changeColor = isPositive ? "#00C853" : "#FF3B30"; // Green or Red
+  const changeBackgroundColor = isPositive ? "rgba(0, 200, 83, 0.1)" : "rgba(255, 59, 48, 0.1)";
 
   const Container = onPress ? TouchableOpacity : View;
+
+  // Calculate dollar change amount
+  const dollarChange = value * (percentChange / 100);
 
   return (
     <Container
@@ -85,12 +154,16 @@ export const BalancesTableRow = ({
     >
       {/* Token Logo */}
       <View style={styles.logoContainer}>
-        {logo ? (
-          <Image source={{ uri: logo }} style={styles.logo} />
+        {logo && !logoError ? (
+          <Image
+            source={{ uri: logo }}
+            style={styles.logo}
+            onError={() => setLogoError(true)}
+          />
         ) : (
-          <View style={styles.logoPlaceholder}>
+          <View style={[styles.logoPlaceholder, { backgroundColor: getPlaceholderColor(symbol) }]}>
             <Text style={styles.logoPlaceholderText}>
-              {symbol.charAt(0)}
+              {getPlaceholderText(symbol)}
             </Text>
           </View>
         )}
@@ -98,27 +171,25 @@ export const BalancesTableRow = ({
 
       {/* Token Info */}
       <View style={styles.infoContainer}>
-        <Text style={styles.symbol}>{symbol}</Text>
-        <Text style={styles.name} numberOfLines={1}>
-          {name}
+        <Text style={styles.name}>{name}</Text>
+        <Text style={styles.balance} numberOfLines={1}>
+          {formatDisplayAmount(displayAmount, decimals)} {symbol}
         </Text>
       </View>
 
-      {/* Balance and Value */}
+      {/* USD Value and Change */}
       <View style={styles.valueContainer}>
-        <Text style={styles.balance}>
-          {formatDisplayAmount(displayAmount, decimals)}
-        </Text>
-        <View style={styles.priceRow}>
-          <Text style={styles.usdValue}>{formatUSD(value)}</Text>
-          {percentChange !== 0 && (
-            <Text style={[styles.percentChange, { color: changeColor }]}>
-              {" "}
-              {isPositive ? "↗" : "↘"} {isPositive ? "+" : ""}
-              {percentChange.toFixed(2)}%
+        <Text style={styles.usdValue}>{formatUSD(value)}</Text>
+        {percentChange !== 0 && (
+          <View style={[styles.changeContainer, { backgroundColor: changeBackgroundColor }]}>
+            <Text style={[styles.changeArrow, { color: changeColor }]}>
+              {isPositive ? "▲" : "▼"}
             </Text>
-          )}
-        </View>
+            <Text style={[styles.percentChange, { color: changeColor }]}>
+              ${Math.abs(dollarChange).toFixed(2)} ({isPositive ? "+" : ""}{percentChange.toFixed(2)}%)
+            </Text>
+          </View>
+        )}
       </View>
     </Container>
   );
@@ -127,12 +198,13 @@ export const BalancesTableRow = ({
 const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     backgroundColor: "transparent",
-    borderBottomWidth: 1,
-    borderBottomColor: "#2a2a2a",
+    borderRadius: 12,
+    marginBottom: 4,
   },
   logoContainer: {
     marginRight: 12,
@@ -141,51 +213,63 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F2F2F7",
   },
   logoPlaceholder: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#007AFF",
     justifyContent: "center",
     alignItems: "center",
   },
   logoPlaceholderText: {
-    color: "#FFF",
-    fontSize: 18,
-    fontWeight: "bold",
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
+    letterSpacing: -0.5,
   },
   infoContainer: {
     flex: 1,
     marginRight: 12,
+    gap: 4,
   },
   symbol: {
     fontSize: 16,
     fontWeight: "600",
     color: "#FFFFFF",
-    marginBottom: 2,
   },
   name: {
-    fontSize: 13,
-    color: "#8E8E93",
-  },
-  valueContainer: {
-    alignItems: "flex-end",
-  },
-  balance: {
     fontSize: 16,
     fontWeight: "600",
     color: "#FFFFFF",
-    marginBottom: 2,
+  },
+  valueContainer: {
+    alignItems: "flex-end",
+    gap: 4,
+  },
+  balance: {
+    fontSize: 12,
+    color: "#888888",
   },
   priceRow: {
     flexDirection: "row",
     alignItems: "center",
   },
   usdValue: {
-    fontSize: 13,
-    color: "#8E8E93",
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  changeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 2,
+    paddingLeft: 6,
+    borderRadius: 6,
+    gap: 3,
+  },
+  changeArrow: {
+    fontSize: 10,
+    fontWeight: "bold",
   },
   percentChange: {
     fontSize: 13,

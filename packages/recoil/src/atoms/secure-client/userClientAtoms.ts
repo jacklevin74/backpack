@@ -120,12 +120,17 @@ export const rawSecureUserAtom = atom<
       if (!isMobile) {
         const localCopyJSON = window.localStorage.getItem("secureUser");
         if (localCopyJSON) {
-          const localCopy = JSON.parse(localCopyJSON);
-          // remove local copy after reading so we wont get stuck in stale data.
-          window.localStorage.removeItem("secureUser");
-
-          setSelf(localCopy);
-          updateUser().catch((e) => {});
+          try {
+            const localCopy = JSON.parse(localCopyJSON);
+            // Don't remove local copy immediately - keep it for fast subsequent loads
+            // It will be overwritten with fresh data when updateUser() completes
+            setSelf(localCopy);
+            updateUser().catch((e) => {});
+          } catch (e) {
+            // If cached data is corrupted, remove it and fetch fresh
+            window.localStorage.removeItem("secureUser");
+            fetchInitialValue();
+          }
         } else {
           fetchInitialValue();
         }

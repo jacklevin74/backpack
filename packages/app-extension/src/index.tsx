@@ -1,5 +1,17 @@
 const startTime = Date.now();
 
+// Suppress React Native BackHandler warning in web environment
+const originalConsoleWarn = console.warn;
+console.warn = (...args) => {
+  if (
+    typeof args[0] === "string" &&
+    args[0].includes("BackHandler is not supported on web")
+  ) {
+    return; // Suppress this specific warning
+  }
+  originalConsoleWarn.apply(console, args);
+};
+
 import { lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { BACKPACK_FEATURE_POP_MODE, openPopupWindow } from "@coral-xyz/common";

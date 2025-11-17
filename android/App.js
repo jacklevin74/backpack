@@ -78,8 +78,8 @@ import { BiometricSettings } from "./src/auth/BiometricSettings";
 // Import native USB Ledger module
 const { LedgerUsb } = NativeModules;
 
-// Import TrueSheet
-import { TrueSheet } from "@lodev09/react-native-true-sheet";
+// Import SimpleActionSheet as TrueSheet for easy migration
+import TrueSheet from "./components/SimpleActionSheet";
 
 // Import screens
 import SendScreen from './screens/SendScreen';

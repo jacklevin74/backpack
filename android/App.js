@@ -54,7 +54,7 @@ import slip10 from "micro-key-producer/slip10.js";
 import { randomBytes, secretbox } from "tweetnacl";
 import bs58 from "bs58";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider } from "react-native-safe-area-context";
 // Replaced @gorhom/bottom-sheet with simple Modal-based implementation
 import BottomSheet, {
   SimpleBottomSheetView as BottomSheetView,
@@ -1110,7 +1110,7 @@ function AppContent() {
       setWalletSeedPhraseForDisplay(null);
     } finally {
       setWalletSeedPhraseLoading(false);
-      seedPhraseSheetRef.current?.expand();
+      seedPhraseSheetRef.current?.present();
     }
   }, [editingWallet]);
 
@@ -3879,9 +3879,27 @@ function AppContent() {
                       style={styles.bottomSheetEditBtn}
                       onPress={(e) => {
                         e.stopPropagation();
+                        console.log(
+                          "[DEBUG] ⋮ button clicked, wallet:",
+                          wallet.name
+                        );
+                        console.log(
+                          "[DEBUG] editWalletSheetRef:",
+                          editWalletSheetRef.current
+                        );
                         setEditingWallet(wallet);
                         setEditWalletName(wallet.name);
-                        editWalletSheetRef.current?.expand();
+                        if (editWalletSheetRef.current) {
+                          console.log(
+                            "[DEBUG] Calling present on editWalletSheetRef"
+                          );
+                          editWalletSheetRef.current.present();
+                          console.log("[DEBUG] present called successfully");
+                        } else {
+                          console.log(
+                            "[DEBUG] ERROR: editWalletSheetRef.current is null"
+                          );
+                        }
                       }}
                     >
                       <Text style={styles.bottomSheetEditIcon}>⋮</Text>
@@ -4228,25 +4246,20 @@ function AppContent() {
         </Modal>
 
         {/* Edit Wallet Modal */}
-        <BottomSheet
+        <TrueSheet
           ref={editWalletSheetRef}
-          index={-1}
-          snapPoints={snapPoints}
-          enablePanDownToClose={true}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#000000" }}
-          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+          sizes={["auto", "large"]}
+          cornerRadius={24}
+          grabber={true}
+          backgroundColor="#000000"
         >
-          <BottomSheetView
-            testID="edit-wallet-sheet"
-            style={styles.bottomSheetContent}
-          >
+          <View testID="edit-wallet-sheet" style={styles.bottomSheetContent}>
             <View style={styles.bottomSheetHeader}>
               <View style={{ width: 32 }} />
               <Text style={styles.bottomSheetTitle}>Edit Wallet</Text>
               <TouchableOpacity
                 onPress={() => {
-                  editWalletSheetRef.current?.close();
+                  editWalletSheetRef.current?.dismiss();
                   setEditingWallet(null);
                 }}
               >
@@ -4260,7 +4273,7 @@ function AppContent() {
                 testID="change-account-name-button"
                 style={styles.settingsMenuItem}
                 onPress={() => {
-                  editWalletSheetRef.current?.close();
+                  editWalletSheetRef.current?.dismiss();
                   setShowChangeNameModal(true);
                 }}
               >
@@ -4274,10 +4287,30 @@ function AppContent() {
                 testID="show-private-key-button"
                 style={styles.settingsMenuItem}
                 onPress={() => {
-                  editWalletSheetRef.current?.close();
+                  console.log("[ShowPrivateKey] Button pressed");
+                  console.log(
+                    "[ShowPrivateKey] editWalletSheetRef.current:",
+                    editWalletSheetRef.current
+                  );
+                  console.log(
+                    "[ShowPrivateKey] privateKeySheetRef.current:",
+                    privateKeySheetRef.current
+                  );
+                  editWalletSheetRef.current?.dismiss();
+                  console.log(
+                    "[ShowPrivateKey] Dismiss called, waiting 300ms..."
+                  );
                   setTimeout(() => {
-                    privateKeySheetRef.current?.expand();
-                  }, 100);
+                    console.log(
+                      "[ShowPrivateKey] Timeout fired, calling present()..."
+                    );
+                    console.log(
+                      "[ShowPrivateKey] privateKeySheetRef.current before present:",
+                      privateKeySheetRef.current
+                    );
+                    privateKeySheetRef.current?.present();
+                    console.log("[ShowPrivateKey] Present called");
+                  }, 300);
                 }}
               >
                 <Text style={styles.settingsMenuItemText}>
@@ -4308,7 +4341,7 @@ function AppContent() {
                             );
                             setWallets(updatedWallets);
                             await saveWalletsToStorage(updatedWallets);
-                            editWalletSheetRef.current?.close();
+                            editWalletSheetRef.current?.dismiss();
                             setEditingWallet(null);
                           }
                         },
@@ -4325,8 +4358,8 @@ function AppContent() {
                 <Text style={styles.settingsMenuItemArrow}>›</Text>
               </TouchableOpacity>
             </ScrollView>
-          </BottomSheetView>
-        </BottomSheet>
+          </View>
+        </TrueSheet>
 
         {/* Change Name Modal */}
         <Modal
@@ -4355,7 +4388,7 @@ function AppContent() {
                         "BACK BUTTON PRESSED (<) - Closing all modals"
                       );
                       setShowChangeNameModal(false);
-                      editWalletSheetRef.current?.close();
+                      editWalletSheetRef.current?.dismiss();
                       setEditingWallet(null);
                     }}
                   >
@@ -4366,7 +4399,7 @@ function AppContent() {
                     onPress={() => {
                       console.log("X BUTTON PRESSED - Closing all modals");
                       setShowChangeNameModal(false);
-                      editWalletSheetRef.current?.close();
+                      editWalletSheetRef.current?.dismiss();
                       setEditingWallet(null);
                     }}
                   >
@@ -4413,7 +4446,7 @@ function AppContent() {
                       saveWalletsToStorage(updatedWallets);
                       console.log("Closing both modals");
                       setShowChangeNameModal(false);
-                      editWalletSheetRef.current?.close();
+                      editWalletSheetRef.current?.dismiss();
                       setEditingWallet(null);
                     } else {
                       console.log("Not saving - wallet or name is empty");
@@ -4435,22 +4468,20 @@ function AppContent() {
         </Modal>
 
         {/* View Private Key Bottom Sheet */}
-        <BottomSheet
+        <TrueSheet
           ref={privateKeySheetRef}
-          index={-1}
-          snapPoints={snapPoints}
-          enablePanDownToClose={true}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#000000" }}
-          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+          sizes={["auto", "large"]}
+          cornerRadius={24}
+          grabber={true}
+          backgroundColor="#000000"
         >
-          <BottomSheetView style={styles.bottomSheetContent}>
+          <View style={styles.bottomSheetContent}>
             <View style={styles.bottomSheetHeader}>
               <View style={{ width: 32 }} />
               <Text style={styles.bottomSheetTitle}>Private Key</Text>
               <TouchableOpacity
                 onPress={() => {
-                  privateKeySheetRef.current?.close();
+                  privateKeySheetRef.current?.dismiss();
                 }}
               >
                 <Text style={styles.bottomSheetClose}>✕</Text>
@@ -4489,26 +4520,24 @@ function AppContent() {
                 )}
               </View>
             )}
-          </BottomSheetView>
-        </BottomSheet>
+          </View>
+        </TrueSheet>
 
-        {/* View Seed Phrase Bottom Sheet */}
-        <BottomSheet
+        {/* View Seed Phrase Sheet */}
+        <TrueSheet
           ref={seedPhraseSheetRef}
-          index={-1}
-          snapPoints={snapPoints}
-          enablePanDownToClose={true}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#000000" }}
-          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+          sizes={["auto", "large"]}
+          cornerRadius={24}
+          grabber={true}
+          backgroundColor="#000000"
         >
-          <BottomSheetView style={styles.bottomSheetContent}>
+          <View style={styles.bottomSheetContent}>
             <View style={styles.bottomSheetHeader}>
               <View style={{ width: 32 }} />
               <Text style={styles.bottomSheetTitle}>Seed Phrase</Text>
               <TouchableOpacity
                 onPress={() => {
-                  seedPhraseSheetRef.current?.close();
+                  seedPhraseSheetRef.current?.dismiss();
                   setWalletSeedPhraseForDisplay(null);
                   setWalletSeedPhraseLoading(false);
                 }}
@@ -4562,8 +4591,8 @@ function AppContent() {
                 )}
               </View>
             )}
-          </BottomSheetView>
-        </BottomSheet>
+          </View>
+        </TrueSheet>
 
         {/* Browser BottomSheet */}
         <BottomSheet
@@ -5518,6 +5547,22 @@ function AppContent() {
       >
         <WalletSettingsScreen
           onDismiss={() => walletSettingsSheetRef.current?.dismiss()}
+          onShowPrivateKey={() => {
+            console.log("[WalletSettings] Show Private Key clicked");
+            setEditingWallet(selectedWallet);
+            walletSettingsSheetRef.current?.dismiss();
+            setTimeout(() => {
+              privateKeySheetRef.current?.present();
+            }, 300);
+          }}
+          onShowSeedPhrase={() => {
+            console.log("[WalletSettings] Show Seed Phrase clicked");
+            setEditingWallet(selectedWallet);
+            walletSettingsSheetRef.current?.dismiss();
+            setTimeout(() => {
+              openSeedPhraseSheet();
+            }, 300);
+          }}
         />
       </TrueSheet>
 

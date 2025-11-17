@@ -481,16 +481,10 @@ function AppContent() {
   }, []);
 
   // Debug logging function - only logs when debug drawer is active
-  const addDebugLog = useCallback(
-    (message) => {
-      if (!showDebugDrawer) return; // Only log when debug drawer is open
-      const timestamp = new Date().toLocaleTimeString();
-      setDebugLogs((prev) =>
-        [...prev, `[${timestamp}] ${message}`].slice(-100)
-      ); // Keep last 100 logs
-    },
-    [showDebugDrawer]
-  );
+  const addDebugLog = useCallback((message) => {
+    const timestamp = new Date().toLocaleTimeString();
+    setDebugLogs((prev) => [...prev, `[${timestamp}] ${message}`].slice(-100)); // Keep last 100 logs
+  }, []);
 
   // Wallet storage functions
   const saveWalletsToStorage = async (walletsToSave) => {
@@ -510,11 +504,17 @@ function AppContent() {
   };
 
   const loadWalletsFromStorage = async () => {
+    console.log("🔵 loadWalletsFromStorage called");
     try {
       const storedWallets = await AsyncStorage.getItem("@wallets");
+      console.log("📦 Raw stored wallets:", storedWallets ? "exists" : "null");
       if (storedWallets) {
         const parsed = JSON.parse(storedWallets);
-        console.log("Loaded wallets from storage:", parsed.length);
+        console.log("✅ Loaded wallets from storage:", parsed.length);
+        console.log(
+          "📝 Wallet addresses:",
+          parsed.map((w) => w.publicKey).join(", ")
+        );
 
         // Reconstruct keypairs from stored secret keys
         const walletsWithKeypairs = parsed.map((wallet) => {
@@ -547,15 +547,30 @@ function AppContent() {
               (w) => String(w.id) === storedSelectedWalletId
             );
             if (selectedWalletFromStorage) {
+              console.log(
+                "🟢 Setting selected wallet from storage:",
+                selectedWalletFromStorage.name,
+                selectedWalletFromStorage.publicKey
+              );
               setSelectedWallet(selectedWalletFromStorage);
               console.log(
                 "Restored selected wallet:",
                 selectedWalletFromStorage.name
               );
             } else if (walletsWithKeypairs.length > 0) {
+              console.log(
+                "🟡 No saved selection, using first wallet:",
+                walletsWithKeypairs[0].name,
+                walletsWithKeypairs[0].publicKey
+              );
               setSelectedWallet(walletsWithKeypairs[0]);
             }
           } else if (walletsWithKeypairs.length > 0) {
+            console.log(
+              "🟠 No wallet ID stored, using first wallet:",
+              walletsWithKeypairs[0].name,
+              walletsWithKeypairs[0].publicKey
+            );
             setSelectedWallet(walletsWithKeypairs[0]);
           }
         } catch (err) {
@@ -641,7 +656,9 @@ function AppContent() {
 
   // Load wallets and master seed phrase on mount
   useEffect(() => {
+    console.log("🔐 Auth state changed to:", authState);
     if (authState === "unlocked") {
+      console.log("🔓 App unlocked, loading wallets...");
       loadWalletsFromStorage();
       loadMasterSeedPhrase();
       loadDerivationIndex();
@@ -786,7 +803,13 @@ function AppContent() {
       );
       const data = await response.json();
 
+      console.log("API Response Data:", JSON.stringify(data, null, 2));
+
       if (data.balance !== undefined) {
+        console.log(
+          `✅ Balance API returned: balance=${data.balance}, tokens count=${data.tokens?.length}`
+        );
+
         // Format balance with up to 6 decimals for display
         const balanceStr = data.balance.toLocaleString("en-US", {
           minimumFractionDigits: 2,
@@ -817,10 +840,18 @@ function AppContent() {
             token.symbol === "XNT" ? "💎" : token.symbol === "SOL" ? "◎" : "🪙",
         }));
 
+        console.log(`📊 Updating state with:
+  - balance: ${balanceStr}
+  - balanceUSD: ${usdStr}
+  - tokenPrice: ${price}
+  - tokens count: ${formattedTokens.length}`);
+
         setBalance(balanceStr);
         setBalanceUSD(usdStr);
         setTokenPrice(price);
         setTokens(formattedTokens);
+
+        console.log("✅ State updated successfully");
 
         // Save to cache
         setBalanceCache((prev) => ({
@@ -954,7 +985,18 @@ function AppContent() {
 
   // Load initial balance
   useEffect(() => {
-    if (!selectedWallet) return;
+    console.log("🔄 useEffect triggered for balance/transactions");
+    console.log("selectedWallet:", selectedWallet);
+    console.log("currentNetwork:", currentNetwork);
+
+    if (!selectedWallet) {
+      console.log("⚠️ No selected wallet, skipping balance/transaction check");
+      return;
+    }
+
+    console.log(
+      `✅ Calling checkBalance and checkTransactions for wallet: ${selectedWallet.publicKey}`
+    );
     checkBalance();
     checkTransactions();
   }, [selectedWallet?.publicKey, currentNetwork]);
@@ -2097,9 +2139,17 @@ function AppContent() {
       const updatedWallets = wallets
         .map((w) => ({ ...w, selected: false }))
         .concat(newWallet);
+
+      console.log(
+        "💾 Saving new wallet to storage:",
+        newWallet.name,
+        newWallet.publicKey
+      );
       setWallets(updatedWallets);
       setSelectedWallet(newWallet);
+      console.log("✅ Set new wallet as selectedWallet");
       await saveWalletsToStorage(updatedWallets);
+      console.log("💾 Wallets saved to storage");
 
       // Increment and save derivation index for next wallet
       const nextIndex = walletDerivationIndex + 1;

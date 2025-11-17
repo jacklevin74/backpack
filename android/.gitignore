@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# But track AndroidManifest for cleartext traffic configuration
+!/android/app/src/main/AndroidManifest.xml

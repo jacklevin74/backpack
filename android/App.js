@@ -2095,7 +2095,8 @@ function AppContent() {
             Toast.show({
               type: "error",
               text1: "Error",
-              text2: "Invalid private key format. Use bs58 or JSON array format.",
+              text2:
+                "Invalid private key format. Use bs58 or JSON array format.",
               position: "bottom",
             });
             return;
@@ -2576,7 +2577,9 @@ function AppContent() {
           Toast.show({
             type: "error",
             text1: "Scan Error",
-            text2: error.message || "Failed to scan for Ledger devices. Check Bluetooth and Solana app.",
+            text2:
+              error.message ||
+              "Failed to scan for Ledger devices. Check Bluetooth and Solana app.",
             position: "bottom",
           });
         },
@@ -2827,7 +2830,10 @@ function AppContent() {
       Toast.show({
         type: "error",
         text1: "Connection Error",
-        text2: errorMessage.length > 100 ? errorMessage.substring(0, 100) + "..." : errorMessage,
+        text2:
+          errorMessage.length > 100
+            ? errorMessage.substring(0, 100) + "..."
+            : errorMessage,
         position: "bottom",
       });
     }
@@ -4278,7 +4284,7 @@ function AppContent() {
             {/* Send Button */}
             <TouchableOpacity
               style={styles.sendSubmitButton}
-              onPress={handleSendSubmit}
+              onPress={() => handleSendSubmit(sendAmount, sendAddress)}
             >
               <Text style={styles.sendSubmitButtonText}>Send</Text>
             </TouchableOpacity>
@@ -5576,12 +5582,8 @@ function AppContent() {
                         setWalletDerivationIndex(0);
 
                         // Generate a random password for PIN setup (same as initial app load)
-                        const randomPassword = Array.from(
-                          randomBytes(32)
-                        )
-                          .map((byte) =>
-                            byte.toString(16).padStart(2, "0")
-                          )
+                        const randomPassword = Array.from(randomBytes(32))
+                          .map((byte) => byte.toString(16).padStart(2, "0"))
                           .join("");
                         setPassword(randomPassword);
 
@@ -5710,10 +5712,7 @@ function AppContent() {
                             try {
                               await SecureStore.deleteItemAsync(key);
                             } catch (e) {
-                              console.log(
-                                `Could not delete ${key}:`,
-                                e
-                              );
+                              console.log(`Could not delete ${key}:`, e);
                             }
                           }
                         }
@@ -5725,10 +5724,7 @@ function AppContent() {
                             "@wallet:pinLockState",
                           ]);
                         } catch (e) {
-                          console.log(
-                            "Could not clear AsyncStorage keys:",
-                            e
-                          );
+                          console.log("Could not clear AsyncStorage keys:", e);
                         }
 
                         // Reset auth state to setup to trigger new PIN creation

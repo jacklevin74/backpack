@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-} from 'react-native';
+} from "react-native";
 
 export default function SendScreen({
   balance,
@@ -14,11 +14,18 @@ export default function SendScreen({
   handleSendSubmit,
   wallets,
   addressSelectorSheetRef,
-  onDismiss
+  selectedAddressFromSelector,
+  onDismiss,
 }) {
+  const [sendAmount, setSendAmount] = useState("");
+  const [sendAddress, setSendAddress] = useState("");
 
-  const [sendAmount, setSendAmount] = useState('');
-  const [sendAddress, setSendAddress] = useState('');
+  // Update sendAddress when an address is selected from the selector
+  useEffect(() => {
+    if (selectedAddressFromSelector) {
+      setSendAddress(selectedAddressFromSelector);
+    }
+  }, [selectedAddressFromSelector]);
 
   const onSend = () => {
     handleSendSubmit(sendAmount, sendAddress);
@@ -31,7 +38,9 @@ export default function SendScreen({
         <TouchableOpacity onPress={onDismiss}>
           <Text style={styles.headerBack}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Send {getNativeTokenInfo().symbol}</Text>
+        <Text style={styles.headerTitle}>
+          Send {getNativeTokenInfo().symbol}
+        </Text>
         <TouchableOpacity onPress={onDismiss}>
           <Text style={styles.headerClose}>×</Text>
         </TouchableOpacity>
@@ -70,9 +79,7 @@ export default function SendScreen({
                 await addressSelectorSheetRef.current?.present();
               }}
             >
-              <Text style={styles.sendSelectAddressText}>
-                Select Address
-              </Text>
+              <Text style={styles.sendSelectAddressText}>Select Address</Text>
             </TouchableOpacity>
           </View>
           <TextInput
@@ -86,10 +93,7 @@ export default function SendScreen({
         </View>
 
         {/* Send Button */}
-        <TouchableOpacity
-          style={styles.sendSubmitButton}
-          onPress={onSend}
-        >
+        <TouchableOpacity style={styles.sendSubmitButton} onPress={onSend}>
           <Text style={styles.sendSubmitButtonText}>Send</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -100,31 +104,31 @@ export default function SendScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: "#000000",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1a1a1a',
+    borderBottomColor: "#1a1a1a",
   },
   headerBack: {
     fontSize: 24,
-    color: '#4A90E2',
-    fontWeight: '600',
+    color: "#4A90E2",
+    fontWeight: "600",
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
   headerClose: {
     fontSize: 32,
-    color: '#888888',
-    fontWeight: '300',
+    color: "#888888",
+    fontWeight: "300",
   },
   content: {
     flex: 1,
@@ -133,59 +137,59 @@ const styles = StyleSheet.create({
   sendBalanceContainer: {
     marginBottom: 24,
     padding: 16,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: "#0a0a0a",
     borderRadius: 12,
   },
   sendBalanceLabel: {
     fontSize: 12,
-    color: '#888888',
+    color: "#888888",
     marginBottom: 4,
   },
   sendBalanceText: {
     fontSize: 20,
-    fontWeight: '600',
-    color: '#4A90E2',
+    fontWeight: "600",
+    color: "#4A90E2",
   },
   sendInputContainer: {
     marginBottom: 20,
   },
   sendInputLabel: {
     fontSize: 12,
-    color: '#888888',
+    color: "#888888",
     marginBottom: 8,
   },
   sendInput: {
-    backgroundColor: '#0a0a0a',
+    backgroundColor: "#0a0a0a",
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: "#333333",
   },
   sendAddressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   sendSelectAddressText: {
     fontSize: 12,
-    color: '#4A90E2',
-    fontWeight: '600',
+    color: "#4A90E2",
+    fontWeight: "600",
   },
   sendSubmitButton: {
     paddingVertical: 14,
     paddingHorizontal: 20,
-    backgroundColor: '#4A90E2',
+    backgroundColor: "#4A90E2",
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 8,
   },
   sendSubmitButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
 });

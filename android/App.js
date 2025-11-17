@@ -5285,15 +5285,17 @@ function AppContent() {
                     <TouchableOpacity
                       onPress={confirmTransactionWithBiometric}
                       style={{
-                        width: 64,
-                        height: 64,
-                        borderRadius: 32,
-                        backgroundColor: "#4A90E2",
-                        justifyContent: "center",
-                        alignItems: "center",
+                        padding: 10,
                       }}
                     >
-                      <Text style={{ fontSize: 32 }}>🔒</Text>
+                      <Image
+                        source={require("./assets/fingerprint.png")}
+                        style={{
+                          width: 95,
+                          height: 95,
+                          opacity: 0.5,
+                        }}
+                      />
                     </TouchableOpacity>
                   </View>
                 ) : (

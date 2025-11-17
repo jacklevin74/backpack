@@ -303,6 +303,7 @@ function AppContent() {
   const [tokens, setTokens] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [balanceCache, setBalanceCache] = useState({});
+  const [gainLossCache, setGainLossCache] = useState({});
   const [currentNetwork, setCurrentNetwork] = useState(NETWORKS[0]);
   const [isOnline, setIsOnline] = useState(true);
 
@@ -972,16 +973,39 @@ function AppContent() {
   };
 
   // Handle balance updates from TokenBalances component
-  const handleBalanceUpdate = useCallback((balanceUSD, gainLossData, nativeBalance) => {
-    setBalanceUSD(balanceUSD);
-    if (gainLossData) {
-      setPortfolioGainLoss(gainLossData);
+  const handleBalanceUpdate = useCallback(
+    (balanceUSD, gainLossData, nativeBalance) => {
+      setBalanceUSD(balanceUSD);
+      if (gainLossData && selectedWallet && currentNetwork) {
+        // Cache gain/loss data per wallet + network
+        const cacheKey = `${selectedWallet.publicKey}-${currentNetwork.id}`;
+        setGainLossCache((prev) => ({
+          ...prev,
+          [cacheKey]: gainLossData,
+        }));
+        setPortfolioGainLoss(gainLossData);
+      }
+      // Update native token balance for SendScreen (important for Solana networks)
+      if (nativeBalance !== undefined) {
+        setBalance(nativeBalance);
+      }
+    },
+    [selectedWallet, currentNetwork]
+  );
+
+  // Restore network-specific gain/loss when switching networks or wallets
+  useEffect(() => {
+    if (selectedWallet && currentNetwork) {
+      const cacheKey = `${selectedWallet.publicKey}-${currentNetwork.id}`;
+      const cachedGainLoss = gainLossCache[cacheKey];
+      if (cachedGainLoss) {
+        setPortfolioGainLoss(cachedGainLoss);
+      } else {
+        // Reset to zero if no cached data for this wallet + network
+        setPortfolioGainLoss({ percentChange: 0, valueChange: 0 });
+      }
     }
-    // Update native token balance for SendScreen (important for Solana networks)
-    if (nativeBalance !== undefined) {
-      setBalance(nativeBalance);
-    }
-  }, []);
+  }, [selectedWallet, currentNetwork, gainLossCache]);
 
   // Load initial balance
   useEffect(() => {
@@ -3426,8 +3450,8 @@ function AppContent() {
                           portfolioGainLoss.valueChange > 0
                             ? "#00D084"
                             : portfolioGainLoss.valueChange < 0
-                            ? "#FF6B6B"
-                            : "#999999",
+                              ? "#FF6B6B"
+                              : "#999999",
                       },
                     ]}
                   >
@@ -3577,7 +3601,9 @@ function AppContent() {
                     providerId={currentNetwork.providerId}
                     pollingIntervalSeconds={60}
                     enableColorfulIcons={easterEggMode}
-                    hideZeroBalanceTokens={selectedWallet.hideZeroBalanceTokens || false}
+                    hideZeroBalanceTokens={
+                      selectedWallet.hideZeroBalanceTokens || false
+                    }
                     onBalanceUpdate={handleBalanceUpdate}
                   />
                 </View>
@@ -4647,12 +4673,18 @@ function AppContent() {
                   onValueChange={(value) => {
                     if (editingWallet) {
                       // Update states immediately for instant UI response
-                      const updatedEditingWallet = { ...editingWallet, hideZeroBalanceTokens: value };
+                      const updatedEditingWallet = {
+                        ...editingWallet,
+                        hideZeroBalanceTokens: value,
+                      };
                       setEditingWallet(updatedEditingWallet);
 
                       // Update selected wallet immediately if it's the one being edited
                       if (selectedWallet?.id === editingWallet.id) {
-                        setSelectedWallet({ ...selectedWallet, hideZeroBalanceTokens: value });
+                        setSelectedWallet({
+                          ...selectedWallet,
+                          hideZeroBalanceTokens: value,
+                        });
                       }
 
                       // Update wallets array and save to storage in background
@@ -4666,7 +4698,9 @@ function AppContent() {
                     }
                   }}
                   trackColor={{ false: "#767577", true: "#4A90E2" }}
-                  thumbColor={editingWallet?.hideZeroBalanceTokens ? "#ffffff" : "#f4f3f4"}
+                  thumbColor={
+                    editingWallet?.hideZeroBalanceTokens ? "#ffffff" : "#f4f3f4"
+                  }
                 />
               </View>
 

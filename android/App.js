@@ -313,6 +313,10 @@ function AppContent() {
   const [selectedAccount, setSelectedAccount] = useState(MOCK_ACCOUNTS[0]);
   const [balance, setBalance] = useState("0");
   const [balanceUSD, setBalanceUSD] = useState("$0.00");
+  const [portfolioGainLoss, setPortfolioGainLoss] = useState({
+    percentChange: 0,
+    valueChange: 0,
+  });
   const [tokenPrice, setTokenPrice] = useState(null);
   const [tokens, setTokens] = useState([]);
   const [transactions, setTransactions] = useState([]);
@@ -744,197 +748,207 @@ function AppContent() {
   }, [currentNetwork]);
 
   // Check balance function with caching
-  const checkBalance = async (network = null, useCache = true) => {
-    if (!selectedWallet) return;
-    try {
-      // Use provided network or current network
-      const activeNetwork = network || currentNetwork;
+  const checkBalance = useCallback(
+    async (network = null, useCache = true) => {
+      if (!selectedWallet) return;
+      try {
+        // Use provided network or current network
+        const activeNetwork = network || currentNetwork;
 
-      // Guard: ensure activeNetwork exists
-      if (!activeNetwork) {
-        console.log("No active network available");
-        return;
-      }
+        // Guard: ensure activeNetwork exists
+        if (!activeNetwork) {
+          console.log("No active network available");
+          return;
+        }
 
-      const cacheKey = `${selectedWallet.publicKey}-${activeNetwork.providerId}`;
+        const cacheKey = `${selectedWallet.publicKey}-${activeNetwork.providerId}`;
 
-      // Skip REST API fetch for Solana networks (using GraphQL instead)
-      if (activeNetwork.providerId.startsWith("SOLANA")) {
+        // Skip REST API fetch for Solana networks (using GraphQL instead)
+        if (activeNetwork.providerId.startsWith("SOLANA")) {
+          console.log(
+            "Skipping REST API fetch for Solana - using GraphQL pricing"
+          );
+          return;
+        }
+
+        // Load from cache first if requested
+        if (useCache && balanceCache[cacheKey]) {
+          const cached = balanceCache[cacheKey];
+          setBalance(cached.balance);
+          setBalanceUSD(cached.balanceUSD);
+          setTokens(cached.tokens);
+          setTokenPrice(cached.tokenPrice);
+          console.log("Loaded balance from cache for", activeNetwork.name);
+        }
+
+        // Fetch fresh data in background
+        const url = `${API_SERVER}/wallet/${selectedWallet.publicKey}?providerId=${activeNetwork.providerId}`;
+        console.log("Fetching balance from:", url);
+
+        const response = await fetch(url);
         console.log(
-          "Skipping REST API fetch for Solana - using GraphQL pricing"
+          `Balance API Response: ${response.status} ${response.statusText}`
         );
-        return;
-      }
+        const data = await response.json();
 
-      // Load from cache first if requested
-      if (useCache && balanceCache[cacheKey]) {
-        const cached = balanceCache[cacheKey];
-        setBalance(cached.balance);
-        setBalanceUSD(cached.balanceUSD);
-        setTokens(cached.tokens);
-        setTokenPrice(cached.tokenPrice);
-        console.log("Loaded balance from cache for", activeNetwork.name);
-      }
+        if (data.balance !== undefined) {
+          // Format balance with up to 6 decimals for display
+          const balanceStr = data.balance.toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 6,
+          });
+          const usdStr = data.tokens[0]?.valueUSD
+            ? `$${data.tokens[0].valueUSD.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`
+            : "$0.00";
 
-      // Fetch fresh data in background
-      const url = `${API_SERVER}/wallet/${selectedWallet.publicKey}?providerId=${activeNetwork.providerId}`;
-      console.log("Fetching balance from:", url);
+          // Extract the price from the native token (first token)
+          const price = data.tokens[0]?.price || 0;
 
-      const response = await fetch(url);
-      console.log(
-        `Balance API Response: ${response.status} ${response.statusText}`
-      );
-      const data = await response.json();
-
-      if (data.balance !== undefined) {
-        // Format balance with up to 6 decimals for display
-        const balanceStr = data.balance.toLocaleString("en-US", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 6,
-        });
-        const usdStr = data.tokens[0]?.valueUSD
-          ? `$${data.tokens[0].valueUSD.toLocaleString("en-US", {
+          const formattedTokens = data.tokens.map((token, idx) => ({
+            id: String(idx + 1),
+            name: token.symbol,
+            balance: token.balance.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 5,
+            }),
+            usdValue: `${token.valueUSD.toLocaleString("en-US", {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
-            })}`
-          : "$0.00";
+            })}`,
+            icon:
+              token.symbol === "XNT"
+                ? "💎"
+                : token.symbol === "SOL"
+                  ? "◎"
+                  : "🪙",
+          }));
 
-        // Extract the price from the native token (first token)
-        const price = data.tokens[0]?.price || 0;
+          setBalance(balanceStr);
+          setBalanceUSD(usdStr);
+          setTokenPrice(price);
+          setTokens(formattedTokens);
 
-        const formattedTokens = data.tokens.map((token, idx) => ({
-          id: String(idx + 1),
-          name: token.symbol,
-          balance: token.balance.toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 5,
-          }),
-          usdValue: `${token.valueUSD.toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}`,
-          icon:
-            token.symbol === "XNT" ? "💎" : token.symbol === "SOL" ? "◎" : "🪙",
-        }));
+          // Save to cache
+          setBalanceCache((prev) => ({
+            ...prev,
+            [cacheKey]: {
+              balance: balanceStr,
+              balanceUSD: usdStr,
+              tokenPrice: price,
+              tokens: formattedTokens,
+            },
+          }));
 
-        setBalance(balanceStr);
-        setBalanceUSD(usdStr);
-        setTokenPrice(price);
-        setTokens(formattedTokens);
-
-        // Save to cache
-        setBalanceCache((prev) => ({
-          ...prev,
-          [cacheKey]: {
-            balance: balanceStr,
-            balanceUSD: usdStr,
-            tokenPrice: price,
-            tokens: formattedTokens,
-          },
-        }));
-
-        console.log(
-          "Balance updated:",
-          balanceStr,
-          getNativeTokenInfo().symbol
-        );
+          console.log(
+            "Balance updated:",
+            balanceStr,
+            getNativeTokenInfo().symbol
+          );
+        }
+      } catch (error) {
+        console.error("Error checking balance:", error);
       }
-    } catch (error) {
-      console.error("Error checking balance:", error);
-    }
-  };
+    },
+    [selectedWallet, currentNetwork, getNativeTokenInfo]
+  );
 
   // Fetch transactions
-  const checkTransactions = async (network = null) => {
-    if (!selectedWallet) return;
-    try {
-      const activeNetwork = network || currentNetwork;
+  const checkTransactions = useCallback(
+    async (network = null) => {
+      if (!selectedWallet) return;
+      try {
+        const activeNetwork = network || currentNetwork;
 
-      // Guard: ensure activeNetwork exists
-      if (!activeNetwork) {
-        console.log("No active network available");
-        return;
-      }
+        // Guard: ensure activeNetwork exists
+        if (!activeNetwork) {
+          console.log("No active network available");
+          return;
+        }
 
-      const url = `${API_SERVER}/transactions/${selectedWallet.publicKey}?providerId=${activeNetwork.providerId}`;
-      console.log("Fetching fresh transactions from:", url);
+        const url = `${API_SERVER}/transactions/${selectedWallet.publicKey}?providerId=${activeNetwork.providerId}`;
+        console.log("Fetching fresh transactions from:", url);
 
-      const response = await fetch(url);
-      console.log(
-        `Transactions API Response: ${response.status} ${response.statusText}`
-      );
-      const data = await response.json();
-      console.log(
-        `Received ${data?.transactions?.length || 0} transactions from API`
-      );
-      console.log("Full API response:", JSON.stringify(data, null, 2));
-
-      if (data && data.transactions) {
-        const formattedTransactions = data.transactions.map((tx) => {
-          // Handle both Unix timestamp (number) and ISO string formats
-          let date;
-          if (typeof tx.timestamp === "string") {
-            date = new Date(tx.timestamp);
-          } else if (typeof tx.timestamp === "number") {
-            date = new Date(tx.timestamp * 1000);
-          } else {
-            date = new Date();
-          }
-          const isValidDate = !isNaN(date.getTime());
-
-          // Parse amount - could be string or number
-          const amountNum =
-            typeof tx.amount === "string"
-              ? parseFloat(tx.amount)
-              : tx.amount || 0;
-
-          // Map transaction type to display type
-          let displayType = "received";
-          if (tx.type === "SEND") {
-            displayType = "sent";
-          } else if (tx.type === "RECEIVE") {
-            displayType = "received";
-          } else if (tx.type === "SWAP") {
-            displayType = "swap";
-          } else if (tx.type === "UNKNOWN") {
-            displayType = "unknown";
-          }
-
-          return {
-            id: tx.hash || tx.signature,
-            type: displayType,
-            amount: amountNum.toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 9,
-            }),
-            token: tx.tokenSymbol || tx.symbol || getNativeTokenInfo().symbol,
-            timestamp: isValidDate
-              ? date.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                  hour12: true,
-                })
-              : "Unknown",
-            fee: tx.fee || "0.000001650",
-            signature: tx.hash || tx.signature,
-          };
-        });
-
+        const response = await fetch(url);
         console.log(
-          `Setting ${formattedTransactions.length} formatted transactions to state`
+          `Transactions API Response: ${response.status} ${response.statusText}`
         );
-        console.log("First transaction:", formattedTransactions[0]);
-        setTransactions(formattedTransactions);
-      } else {
-        console.log("No transactions in response or invalid response format");
+        const data = await response.json();
+        console.log(
+          `Received ${data?.transactions?.length || 0} transactions from API`
+        );
+        console.log("Full API response:", JSON.stringify(data, null, 2));
+
+        if (data && data.transactions) {
+          const formattedTransactions = data.transactions.map((tx) => {
+            // Handle both Unix timestamp (number) and ISO string formats
+            let date;
+            if (typeof tx.timestamp === "string") {
+              date = new Date(tx.timestamp);
+            } else if (typeof tx.timestamp === "number") {
+              date = new Date(tx.timestamp * 1000);
+            } else {
+              date = new Date();
+            }
+            const isValidDate = !isNaN(date.getTime());
+
+            // Parse amount - could be string or number
+            const amountNum =
+              typeof tx.amount === "string"
+                ? parseFloat(tx.amount)
+                : tx.amount || 0;
+
+            // Map transaction type to display type
+            let displayType = "received";
+            if (tx.type === "SEND") {
+              displayType = "sent";
+            } else if (tx.type === "RECEIVE") {
+              displayType = "received";
+            } else if (tx.type === "SWAP") {
+              displayType = "swap";
+            } else if (tx.type === "UNKNOWN") {
+              displayType = "unknown";
+            }
+
+            return {
+              id: tx.hash || tx.signature,
+              type: displayType,
+              amount: amountNum.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 9,
+              }),
+              token: tx.tokenSymbol || tx.symbol || getNativeTokenInfo().symbol,
+              timestamp: isValidDate
+                ? date.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                    hour12: true,
+                  })
+                : "Unknown",
+              fee: tx.fee || "0.000001650",
+              signature: tx.hash || tx.signature,
+            };
+          });
+
+          console.log(
+            `Setting ${formattedTransactions.length} formatted transactions to state`
+          );
+          console.log("First transaction:", formattedTransactions[0]);
+          setTransactions(formattedTransactions);
+        } else {
+          console.log("No transactions in response or invalid response format");
+        }
+      } catch (error) {
+        console.error("Error checking transactions:", error);
       }
-    } catch (error) {
-      console.error("Error checking transactions:", error);
-    }
-  };
+    },
+    [selectedWallet, currentNetwork, getNativeTokenInfo]
+  );
 
   // Handle pull-to-refresh
   const onRefresh = async () => {
@@ -957,7 +971,7 @@ function AppContent() {
     if (!selectedWallet) return;
     checkBalance();
     checkTransactions();
-  }, [selectedWallet?.publicKey, currentNetwork]);
+  }, [selectedWallet, checkBalance, checkTransactions]);
 
   // Auto-refresh balance every 3 seconds
   useEffect(() => {
@@ -968,7 +982,7 @@ function AppContent() {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [selectedWallet?.publicKey, currentNetwork]);
+  }, [selectedWallet, checkBalance]);
 
   const switchNetwork = (network) => {
     setCurrentNetwork(network);
@@ -3383,17 +3397,30 @@ function AppContent() {
                   activeOpacity={0.7}
                 >
                   <Text style={styles.balanceUSD}>{balanceUSD}</Text>
-                  <Text style={styles.balanceChange}>
-                    {tokenPrice !== null
-                      ? `${getNativeTokenInfo().symbol} $${tokenPrice.toLocaleString(
-                          "en-US",
-                          {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          }
-                        )}`
-                      : "$0.00"}
-                  </Text>
+                  {(() => {
+                    // Use real portfolio gain/loss data from GraphQL aggregate
+                    const gainLossPercent =
+                      portfolioGainLoss.percentChange || 0;
+                    const gainLoss = portfolioGainLoss.valueChange || 0;
+                    const isPositive = gainLoss >= 0;
+
+                    return (
+                      <Text
+                        style={[
+                          styles.balanceChange,
+                          { color: isPositive ? "#00D084" : "#FF6B6B" },
+                        ]}
+                      >
+                        {isPositive ? "+" : ""}
+                        {gainLossPercent.toFixed(2)}% ($
+                        {Math.abs(gainLoss).toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                        )
+                      </Text>
+                    );
+                  })()}
                 </TouchableOpacity>
               )}
 
@@ -3528,7 +3555,12 @@ function AppContent() {
                     address={selectedWallet.publicKey}
                     providerId={currentNetwork.providerId}
                     pollingIntervalSeconds={60}
-                    onBalanceUpdate={(balanceUSD) => setBalanceUSD(balanceUSD)}
+                    onBalanceUpdate={(balanceUSD, gainLossData) => {
+                      setBalanceUSD(balanceUSD);
+                      if (gainLossData) {
+                        setPortfolioGainLoss(gainLossData);
+                      }
+                    }}
                   />
                 </View>
               ) : (

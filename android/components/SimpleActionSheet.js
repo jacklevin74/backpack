@@ -183,7 +183,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   sheet: {
-    flex: 1,
     maxHeight: SCREEN_HEIGHT * 0.9,
   },
   grabberContainer: {

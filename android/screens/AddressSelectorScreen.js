@@ -1,16 +1,16 @@
-import React from 'react';
+import React from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-} from 'react-native';
+} from "react-native";
 
 export default function AddressSelectorScreen({
   wallets = [],
   onSelect = () => {},
-  onDismiss
+  onDismiss,
 }) {
   return (
     <View style={styles.container}>
@@ -34,7 +34,7 @@ export default function AddressSelectorScreen({
             <View style={styles.addressContent}>
               <Text style={styles.addressName}>{wallet.name}</Text>
               <Text style={styles.addressText} numberOfLines={1}>
-                {wallet.address}
+                {wallet.publicKey}
               </Text>
             </View>
           </TouchableOpacity>
@@ -47,26 +47,26 @@ export default function AddressSelectorScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: "#000000",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1a1a1a',
+    borderBottomColor: "#1a1a1a",
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
   headerClose: {
     fontSize: 24,
-    color: '#4A90E2',
-    fontWeight: '600',
+    color: "#4A90E2",
+    fontWeight: "600",
   },
   content: {
     flex: 1,
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
   addressItem: {
     paddingVertical: 16,
     paddingHorizontal: 16,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: "#0a0a0a",
     borderRadius: 12,
     marginBottom: 8,
   },
@@ -84,13 +84,13 @@ const styles = StyleSheet.create({
   },
   addressName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: "600",
+    color: "#FFFFFF",
     marginBottom: 6,
   },
   addressText: {
     fontSize: 12,
-    color: '#888888',
-    fontFamily: 'monospace',
+    color: "#888888",
+    fontFamily: "monospace",
   },
 });

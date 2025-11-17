@@ -330,6 +330,9 @@ function AppContent() {
   const [showBluetoothDrawer, setShowBluetoothDrawer] = useState(false);
   const [pairedDevices, setPairedDevices] = useState([]);
 
+  // State for address selector -> send screen communication
+  const [selectedAddressForSend, setSelectedAddressForSend] = useState("");
+
   // Wallet management states
   const [showAddWalletModal, setShowAddWalletModal] = useState(false);
   const [showCreateWalletModal, setShowCreateWalletModal] = useState(false);
@@ -1225,6 +1228,8 @@ function AppContent() {
   };
 
   const handleSend = async () => {
+    // Clear any previously selected address
+    setSelectedAddressForSend("");
     await sendSheetRef.current?.present();
   };
 
@@ -1237,7 +1242,7 @@ function AppContent() {
     Alert.alert("Copied", "Address copied to clipboard");
   };
 
-  const handleSendSubmit = async () => {
+  const handleSendSubmit = async (amount, address) => {
     // Dismiss keyboard when Send button is pressed
     Keyboard.dismiss();
 
@@ -1245,13 +1250,17 @@ function AppContent() {
       Alert.alert("Error", "No wallet selected");
       return;
     }
-    if (!sendAddress || !sendAmount) {
+    if (!address || !amount) {
       Alert.alert("Error", "Please enter both address and amount");
       return;
     }
 
+    // Store values in state for confirmation screen
+    setSendAmount(amount);
+    setSendAddress(address);
+
     // Trim the address to remove any whitespace
-    const trimmedAddress = sendAddress.trim();
+    const trimmedAddress = address.trim();
 
     // Validate address format
     try {
@@ -1262,7 +1271,7 @@ function AppContent() {
     }
 
     // Validate amount
-    const amountNum = parseFloat(sendAmount);
+    const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
       Alert.alert("Error", "Invalid amount");
       return;
@@ -5389,6 +5398,7 @@ function AppContent() {
           handleSendSubmit={handleSendSubmit}
           wallets={wallets}
           addressSelectorSheetRef={addressSelectorSheetRef}
+          selectedAddressFromSelector={selectedAddressForSend}
           onDismiss={() => sendSheetRef.current?.dismiss()}
         />
       </TrueSheet>
@@ -5514,6 +5524,11 @@ function AppContent() {
         backgroundColor="#000000"
       >
         <AddressSelectorScreen
+          wallets={wallets}
+          onSelect={(address) => {
+            setSelectedAddressForSend(address);
+            addressSelectorSheetRef.current?.dismiss();
+          }}
           onDismiss={() => addressSelectorSheetRef.current?.dismiss()}
         />
       </TrueSheet>

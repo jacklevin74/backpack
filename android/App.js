@@ -74,6 +74,9 @@ import { PinUnlock } from "./src/auth/PinUnlock";
 import { ChangePin } from "./src/auth/ChangePin";
 import { BiometricSettings } from "./src/auth/BiometricSettings";
 
+// Import Toast notifications
+import Toast from "react-native-toast-message";
+
 // Import native USB Ledger module
 const { LedgerUsb } = NativeModules;
 
@@ -1241,37 +1244,67 @@ function AppContent() {
     console.log("📋 selectedWallet.address:", selectedWallet?.address);
     console.log("📋 selectedWallet.publicKey:", selectedWallet?.publicKey);
     Clipboard.setString(text);
-    Alert.alert("Copied", "Address copied to clipboard");
+    Toast.show({
+      type: "success",
+      text1: "Copied",
+      text2: "Address copied to clipboard",
+      position: "bottom",
+    });
   };
 
-  const handleSendSubmit = async () => {
+  const handleSendSubmit = async (amount, address) => {
     // Dismiss keyboard when Send button is pressed
     Keyboard.dismiss();
 
     if (!selectedWallet) {
-      Alert.alert("Error", "No wallet selected");
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "No wallet selected",
+        position: "bottom",
+      });
       return;
     }
-    if (!sendAddress || !sendAmount) {
-      Alert.alert("Error", "Please enter both address and amount");
+    if (!address || !amount) {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Please enter both address and amount",
+        position: "bottom",
+      });
       return;
     }
 
     // Trim the address to remove any whitespace
-    const trimmedAddress = sendAddress.trim();
+    // Store values in state for confirmation screen
+    setSendAmount(amount);
+    setSendAddress(address);
+
+    // Trim the address to remove any whitespace
+    const trimmedAddress = address.trim();
 
     // Validate address format
     try {
       new PublicKey(trimmedAddress);
     } catch (e) {
-      Alert.alert("Error", "Invalid recipient address");
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Invalid recipient address",
+        position: "bottom",
+      });
       return;
     }
 
     // Validate amount
-    const amountNum = parseFloat(sendAmount);
+    const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
-      Alert.alert("Error", "Invalid amount");
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Invalid amount",
+        position: "bottom",
+      });
       return;
     }
 
@@ -1454,15 +1487,30 @@ function AppContent() {
   };
 
   const handleSwap = () => {
-    Alert.alert("Swap", "Swap functionality would open here");
+    Toast.show({
+      type: "info",
+      text1: "Swap",
+      text2: "Swap functionality would open here",
+      position: "bottom",
+    });
   };
 
   const handleStake = () => {
-    Alert.alert("Stake", "Stake functionality would open here");
+    Toast.show({
+      type: "info",
+      text1: "Stake",
+      text2: "Stake functionality would open here",
+      position: "bottom",
+    });
   };
 
   const handleBridge = () => {
-    Alert.alert("Bridge", "Bridge functionality would open here");
+    Toast.show({
+      type: "info",
+      text1: "Bridge",
+      text2: "Bridge functionality would open here",
+      position: "bottom",
+    });
   };
 
   const copyAddress = () => {
@@ -5959,6 +6007,83 @@ function AppContent() {
           />
         </View>
       )}
+
+      {/* Toast notifications */}
+      <Toast
+        config={{
+          success: (props) => (
+            <View
+              style={{
+                backgroundColor: "#1a1a1a",
+                padding: 16,
+                borderRadius: 8,
+                borderLeftWidth: 4,
+                borderLeftColor: "#00D084",
+                minWidth: 300,
+              }}
+            >
+              <Text
+                style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 14 }}
+              >
+                {props.text1}
+              </Text>
+              {props.text2 && (
+                <Text style={{ color: "#999999", fontSize: 12, marginTop: 4 }}>
+                  {props.text2}
+                </Text>
+              )}
+            </View>
+          ),
+          error: (props) => (
+            <View
+              style={{
+                backgroundColor: "#1a1a1a",
+                padding: 16,
+                borderRadius: 8,
+                borderLeftWidth: 4,
+                borderLeftColor: "#FF6B6B",
+                minWidth: 300,
+              }}
+            >
+              <Text
+                style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 14 }}
+              >
+                {props.text1}
+              </Text>
+              {props.text2 && (
+                <Text style={{ color: "#999999", fontSize: 12, marginTop: 4 }}>
+                  {props.text2}
+                </Text>
+              )}
+            </View>
+          ),
+          info: (props) => (
+            <View
+              style={{
+                backgroundColor: "#1a1a1a",
+                padding: 16,
+                borderRadius: 8,
+                borderLeftWidth: 4,
+                borderLeftColor: "#4A90E2",
+                minWidth: 300,
+              }}
+            >
+              <Text
+                style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 14 }}
+              >
+                {props.text1}
+              </Text>
+              {props.text2 && (
+                <Text style={{ color: "#999999", fontSize: 12, marginTop: 4 }}>
+                  {props.text2}
+                </Text>
+              )}
+            </View>
+          ),
+        }}
+        position="bottom"
+        bottomOffset={80}
+      />
     </>
   );
 }

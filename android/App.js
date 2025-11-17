@@ -90,6 +90,7 @@ import WalletManagerScreen from "./screens/WalletManagerScreen";
 import WalletSettingsScreen from "./screens/WalletSettingsScreen";
 import AddressSelectorScreen from "./screens/AddressSelectorScreen";
 import LedgerConnectionScreen from "./screens/LedgerConnectionScreen";
+import Toast from "react-native-toast-message";
 
 // Network configurations
 const API_SERVER = "http://162.250.126.66:4000";
@@ -309,7 +310,8 @@ function AppContent() {
 
   const [wallets, setWallets] = useState([]);
   const [selectedWallet, setSelectedWallet] = useState(null);
-  const [selectedAddressFromSelector, setSelectedAddressFromSelector] = useState("");
+  const [selectedAddressFromSelector, setSelectedAddressFromSelector] =
+    useState("");
   const [accounts, setAccounts] = useState(MOCK_ACCOUNTS);
   const [selectedAccount, setSelectedAccount] = useState(MOCK_ACCOUNTS[0]);
   const [balance, setBalance] = useState("0");
@@ -1111,7 +1113,12 @@ function AppContent() {
               });
             }
 
-            Alert.alert("Success", "Wallet deleted successfully");
+            Toast.show({
+              type: "success",
+              text1: "Success",
+              text2: "Wallet deleted successfully",
+              position: "bottom",
+            });
           },
         },
       ]
@@ -1215,7 +1222,12 @@ function AppContent() {
     console.log("📋 selectedWallet.address:", selectedWallet?.address);
     console.log("📋 selectedWallet.publicKey:", selectedWallet?.publicKey);
     Clipboard.setString(text);
-    Alert.alert("Copied", "Address copied to clipboard");
+    Toast.show({
+      type: "success",
+      text1: "Copied",
+      text2: "Address copied to clipboard",
+      position: "bottom",
+    });
   };
 
   const handleSendSubmit = async (amount, address) => {
@@ -1223,13 +1235,27 @@ function AppContent() {
     Keyboard.dismiss();
 
     if (!selectedWallet) {
-      Alert.alert("Error", "No wallet selected");
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "No wallet selected",
+        position: "bottom",
+      });
       return;
     }
     if (!address || !amount) {
-      Alert.alert("Error", "Please enter both address and amount");
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Please enter both address and amount",
+        position: "bottom",
+      });
       return;
     }
+
+    // Store values in state for confirmation screen
+    setSendAmount(amount);
+    setSendAddress(address);
 
     // Trim the address to remove any whitespace
     const trimmedAddress = address.trim();
@@ -1238,14 +1264,24 @@ function AppContent() {
     try {
       new PublicKey(trimmedAddress);
     } catch (e) {
-      Alert.alert("Error", "Invalid recipient address");
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Invalid recipient address",
+        position: "bottom",
+      });
       return;
     }
 
     // Validate amount
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
-      Alert.alert("Error", "Invalid amount");
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Invalid amount",
+        position: "bottom",
+      });
       return;
     }
 
@@ -1428,15 +1464,30 @@ function AppContent() {
   };
 
   const handleSwap = () => {
-    Alert.alert("Swap", "Swap functionality would open here");
+    Toast.show({
+      type: "info",
+      text1: "Swap",
+      text2: "Swap functionality would open here",
+      position: "bottom",
+    });
   };
 
   const handleStake = () => {
-    Alert.alert("Stake", "Stake functionality would open here");
+    Toast.show({
+      type: "info",
+      text1: "Stake",
+      text2: "Stake functionality would open here",
+      position: "bottom",
+    });
   };
 
   const handleBridge = () => {
-    Alert.alert("Bridge", "Bridge functionality would open here");
+    Toast.show({
+      type: "info",
+      text1: "Bridge",
+      text2: "Bridge functionality would open here",
+      position: "bottom",
+    });
   };
 
   const copyAddress = () => {
@@ -4687,6 +4738,118 @@ function AppContent() {
             </View>
           </View>
         </TrueSheet>
+
+        {/* Toast notifications */}
+        <Toast
+          bottomOffset={80}
+          config={{
+            success: (props) => (
+              <View
+                style={{
+                  backgroundColor: "#1a1a1a",
+                  borderLeftColor: "#4CAF50",
+                  borderLeftWidth: 6,
+                  borderRadius: 12,
+                  paddingVertical: 18,
+                  paddingHorizontal: 20,
+                  marginHorizontal: 20,
+                  marginBottom: 8,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    color: "#FFFFFF",
+                    fontSize: 14,
+                    fontWeight: "600",
+                    marginBottom: 6,
+                  }}
+                >
+                  {props.text1}
+                </Text>
+                <Text
+                  style={{ color: "#CCCCCC", fontSize: 12, lineHeight: 18 }}
+                >
+                  {props.text2}
+                </Text>
+              </View>
+            ),
+            error: (props) => (
+              <View
+                style={{
+                  backgroundColor: "#1a1a1a",
+                  borderLeftColor: "#F44336",
+                  borderLeftWidth: 6,
+                  borderRadius: 12,
+                  paddingVertical: 18,
+                  paddingHorizontal: 20,
+                  marginHorizontal: 20,
+                  marginBottom: 8,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    color: "#FFFFFF",
+                    fontSize: 14,
+                    fontWeight: "600",
+                    marginBottom: 6,
+                  }}
+                >
+                  {props.text1}
+                </Text>
+                <Text
+                  style={{ color: "#CCCCCC", fontSize: 12, lineHeight: 18 }}
+                >
+                  {props.text2}
+                </Text>
+              </View>
+            ),
+            info: (props) => (
+              <View
+                style={{
+                  backgroundColor: "#1a1a1a",
+                  borderLeftColor: "#2196F3",
+                  borderLeftWidth: 6,
+                  borderRadius: 12,
+                  paddingVertical: 18,
+                  paddingHorizontal: 20,
+                  marginHorizontal: 20,
+                  marginBottom: 8,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    color: "#FFFFFF",
+                    fontSize: 14,
+                    fontWeight: "600",
+                    marginBottom: 6,
+                  }}
+                >
+                  {props.text1}
+                </Text>
+                <Text
+                  style={{ color: "#CCCCCC", fontSize: 12, lineHeight: 18 }}
+                >
+                  {props.text2}
+                </Text>
+              </View>
+            ),
+          }}
+        />
       </GestureHandlerRootView>
 
       {/* Settings - Full Page - Outside GestureHandler */}

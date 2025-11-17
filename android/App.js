@@ -1434,29 +1434,13 @@ function AppContent() {
       console.log("Transaction confirmed!");
       setSendConfirming(false);
 
-      // Show elegant toast with clickable transaction link
-      const explorerUrl = `${currentNetwork.explorerUrl}/tx/${signature}`;
-      const toastMessage = `✅ Transaction confirmed!\nTap to view: ${signature.substring(0, 8)}...${signature.substring(signature.length - 8)}`;
-
-      if (Platform.OS === "android") {
-        ToastAndroid.showWithGravityAndOffset(
-          toastMessage,
-          ToastAndroid.LONG,
-          ToastAndroid.BOTTOM,
-          0,
-          100
-        );
-
-        // Show success toast after transaction confirmation
-        setTimeout(() => {
-          Toast.show({
-            type: "success",
-            text1: "Transaction Successful",
-            text2: "Your transaction has been confirmed",
-            position: "bottom",
-          });
-        }, 1000);
-      }
+      // Show success toast after transaction confirmation
+      Toast.show({
+        type: "success",
+        text1: "Transaction Successful",
+        text2: "Your transaction has been confirmed",
+        position: "bottom",
+      });
 
       // Refresh balance after a short delay
       setTimeout(() => {

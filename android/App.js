@@ -18,7 +18,6 @@ import {
   Text,
   View,
   TouchableOpacity,
-  Alert,
   ScrollView,
   FlatList,
   Image,
@@ -55,6 +54,10 @@ import slip10 from "micro-key-producer/slip10.js";
 import { randomBytes, secretbox } from "tweetnacl";
 import bs58 from "bs58";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import {
+  SafeAreaProvider,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetView,
@@ -286,6 +289,9 @@ const NETWORKS = [
 const apolloClient = createApolloClient("backpack-android", "1.0.0");
 
 function AppContent() {
+  // Get safe area insets for proper spacing on devices with notches/gesture bars
+  const insets = useSafeAreaInsets();
+
   // Authentication states
   const [authState, setAuthState] = useState("loading"); // 'loading', 'setup', 'locked', 'unlocked'
   const [password, setPassword] = useState(null);
@@ -663,23 +669,12 @@ function AppContent() {
         const netInfoState = await NetInfo.fetch();
 
         if (!netInfoState.isConnected || !netInfoState.isInternetReachable) {
-          Alert.alert(
-            "No Network Connection",
-            "Please open Settings and connect to WiFi to use this app.",
-            [
-              {
-                text: "Open Settings",
-                onPress: () => {
-                  if (Platform.OS === "android") {
-                    Linking.openSettings();
-                  } else {
-                    Linking.openURL("app-settings:");
-                  }
-                },
-              },
-              { text: "Cancel", style: "cancel" },
-            ]
-          );
+          Toast.show({
+            type: "error",
+            text1: "No Network Connection",
+            text2: "Please connect to WiFi to use this app.",
+            position: "bottom",
+          });
         }
         setHasCheckedNetwork(true);
       } catch (error) {
@@ -1100,57 +1095,46 @@ function AppContent() {
     console.log("Full wallet object:", JSON.stringify(wallet, null, 2));
     console.log("=== END WALLET INFO ===");
 
-    Alert.alert(
-      "Delete Wallet",
-      `Are you sure you want to delete "${wallet.name}"?`,
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-          onPress: () => {
-            console.log("Delete cancelled for wallet:", wallet.name);
-          },
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            console.log("Deleting wallet:", wallet.name);
-            // Remove the wallet from the list
-            const updatedWallets = wallets.filter((w) => w.id !== wallet.id);
-            console.log("Wallets after deletion:", updatedWallets.length);
-            setWallets(updatedWallets);
-            await deleteWalletMnemonicSecurely(wallet.id);
+    // Delete wallet directly
+    (async () => {
+      console.log("Deleting wallet:", wallet.name);
+      // Remove the wallet from the list
+      const updatedWallets = wallets.filter((w) => w.id !== wallet.id);
+      console.log("Wallets after deletion:", updatedWallets.length);
+      setWallets(updatedWallets);
+      await deleteWalletMnemonicSecurely(wallet.id);
 
-            // If we deleted the selected wallet, select the first remaining wallet or reset
-            if (wallet.selected && updatedWallets.length > 0) {
-              const newSelectedWallet = {
-                ...updatedWallets[0],
-                selected: true,
-              };
-              setWallets(
-                updatedWallets.map((w) => ({
-                  ...w,
-                  selected: w.id === newSelectedWallet.id,
-                }))
-              );
-              setSelectedWallet(newSelectedWallet);
-            } else if (updatedWallets.length === 0) {
-              // No wallets left, reset to initial state
-              setSelectedWallet({
-                id: 1,
-                name: "Wallet 1",
-                address: "Abc1...xyz2",
-                publicKey: "",
-                selected: true,
-              });
-            }
+      // If we deleted the selected wallet, select the first remaining wallet or reset
+      if (wallet.selected && updatedWallets.length > 0) {
+        const newSelectedWallet = {
+          ...updatedWallets[0],
+          selected: true,
+        };
+        setWallets(
+          updatedWallets.map((w) => ({
+            ...w,
+            selected: w.id === newSelectedWallet.id,
+          }))
+        );
+        setSelectedWallet(newSelectedWallet);
+      } else if (updatedWallets.length === 0) {
+        // No wallets left, reset to initial state
+        setSelectedWallet({
+          id: 1,
+          name: "Wallet 1",
+          address: "Abc1...xyz2",
+          publicKey: "",
+          selected: true,
+        });
+      }
 
-            Alert.alert("Success", "Wallet deleted successfully");
-          },
-        },
-      ]
-    );
+      Toast.show({
+        type: "success",
+        text1: "Success",
+        text2: "Wallet deleted successfully",
+        position: "bottom",
+      });
+    })();
   };
 
   const openSeedPhraseSheet = useCallback(async () => {
@@ -1463,15 +1447,14 @@ function AppContent() {
           100
         );
 
-        // Open explorer URL after short delay to allow user to see toast
+        // Show success toast after transaction confirmation
         setTimeout(() => {
-          Alert.alert("Transaction Successful", `View on explorer?`, [
-            {
-              text: "View Transaction",
-              onPress: () => Linking.openURL(explorerUrl),
-            },
-            { text: "Close", style: "cancel" },
-          ]);
+          Toast.show({
+            type: "success",
+            text1: "Transaction Successful",
+            text2: "Your transaction has been confirmed",
+            position: "bottom",
+          });
         }, 1000);
       }
 
@@ -2057,16 +2040,23 @@ function AppContent() {
 
       if (importType === "mnemonic") {
         if (!bip39.validateMnemonic(normalizedMnemonic)) {
-          Alert.alert("Error", "Invalid recovery phrase");
+          Toast.show({
+            type: "error",
+            text1: "Error",
+            text2: "Invalid recovery phrase",
+            position: "bottom",
+          });
           return;
         }
 
         const parsedIndex = parseInt(importDerivationIndex, 10);
         if (Number.isNaN(parsedIndex) || parsedIndex < 0) {
-          Alert.alert(
-            "Error",
-            "Derivation index must be a non-negative number"
-          );
+          Toast.show({
+            type: "error",
+            text1: "Error",
+            text2: "Derivation index must be a non-negative number",
+            position: "bottom",
+          });
           return;
         }
 
@@ -2102,10 +2092,12 @@ function AppContent() {
             const privateKeyArray = JSON.parse(trimmedKey);
             keypair = Keypair.fromSecretKey(new Uint8Array(privateKeyArray));
           } catch {
-            Alert.alert(
-              "Error",
-              "Invalid private key format. Use bs58 or JSON array format."
-            );
+            Toast.show({
+              type: "error",
+              text1: "Error",
+              text2: "Invalid private key format. Use bs58 or JSON array format.",
+              position: "bottom",
+            });
             return;
           }
         }
@@ -2116,7 +2108,12 @@ function AppContent() {
       const isDuplicate = wallets.some((w) => w.publicKey === publicKeyStr);
 
       if (isDuplicate) {
-        Alert.alert("Duplicate Wallet", "This wallet has already been added.");
+        Toast.show({
+          type: "error",
+          text1: "Duplicate Wallet",
+          text2: "This wallet has already been added.",
+          position: "bottom",
+        });
         return;
       }
 
@@ -2152,7 +2149,12 @@ function AppContent() {
       // Register the wallet with the transaction indexer
       await registerWalletWithIndexer(publicKeyStr, currentNetwork.providerId);
     } catch (error) {
-      Alert.alert("Error", "Failed to import wallet: " + error.message);
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Failed to import wallet: " + error.message,
+        position: "bottom",
+      });
     }
   };
 
@@ -2175,7 +2177,12 @@ function AppContent() {
       const isDuplicate = wallets.some((w) => w.publicKey === publicKeyStr);
 
       if (isDuplicate) {
-        Alert.alert("Duplicate Wallet", "This wallet has already been added.");
+        Toast.show({
+          type: "error",
+          text1: "Duplicate Wallet",
+          text2: "This wallet has already been added.",
+          position: "bottom",
+        });
         return;
       }
 
@@ -2204,7 +2211,12 @@ function AppContent() {
       setNewMnemonic("");
       setShowCreateWalletModal(false);
     } catch (error) {
-      Alert.alert("Error", "Failed to create wallet: " + error.message);
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Failed to create wallet: " + error.message,
+        position: "bottom",
+      });
       console.error("Wallet creation error:", error);
     }
   };
@@ -2233,66 +2245,70 @@ function AppContent() {
     if (changeSeedPhraseMode === "enter") {
       // Validate entered seed phrase
       if (!newSeedPhraseInput.trim()) {
-        Alert.alert("Error", "Please enter a seed phrase");
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "Please enter a seed phrase",
+          position: "bottom",
+        });
         return;
       }
 
       if (!bip39.validateMnemonic(newSeedPhraseInput.trim())) {
-        Alert.alert(
-          "Error",
-          "Invalid seed phrase. Please check and try again."
-        );
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "Invalid seed phrase. Please check and try again.",
+          position: "bottom",
+        });
         return;
       }
       seedToUse = newSeedPhraseInput.trim();
     } else {
       // Use generated seed phrase
       if (!generatedNewSeed) {
-        Alert.alert("Error", "Please generate a seed phrase first");
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "Please generate a seed phrase first",
+          position: "bottom",
+        });
         return;
       }
       seedToUse = generatedNewSeed;
     }
 
-    // Warn user about existing wallets
-    Alert.alert(
-      "Change Seed Phrase",
-      "Changing your seed phrase will affect newly created wallets only. Existing wallets will remain unchanged. Do you want to continue?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Continue",
-          onPress: async () => {
-            try {
-              setMasterSeedPhrase(seedToUse);
-              await saveMasterSeedPhrase(seedToUse);
+    // Change seed phrase (affects newly created wallets only)
+    try {
+      setMasterSeedPhrase(seedToUse);
+      await saveMasterSeedPhrase(seedToUse);
 
-              // Reset derivation index to 0 for new seed phrase
-              setWalletDerivationIndex(0);
-              await saveDerivationIndex(0);
+      // Reset derivation index to 0 for new seed phrase
+      setWalletDerivationIndex(0);
+      await saveDerivationIndex(0);
 
-              console.log("Master seed phrase changed successfully");
-              ToastAndroid.show(
-                "Seed phrase changed successfully",
-                ToastAndroid.SHORT
-              );
+      console.log("Master seed phrase changed successfully");
+      Toast.show({
+        type: "success",
+        text1: "Seed Phrase Changed",
+        text2: "New wallets will use the updated seed phrase",
+        position: "bottom",
+      });
 
-              // Reset modal state
-              setNewSeedPhraseInput("");
-              setGeneratedNewSeed("");
-              setChangeSeedPhraseMode("enter");
-              closeAllSettings();
-            } catch (error) {
-              Alert.alert(
-                "Error",
-                "Failed to change seed phrase: " + error.message
-              );
-              console.error("Change seed phrase error:", error);
-            }
-          },
-        },
-      ]
-    );
+      // Reset modal state
+      setNewSeedPhraseInput("");
+      setGeneratedNewSeed("");
+      setChangeSeedPhraseMode("enter");
+      closeAllSettings();
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Failed to change seed phrase: " + error.message,
+        position: "bottom",
+      });
+      console.error("Change seed phrase error:", error);
+    }
   };
 
   const requestBluetoothPermissions = async () => {
@@ -2330,11 +2346,13 @@ function AppContent() {
     // Request Bluetooth permissions first
     const hasPermission = await requestBluetoothPermissions();
     if (!hasPermission) {
-      Alert.alert(
-        "Permissions Required",
-        "Bluetooth permissions are required to connect to Ledger.",
-        [{ text: "OK", onPress: () => setShowAddWalletModal(true) }]
-      );
+      Toast.show({
+        type: "error",
+        text1: "Permissions Required",
+        text2: "Bluetooth permissions are required to connect to Ledger.",
+        position: "bottom",
+      });
+      setShowAddWalletModal(true);
       return;
     }
 
@@ -2346,26 +2364,15 @@ function AppContent() {
       return;
     }
 
-    // Show setup instructions only for first-time connection
-    Alert.alert(
-      "Ledger Bluetooth Setup",
-      "Before connecting, please ensure:\n\n1. Your Ledger is unlocked\n2. The Solana app is open on your Ledger\n3. Bluetooth is enabled on your phone\n\nThe app will automatically pair with your Ledger when you connect.",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-          onPress: () => setShowAddWalletModal(true),
-        },
-        {
-          text: "Continue",
-          onPress: () => {
-            ledgerSheetRef.current?.expand();
-            scanForLedger();
-          },
-        },
-      ],
-      { cancelable: false }
-    );
+    // Show setup instructions for first-time connection
+    Toast.show({
+      type: "info",
+      text1: "Ledger Setup",
+      text2: "Ensure Ledger is unlocked with Solana app open",
+      position: "bottom",
+    });
+    ledgerSheetRef.current?.expand();
+    scanForLedger();
   };
 
   // Proper BLE cleanup function following best practices
@@ -2458,7 +2465,12 @@ function AppContent() {
       console.log("Device list updated:", deviceList);
     } catch (error) {
       console.error("Error fetching paired devices:", error);
-      Alert.alert("Error", `Failed to fetch paired devices: ${error.message}`);
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: `Failed to fetch paired devices: ${error.message}`,
+        position: "bottom",
+      });
     }
   };
 
@@ -2467,47 +2479,30 @@ function AppContent() {
     try {
       console.log("Forgetting device:", deviceId);
 
-      Alert.alert(
-        "Forget Device",
-        "Are you sure you want to forget this device? You will need to pair it again to use it.",
-        [
-          {
-            text: "Cancel",
-            style: "cancel",
-          },
-          {
-            text: "Forget",
-            style: "destructive",
-            onPress: () => {
-              try {
-                // Clear stored device ID and info if it matches
-                if (ledgerDeviceId === deviceId) {
-                  setLedgerDeviceId(null);
-                  setLedgerDeviceInfo(null);
-                  console.log("Cleared stored ledger device ID and info");
-                }
+      // Clear stored device ID and info if it matches
+      if (ledgerDeviceId === deviceId) {
+        setLedgerDeviceId(null);
+        setLedgerDeviceInfo(null);
+        console.log("Cleared stored ledger device ID and info");
+      }
 
-                // Refresh the list
-                fetchPairedBluetoothDevices();
+      // Refresh the list
+      fetchPairedBluetoothDevices();
 
-                Alert.alert(
-                  "Success",
-                  "Device has been forgotten. You will need to reconnect it to use it again."
-                );
-              } catch (error) {
-                console.error("Error forgetting device:", error);
-                Alert.alert(
-                  "Error",
-                  `Failed to forget device: ${error.message}`
-                );
-              }
-            },
-          },
-        ]
-      );
+      Toast.show({
+        type: "success",
+        text1: "Device Forgotten",
+        text2: "You will need to reconnect it to use it again.",
+        position: "bottom",
+      });
     } catch (error) {
       console.error("Error in forgetBluetoothDevice:", error);
-      Alert.alert("Error", `Failed to forget device: ${error.message}`);
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: `Failed to forget device: ${error.message}`,
+        position: "bottom",
+      });
     }
   };
 
@@ -2578,11 +2573,12 @@ function AppContent() {
           console.error("Ledger scan error:", error);
           setLedgerScanning(false);
           ledgerScanSubscriptionRef.current = null;
-          Alert.alert(
-            "Scan Error",
-            error.message ||
-              "Failed to scan for Ledger devices. Make sure Bluetooth is enabled and the Solana app is open on your Ledger."
-          );
+          Toast.show({
+            type: "error",
+            text1: "Scan Error",
+            text2: error.message || "Failed to scan for Ledger devices. Check Bluetooth and Solana app.",
+            position: "bottom",
+          });
         },
       });
 
@@ -2604,7 +2600,12 @@ function AppContent() {
     } catch (error) {
       setLedgerScanning(false);
       console.error("Error starting Ledger scan:", error);
-      Alert.alert("Error", error.message || "Failed to start Ledger scan");
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: error.message || "Failed to start Ledger scan",
+        position: "bottom",
+      });
     }
   };
 
@@ -2823,10 +2824,12 @@ function AppContent() {
           "Please ensure:\n• Ledger is unlocked\n• Solana app is open on Ledger\n• Accept the pairing request when it appears";
       }
 
-      Alert.alert("Connection Error", errorMessage, [
-        { text: "Try Again", onPress: () => scanForLedger() },
-        { text: "Cancel" },
-      ]);
+      Toast.show({
+        type: "error",
+        text1: "Connection Error",
+        text2: errorMessage.length > 100 ? errorMessage.substring(0, 100) + "..." : errorMessage,
+        position: "bottom",
+      });
     }
   };
 
@@ -2943,11 +2946,12 @@ function AppContent() {
       setLedgerConnecting(false);
       console.error("Error connecting to USB Ledger:", error);
 
-      Alert.alert(
-        "USB Connection Error",
-        error.message || "Failed to connect to Ledger via USB",
-        [{ text: "OK" }]
-      );
+      Toast.show({
+        type: "error",
+        text1: "USB Connection Error",
+        text2: error.message || "Failed to connect to Ledger via USB",
+        position: "bottom",
+      });
     }
   };
 
@@ -2965,7 +2969,12 @@ function AppContent() {
     const isDuplicate = wallets.some((w) => w.publicKey === account.address);
 
     if (isDuplicate) {
-      Alert.alert("Duplicate Wallet", "This wallet has already been added.");
+      Toast.show({
+        type: "error",
+        text1: "Duplicate Wallet",
+        text2: "This wallet has already been added.",
+        position: "bottom",
+      });
       return;
     }
 
@@ -3699,7 +3708,12 @@ function AppContent() {
           </ScrollView>
 
           {/* Bottom Tab Bar */}
-          <View style={styles.bottomTabBar}>
+          <View
+            style={[
+              styles.bottomTabBar,
+              { paddingBottom: Math.max(insets.bottom, 8) },
+            ]}
+          >
             <TouchableOpacity
               style={styles.bottomTabItem}
               onPress={() => {
@@ -4771,32 +4785,22 @@ function AppContent() {
               <TouchableOpacity
                 testID="delete-account-button"
                 style={styles.settingsMenuItem}
-                onPress={() => {
-                  Alert.alert(
-                    "Delete Account",
-                    `Are you sure you want to delete "${editingWallet?.name}"? This action cannot be undone.`,
-                    [
-                      {
-                        text: "Cancel",
-                        style: "cancel",
-                      },
-                      {
-                        text: "Delete",
-                        style: "destructive",
-                        onPress: async () => {
-                          if (editingWallet) {
-                            const updatedWallets = wallets.filter(
-                              (w) => w.id !== editingWallet.id
-                            );
-                            setWallets(updatedWallets);
-                            await saveWalletsToStorage(updatedWallets);
-                            editWalletSheetRef.current?.close();
-                            setEditingWallet(null);
-                          }
-                        },
-                      },
-                    ]
-                  );
+                onPress={async () => {
+                  if (editingWallet) {
+                    const updatedWallets = wallets.filter(
+                      (w) => w.id !== editingWallet.id
+                    );
+                    setWallets(updatedWallets);
+                    await saveWalletsToStorage(updatedWallets);
+                    editWalletSheetRef.current?.close();
+                    setEditingWallet(null);
+                    Toast.show({
+                      type: "success",
+                      text1: "Account Deleted",
+                      text2: `${editingWallet.name} has been deleted`,
+                      position: "bottom",
+                    });
+                  }
                 }}
               >
                 <Text
@@ -5454,7 +5458,12 @@ function AppContent() {
                     style={styles.settingsMenuItem}
                     onPress={() => {
                       setShowSettingsModal(false);
-                      Alert.alert("Preferences", "Preferences would open here");
+                      Toast.show({
+                        type: "info",
+                        text1: "Preferences",
+                        text2: "Preferences would open here",
+                        position: "bottom",
+                      });
                     }}
                   >
                     <Text style={styles.settingsMenuItemText}>Preferences</Text>
@@ -5499,10 +5508,12 @@ function AppContent() {
                     style={styles.settingsMenuItem}
                     onPress={() => {
                       setShowSettingsModal(false);
-                      Alert.alert(
-                        "About X1 Wallet",
-                        "About X1 Wallet info would open here"
-                      );
+                      Toast.show({
+                        type: "info",
+                        text1: "About X1 Wallet",
+                        text2: "About X1 Wallet info would open here",
+                        position: "bottom",
+                      });
                     }}
                   >
                     <Text style={styles.settingsMenuItemText}>
@@ -5532,68 +5543,59 @@ function AppContent() {
                         borderTopColor: "rgba(255, 255, 255, 0.1)",
                       },
                     ]}
-                    onPress={() => {
-                      Alert.alert(
-                        "Reset Wallet",
-                        "This will delete ALL wallet data including:\n\n• All wallets and accounts\n• Seed phrases and private keys\n• Security settings (PIN/biometric)\n• All app settings\n\nThis action cannot be undone!\n\nMake sure you have backed up your seed phrases before proceeding.",
-                        [
-                          {
-                            text: "Cancel",
-                            style: "cancel",
-                          },
-                          {
-                            text: "Reset",
-                            style: "destructive",
-                            onPress: async () => {
-                              try {
-                                setShowSettingsModal(false);
+                    onPress={async () => {
+                      try {
+                        Toast.show({
+                          type: "info",
+                          text1: "Resetting Wallet",
+                          text2: "Clearing all data...",
+                          position: "bottom",
+                        });
+                        setShowSettingsModal(false);
 
-                                // Clear AsyncStorage
-                                await AsyncStorage.clear();
+                        // Clear AsyncStorage
+                        await AsyncStorage.clear();
 
-                                // Clear SecureStore - use AuthManager to clear all security data
-                                await AuthManager.clearSecurityState();
+                        // Clear SecureStore - use AuthManager to clear all security data
+                        await AuthManager.clearSecurityState();
 
-                                // Reset all state variables
-                                setMasterSeedPhrase(null);
-                                setWallets([]);
-                                setSelectedWallet(null);
-                                setEditingWallet(null);
-                                setEditWalletName("");
-                                setShowAddWalletModal(false);
-                                setShowChangeNameModal(false);
-                                setShowViewPrivateKeyModal(false);
-                                setShowViewSeedPhraseModal(false);
-                                setShowExportSeedPhraseModal(false);
-                                setShowChangeSeedPhraseModal(false);
-                                setSecurityAuthenticated(false);
-                                setSecurityAuthRequired(false);
-                                setWalletDerivationIndex(0);
+                        // Reset all state variables
+                        setMasterSeedPhrase(null);
+                        setWallets([]);
+                        setSelectedWallet(null);
+                        setEditingWallet(null);
+                        setEditWalletName("");
+                        setShowAddWalletModal(false);
+                        setShowChangeNameModal(false);
+                        setShowViewPrivateKeyModal(false);
+                        setShowViewSeedPhraseModal(false);
+                        setShowExportSeedPhraseModal(false);
+                        setShowChangeSeedPhraseModal(false);
+                        setSecurityAuthenticated(false);
+                        setSecurityAuthRequired(false);
+                        setWalletDerivationIndex(0);
 
-                                // Generate a random password for PIN setup (same as initial app load)
-                                const randomPassword = Array.from(
-                                  randomBytes(32)
-                                )
-                                  .map((byte) =>
-                                    byte.toString(16).padStart(2, "0")
-                                  )
-                                  .join("");
-                                setPassword(randomPassword);
+                        // Generate a random password for PIN setup (same as initial app load)
+                        const randomPassword = Array.from(
+                          randomBytes(32)
+                        )
+                          .map((byte) =>
+                            byte.toString(16).padStart(2, "0")
+                          )
+                          .join("");
+                        setPassword(randomPassword);
 
-                                // Go directly to PIN setup screen
-                                setAuthState("setup");
-                              } catch (error) {
-                                console.error("Error resetting wallet:", error);
-                                Alert.alert(
-                                  "Error",
-                                  "Failed to reset wallet. Please try again."
-                                );
-                              }
-                            },
-                          },
-                        ],
-                        { cancelable: true }
-                      );
+                        // Go directly to PIN setup screen
+                        setAuthState("setup");
+                      } catch (error) {
+                        console.error("Error resetting wallet:", error);
+                        Toast.show({
+                          type: "error",
+                          text1: "Error",
+                          text2: "Failed to reset wallet. Please try again.",
+                          position: "bottom",
+                        });
+                      }
                     }}
                   >
                     <Text
@@ -5682,90 +5684,76 @@ function AppContent() {
                       },
                     ]}
                     onPress={async () => {
-                      Alert.alert(
-                        "Clear PIN & Biometrics",
-                        "This will remove your PIN and biometric authentication settings. You will need to set up a new PIN when you next lock the app.\n\nYour wallets and seed phrases will NOT be affected.",
-                        [
-                          {
-                            text: "Cancel",
-                            style: "cancel",
-                          },
-                          {
-                            text: "Clear",
-                            style: "destructive",
-                            onPress: async () => {
-                              try {
-                                // Get the existing master password before clearing
-                                const existingPassword =
-                                  await AuthManager.getMasterPassword();
+                      try {
+                        Toast.show({
+                          type: "info",
+                          text1: "Clearing PIN",
+                          text2: "Removing authentication settings...",
+                          position: "bottom",
+                        });
 
-                                // Clear PIN and biometric data using correct SecureStore keys
-                                const secureAvailable =
-                                  await SecureStore.isAvailableAsync();
-                                if (secureAvailable) {
-                                  // Use the correct SecureStore keys from AuthManager
-                                  const authKeys = [
-                                    "pin_config", // Contains PIN hash and salt
-                                    "biometric_password", // Biometric-protected password
-                                  ];
+                        // Get the existing master password before clearing
+                        const existingPassword =
+                          await AuthManager.getMasterPassword();
 
-                                  for (const key of authKeys) {
-                                    try {
-                                      await SecureStore.deleteItemAsync(key);
-                                    } catch (e) {
-                                      console.log(
-                                        `Could not delete ${key}:`,
-                                        e
-                                      );
-                                    }
-                                  }
-                                }
+                        // Clear PIN and biometric data using correct SecureStore keys
+                        const secureAvailable =
+                          await SecureStore.isAvailableAsync();
+                        if (secureAvailable) {
+                          // Use the correct SecureStore keys from AuthManager
+                          const authKeys = [
+                            "pin_config", // Contains PIN hash and salt
+                            "biometric_password", // Biometric-protected password
+                          ];
 
-                                // Also clear biometric preference and lock state from AsyncStorage
-                                try {
-                                  await AsyncStorage.multiRemove([
-                                    "@wallet:biometricPreference",
-                                    "@wallet:pinLockState",
-                                  ]);
-                                } catch (e) {
-                                  console.log(
-                                    "Could not clear AsyncStorage keys:",
-                                    e
-                                  );
-                                }
+                          for (const key of authKeys) {
+                            try {
+                              await SecureStore.deleteItemAsync(key);
+                            } catch (e) {
+                              console.log(
+                                `Could not delete ${key}:`,
+                                e
+                              );
+                            }
+                          }
+                        }
 
-                                // Reset auth state to setup to trigger new PIN creation
-                                // Keep the existing password so new PIN can be associated with it
-                                setPassword(existingPassword);
-                                setSecurityAuthenticated(false);
-                                setSecurityAuthRequired(false);
-                                setShowSettingsModal(false);
-                                setAuthState("setup");
+                        // Also clear biometric preference and lock state from AsyncStorage
+                        try {
+                          await AsyncStorage.multiRemove([
+                            "@wallet:biometricPreference",
+                            "@wallet:pinLockState",
+                          ]);
+                        } catch (e) {
+                          console.log(
+                            "Could not clear AsyncStorage keys:",
+                            e
+                          );
+                        }
 
-                                Alert.alert(
-                                  "PIN Cleared",
-                                  "Your PIN and biometric settings have been cleared. Please set up a new PIN to continue using the app.",
-                                  [
-                                    {
-                                      text: "OK",
-                                      onPress: () => {
-                                        // Auth state is already set to "setup"
-                                      },
-                                    },
-                                  ]
-                                );
-                              } catch (error) {
-                                console.error("Error clearing PIN:", error);
-                                Alert.alert(
-                                  "Error",
-                                  "Failed to clear PIN. Please try again."
-                                );
-                              }
-                            },
-                          },
-                        ],
-                        { cancelable: true }
-                      );
+                        // Reset auth state to setup to trigger new PIN creation
+                        // Keep the existing password so new PIN can be associated with it
+                        setPassword(existingPassword);
+                        setSecurityAuthenticated(false);
+                        setSecurityAuthRequired(false);
+                        setShowSettingsModal(false);
+                        setAuthState("setup");
+
+                        Toast.show({
+                          type: "success",
+                          text1: "PIN Cleared",
+                          text2: "Please set up a new PIN to continue.",
+                          position: "bottom",
+                        });
+                      } catch (error) {
+                        console.error("Error clearing PIN:", error);
+                        Toast.show({
+                          type: "error",
+                          text1: "Error",
+                          text2: "Failed to clear PIN. Please try again.",
+                          position: "bottom",
+                        });
+                      }
                     }}
                   >
                     <Text
@@ -7553,12 +7541,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "transparent",
     borderTopWidth: 0,
-    paddingBottom: 35,
     paddingTop: 0,
     paddingHorizontal: 20,
     justifyContent: "space-around",
     alignItems: "flex-start",
-    height: 86,
   },
   bottomTabItem: {
     flex: 1,
@@ -7596,11 +7582,13 @@ const styles = StyleSheet.create({
   },
 });
 
-// Export App with ApolloProvider wrapper
+// Export App with SafeAreaProvider and ApolloProvider wrappers
 export default function App() {
   return (
-    <ApolloProvider client={apolloClient}>
-      <AppContent />
-    </ApolloProvider>
+    <SafeAreaProvider>
+      <ApolloProvider client={apolloClient}>
+        <AppContent />
+      </ApolloProvider>
+    </SafeAreaProvider>
   );
 }

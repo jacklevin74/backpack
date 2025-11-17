@@ -54,6 +54,7 @@ import slip10 from "micro-key-producer/slip10.js";
 import { randomBytes, secretbox } from "tweetnacl";
 import bs58 from "bs58";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 // Replaced @gorhom/bottom-sheet with simple Modal-based implementation
 import BottomSheet, {
   SimpleBottomSheetView as BottomSheetView,
@@ -7063,8 +7064,10 @@ const styles = StyleSheet.create({
 // Export App with ApolloProvider wrapper
 export default function App() {
   return (
-    <ApolloProvider client={apolloClient}>
-      <AppContent />
-    </ApolloProvider>
+    <SafeAreaProvider>
+      <ApolloProvider client={apolloClient}>
+        <AppContent />
+      </ApolloProvider>
+    </SafeAreaProvider>
   );
 }

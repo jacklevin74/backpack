@@ -3418,16 +3418,29 @@ function AppContent() {
                   activeOpacity={0.7}
                 >
                   <Text style={styles.balanceUSD}>{balanceUSD}</Text>
-                  <Text style={styles.balanceChange}>
-                    {tokenPrice !== null
-                      ? `${getNativeTokenInfo().symbol} $${tokenPrice.toLocaleString(
-                          "en-US",
-                          {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          }
-                        )}`
-                      : "$0.00"}
+                  <Text
+                    style={[
+                      styles.balanceChange,
+                      {
+                        color:
+                          portfolioGainLoss.valueChange > 0
+                            ? "#00D084"
+                            : portfolioGainLoss.valueChange < 0
+                            ? "#FF6B6B"
+                            : "#999999",
+                      },
+                    ]}
+                  >
+                    {portfolioGainLoss.valueChange !== 0
+                      ? `${portfolioGainLoss.valueChange > 0 ? "+" : ""}$${Math.abs(
+                          portfolioGainLoss.valueChange
+                        ).toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })} (${portfolioGainLoss.percentChange > 0 ? "+" : ""}${portfolioGainLoss.percentChange.toFixed(
+                          2
+                        )}%)`
+                      : "$0.00 (0.00%)"}
                   </Text>
                 </TouchableOpacity>
               )}

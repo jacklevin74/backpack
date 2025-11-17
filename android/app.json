@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "backpack-ui-only",
-    "slug": "backpack-ui-only",
+    "name": "X1 Wallet",
+    "slug": "x1-wallet",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.backpackuionly"
+      "bundleIdentifier": "xyz.x1.wallet"
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +22,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.backpackuionly"
+      "package": "xyz.x1.wallet"
     },
     "web": {
       "favicon": "./assets/favicon.png"

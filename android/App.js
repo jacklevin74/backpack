@@ -54,7 +54,7 @@ import slip10 from "micro-key-producer/slip10.js";
 import { randomBytes, secretbox } from "tweetnacl";
 import bs58 from "bs58";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 // Replaced @gorhom/bottom-sheet with simple Modal-based implementation
 import BottomSheet, {
   SimpleBottomSheetView as BottomSheetView,
@@ -68,6 +68,7 @@ import AppSolana from "@ledgerhq/hw-app-solana";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import { WebView } from "react-native-webview";
+import { Ionicons } from "@expo/vector-icons";
 
 // Import authentication components
 import { AuthManager } from "./src/auth/AuthManager";
@@ -297,6 +298,9 @@ const NETWORKS = [
 const apolloClient = createApolloClient("backpack-android", "1.0.0");
 
 function AppContent() {
+  // Get safe area insets for proper spacing on devices with notches/software buttons
+  const insets = useSafeAreaInsets();
+
   // Authentication states
   const [authState, setAuthState] = useState("loading"); // 'loading', 'setup', 'locked', 'unlocked'
   const [password, setPassword] = useState(null);
@@ -3571,7 +3575,7 @@ function AppContent() {
           </ScrollView>
 
           {/* Bottom Tab Bar */}
-          <View style={styles.bottomTabBar}>
+          <View style={[styles.bottomTabBar, { paddingBottom: Math.max(insets.bottom, 10) }]}>
             <TouchableOpacity
               style={styles.bottomTabItem}
               onPress={() => {
@@ -3579,14 +3583,11 @@ function AppContent() {
                 setShowTestBrowser(false);
               }}
             >
-              <Image
-                source={require("./assets/pie-chart-icon.png")}
-                style={[
-                  styles.bottomTabIconImage,
-                  currentBottomTab === "portfolio" &&
-                    styles.bottomTabIconImageActive,
-                ]}
-                resizeMode="contain"
+              <Ionicons
+                name="pie-chart-outline"
+                size={24}
+                color={currentBottomTab === "portfolio" ? "#4A90E2" : "#888888"}
+                style={{ marginBottom: 4 }}
               />
               <Text
                 style={[
@@ -3606,14 +3607,11 @@ function AppContent() {
                 handleSwap();
               }}
             >
-              <Image
-                source={require("./assets/swap.png")}
-                style={[
-                  styles.bottomTabIconImage,
-                  currentBottomTab === "swap" &&
-                    styles.bottomTabIconImageActive,
-                ]}
-                resizeMode="contain"
+              <Ionicons
+                name="swap-horizontal-outline"
+                size={24}
+                color={currentBottomTab === "swap" ? "#4A90E2" : "#888888"}
+                style={{ marginBottom: 4 }}
               />
               <Text
                 style={[
@@ -3632,10 +3630,11 @@ function AppContent() {
                 setShowTestBrowser(true);
               }}
             >
-              <Image
-                source={require("./assets/browser.png")}
-                style={styles.bottomTabIconImage}
-                resizeMode="contain"
+              <Ionicons
+                name="globe-outline"
+                size={24}
+                color={currentBottomTab === "browser" ? "#4A90E2" : "#888888"}
+                style={{ marginBottom: 4 }}
               />
               <Text
                 style={[
@@ -7019,12 +7018,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "transparent",
     borderTopWidth: 0,
-    paddingBottom: 35,
     paddingTop: 0,
     paddingHorizontal: 20,
     justifyContent: "space-around",
     alignItems: "flex-start",
-    height: 86,
   },
   bottomTabItem: {
     flex: 1,

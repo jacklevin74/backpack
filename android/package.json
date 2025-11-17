@@ -12,6 +12,7 @@
   "dependencies": {
     "@apollo/client": "^3.14.0",
     "@craftzdog/react-native-buffer": "^6.1.1",
+    "@expo/vector-icons": "^15.0.3",
     "@gorhom/bottom-sheet": "^5.2.6",
     "@ledgerhq/hw-app-solana": "^7.6.0",
     "@ledgerhq/hw-transport-webusb": "^6.29.13",

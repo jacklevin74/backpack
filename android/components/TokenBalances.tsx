@@ -19,7 +19,9 @@ export type TokenBalancesProps = {
   address: string;
   providerId: ProviderId;
   pollingIntervalSeconds?: number;
-  onBalanceUpdate?: (balanceUSD: string, gainLossData?: { percentChange: number; valueChange: number }) => void;
+  enableColorfulIcons?: boolean;
+  hideZeroBalanceTokens?: boolean;
+  onBalanceUpdate?: (balanceUSD: string, gainLossData?: { percentChange: number; valueChange: number }, nativeBalance?: string) => void;
   onItemClick?: (args: {
     id: string;
     displayAmount: string;
@@ -37,6 +39,8 @@ export const TokenBalances = ({
   address,
   providerId,
   pollingIntervalSeconds,
+  enableColorfulIcons,
+  hideZeroBalanceTokens,
   onBalanceUpdate,
   onItemClick,
 }: TokenBalancesProps) => {
@@ -52,6 +56,8 @@ export const TokenBalances = ({
         address={address}
         providerId={providerId}
         pollingIntervalSeconds={pollingIntervalSeconds}
+        enableColorfulIcons={enableColorfulIcons}
+        hideZeroBalanceTokens={hideZeroBalanceTokens}
         onBalanceUpdate={onBalanceUpdate}
         onItemClick={onItemClick}
       />
@@ -67,6 +73,8 @@ function _TokenBalances({
   address,
   providerId,
   pollingIntervalSeconds,
+  enableColorfulIcons,
+  hideZeroBalanceTokens,
   onBalanceUpdate,
   onItemClick,
 }: TokenBalancesProps) {
@@ -95,8 +103,27 @@ function _TokenBalances({
 
   // Extract token balances from GraphQL response
   const balances: ResponseTokenBalance[] = useMemo(() => {
-    return data?.wallet?.balances?.tokens?.edges.map((e) => e.node) ?? [];
-  }, [data]);
+    const allBalances = data?.wallet?.balances?.tokens?.edges.map((e) => e.node) ?? [];
+
+    // Filter out zero balance tokens if the setting is enabled
+    if (hideZeroBalanceTokens) {
+      return allBalances.filter((token) => {
+        const amount = parseFloat(token.displayAmount || "0");
+        const value = token.marketData?.value ?? 0;
+        const price = token.marketData?.price ?? 0;
+
+        // Calculate the displayed value (same logic as BalancesTableRow)
+        const calculatedValue = amount * price;
+        const displayValue = value > 0 ? value : calculatedValue;
+
+        // Hide tokens that would display as $0.00 (less than $0.005 rounds to $0.00)
+        // Also hide if token amount is effectively zero
+        return displayValue >= 0.005 && amount > 0;
+      });
+    }
+
+    return allBalances;
+  }, [data, hideZeroBalanceTokens]);
 
   // Extract aggregate balance summary from GraphQL response
   const aggregate: ResponseBalanceSummary = useMemo(() => {
@@ -137,7 +164,7 @@ function _TokenBalances({
 
   return (
     <View style={{ flex: 1, alignItems: "center", padding: 16 }}>
-      <BalancesTable balances={balances} onItemClick={onItemClick} />
+      <BalancesTable balances={balances} enableColorfulIcons={enableColorfulIcons} onItemClick={onItemClick} />
     </View>
   );
 }

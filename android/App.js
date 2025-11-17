@@ -5958,6 +5958,77 @@ function AppContent() {
           />
         </View>
       )}
+
+      {/* Toast notifications */}
+      <Toast
+        config={{
+          success: (props) => (
+            <View
+              style={{
+                backgroundColor: "#1a1a1a",
+                padding: 16,
+                borderRadius: 8,
+                borderLeftWidth: 4,
+                borderLeftColor: "#00D084",
+                minWidth: 300,
+              }}
+            >
+              <Text style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 14 }}>
+                {props.text1}
+              </Text>
+              {props.text2 && (
+                <Text style={{ color: "#999999", fontSize: 12, marginTop: 4 }}>
+                  {props.text2}
+                </Text>
+              )}
+            </View>
+          ),
+          error: (props) => (
+            <View
+              style={{
+                backgroundColor: "#1a1a1a",
+                padding: 16,
+                borderRadius: 8,
+                borderLeftWidth: 4,
+                borderLeftColor: "#FF6B6B",
+                minWidth: 300,
+              }}
+            >
+              <Text style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 14 }}>
+                {props.text1}
+              </Text>
+              {props.text2 && (
+                <Text style={{ color: "#999999", fontSize: 12, marginTop: 4 }}>
+                  {props.text2}
+                </Text>
+              )}
+            </View>
+          ),
+          info: (props) => (
+            <View
+              style={{
+                backgroundColor: "#1a1a1a",
+                padding: 16,
+                borderRadius: 8,
+                borderLeftWidth: 4,
+                borderLeftColor: "#4A90E2",
+                minWidth: 300,
+              }}
+            >
+              <Text style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 14 }}>
+                {props.text1}
+              </Text>
+              {props.text2 && (
+                <Text style={{ color: "#999999", fontSize: 12, marginTop: 4 }}>
+                  {props.text2}
+                </Text>
+              )}
+            </View>
+          ),
+        }}
+        position="bottom"
+        bottomOffset={80}
+      />
     </>
   );
 }

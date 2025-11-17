@@ -82,13 +82,13 @@ const { LedgerUsb } = NativeModules;
 import { TrueSheet } from "@lodev09/react-native-true-sheet";
 
 // Import screens
-import SendScreen from './screens/SendScreen';
-import ReceiveScreen from './screens/ReceiveScreen';
-import ActivityScreen from './screens/ActivityScreen';
-import WalletManagerScreen from './screens/WalletManagerScreen';
-import WalletSettingsScreen from './screens/WalletSettingsScreen';
-import AddressSelectorScreen from './screens/AddressSelectorScreen';
-import LedgerConnectionScreen from './screens/LedgerConnectionScreen';
+import SendScreen from "./screens/SendScreen";
+import ReceiveScreen from "./screens/ReceiveScreen";
+import ActivityScreen from "./screens/ActivityScreen";
+import WalletManagerScreen from "./screens/WalletManagerScreen";
+import WalletSettingsScreen from "./screens/WalletSettingsScreen";
+import AddressSelectorScreen from "./screens/AddressSelectorScreen";
+import LedgerConnectionScreen from "./screens/LedgerConnectionScreen";
 
 // Network configurations
 const API_SERVER = "http://162.250.126.66:4000";
@@ -755,7 +755,9 @@ function AppContent() {
 
       // Skip REST API fetch for Solana networks (using GraphQL instead)
       if (activeNetwork.providerId.startsWith("SOLANA")) {
-        console.log("Skipping REST API fetch for Solana - using GraphQL pricing");
+        console.log(
+          "Skipping REST API fetch for Solana - using GraphQL pricing"
+        );
         return;
       }
 
@@ -2087,7 +2089,9 @@ function AppContent() {
       };
 
       // Deselect all other wallets and add the new selected wallet
-      const updatedWallets = wallets.map(w => ({ ...w, selected: false })).concat(newWallet);
+      const updatedWallets = wallets
+        .map((w) => ({ ...w, selected: false }))
+        .concat(newWallet);
       setWallets(updatedWallets);
       setSelectedWallet(newWallet);
       await saveWalletsToStorage(updatedWallets);
@@ -3511,7 +3515,9 @@ function AppContent() {
               </View>
 
               {/* Token List - Use GraphQL for Solana, REST for others */}
-              {selectedWallet && currentNetwork && currentNetwork.providerId.startsWith("SOLANA") ? (
+              {selectedWallet &&
+              currentNetwork &&
+              currentNetwork.providerId.startsWith("SOLANA") ? (
                 <View style={styles.tokenSection}>
                   <TokenBalances
                     address={selectedWallet.publicKey}
@@ -4537,7 +4543,8 @@ function AppContent() {
                 {editingWallet.derivationPath ? (
                   <Text style={styles.privateKeyText}>
                     This wallet is derived from your master seed phrase. Go to
-                    Manage Security {'->'} Export Seed Phrase to view or back it up.
+                    Manage Security {"->"} Export Seed Phrase to view or back it
+                    up.
                   </Text>
                 ) : walletSeedPhraseLoading ? (
                   <Text style={styles.privateKeyText}>
@@ -5439,9 +5446,8 @@ function AppContent() {
       {/* TrueSheet Modal Screens */}
       <TrueSheet
         ref={sendSheetRef}
-        sizes={['auto', 'large']}
+        sizes={["auto", "large"]}
         cornerRadius={24}
-        initialIndexAnimated={false}
         grabber={true}
         backgroundColor="#000000"
       >
@@ -5457,11 +5463,11 @@ function AppContent() {
 
       <TrueSheet
         ref={receiveSheetRef}
-        sizes={['auto']}
+        sizes={["auto"]}
         cornerRadius={24}
-        initialIndexAnimated={false}
         grabber={true}
         backgroundColor="#000000"
+        blurTint="dark"
       >
         <ReceiveScreen
           selectedWallet={selectedWallet}
@@ -5472,9 +5478,8 @@ function AppContent() {
 
       <TrueSheet
         ref={activitySheetRef}
-        sizes={['medium', 'large']}
+        sizes={["medium", "large"]}
         cornerRadius={24}
-        initialIndexAnimated={false}
         grabber={true}
         backgroundColor="#000000"
       >
@@ -5488,9 +5493,8 @@ function AppContent() {
 
       <TrueSheet
         ref={walletManagerSheetRef}
-        sizes={['medium', 'large']}
+        sizes={["medium", "large"]}
         cornerRadius={24}
-        initialIndexAnimated={false}
         grabber={true}
         backgroundColor="#000000"
       >
@@ -5506,9 +5510,8 @@ function AppContent() {
 
       <TrueSheet
         ref={walletSettingsSheetRef}
-        sizes={['auto']}
+        sizes={["auto"]}
         cornerRadius={24}
-        initialIndexAnimated={false}
         grabber={true}
         backgroundColor="#000000"
       >
@@ -5519,9 +5522,8 @@ function AppContent() {
 
       <TrueSheet
         ref={addressSelectorSheetRef}
-        sizes={['medium', 'large']}
+        sizes={["medium", "large"]}
         cornerRadius={24}
-        initialIndexAnimated={false}
         grabber={true}
         backgroundColor="#000000"
       >
@@ -5532,9 +5534,8 @@ function AppContent() {
 
       <TrueSheet
         ref={ledgerSheetRef}
-        sizes={['auto', 'large']}
+        sizes={["auto", "large"]}
         cornerRadius={24}
-        initialIndexAnimated={false}
         grabber={true}
         backgroundColor="#000000"
       >

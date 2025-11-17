@@ -12,6 +12,7 @@ import {
   Animated,
   Dimensions,
   PanResponder,
+  Easing,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -40,11 +41,11 @@ const SimpleActionSheet = forwardRef(
 
     const panResponder = useRef(
       PanResponder.create({
-        onStartShouldSetPanResponder: () => false,
+        onStartShouldSetPanResponder: () => true,
         onStartShouldSetPanResponderCapture: () => false,
         onMoveShouldSetPanResponder: (_, gestureState) => {
-          // Only capture downward drags
-          return gestureState.dy > 5;
+          // Capture downward drags with very low threshold for better UX
+          return gestureState.dy > 2;
         },
         onPanResponderMove: (_, gestureState) => {
           // Only allow dragging down (positive dy)
@@ -84,12 +85,14 @@ const SimpleActionSheet = forwardRef(
           Animated.parallel([
             Animated.timing(translateY, {
               toValue: 0,
-              duration: 300,
+              duration: 100,
+              easing: Easing.out(Easing.cubic),
               useNativeDriver: true,
             }),
             Animated.timing(opacity, {
               toValue: 1,
-              duration: 300,
+              duration: 100,
+              easing: Easing.out(Easing.cubic),
               useNativeDriver: true,
             }),
           ]).start(() => {
@@ -102,12 +105,14 @@ const SimpleActionSheet = forwardRef(
         Animated.parallel([
           Animated.timing(translateY, {
             toValue: SCREEN_HEIGHT,
-            duration: 250,
+            duration: 100,
+            easing: Easing.in(Easing.cubic),
             useNativeDriver: true,
           }),
           Animated.timing(opacity, {
             toValue: 0,
-            duration: 250,
+            duration: 100,
+            easing: Easing.in(Easing.cubic),
             useNativeDriver: true,
           }),
         ]).start(() => {
@@ -188,13 +193,15 @@ const styles = StyleSheet.create({
   },
   grabberContainer: {
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    minHeight: 50,
   },
   grabber: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "#4E5056",
+    width: 50,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#6E7076",
   },
 });
 

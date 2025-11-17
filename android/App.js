@@ -954,10 +954,14 @@ function AppContent() {
   );
 
   // Handle balance updates from TokenBalances component
-  const handleBalanceUpdate = useCallback((balanceUSD, gainLossData) => {
+  const handleBalanceUpdate = useCallback((balanceUSD, gainLossData, nativeBalance) => {
     setBalanceUSD(balanceUSD);
     if (gainLossData) {
       setPortfolioGainLoss(gainLossData);
+    }
+    // Update native token balance for SendScreen (important for Solana networks)
+    if (nativeBalance !== undefined) {
+      setBalance(nativeBalance);
     }
   }, []);
 

@@ -121,9 +121,14 @@ function _TokenBalances({
         percentChange: aggregate.percentChange || 0,
         valueChange: aggregate.valueChange || 0,
       };
-      onBalanceUpdate(formattedBalance, gainLossData);
+
+      // Find native token balance (first token with native=true or displayAmount)
+      const nativeToken = balances.find((token) => token.token === "So11111111111111111111111111111111111111112") || balances[0];
+      const nativeBalance = nativeToken?.displayAmount || "0";
+
+      onBalanceUpdate(formattedBalance, gainLossData, nativeBalance);
     }
-  }, [aggregate.value, aggregate.percentChange, aggregate.valueChange, onBalanceUpdate]);
+  }, [aggregate.value, aggregate.percentChange, aggregate.valueChange, balances, onBalanceUpdate]);
 
   // Log error if present (for debugging)
   if (error) {

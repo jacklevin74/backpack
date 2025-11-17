@@ -1218,7 +1218,7 @@ function AppContent() {
     Alert.alert("Copied", "Address copied to clipboard");
   };
 
-  const handleSendSubmit = async () => {
+  const handleSendSubmit = async (amount, address) => {
     // Dismiss keyboard when Send button is pressed
     Keyboard.dismiss();
 
@@ -1226,13 +1226,13 @@ function AppContent() {
       Alert.alert("Error", "No wallet selected");
       return;
     }
-    if (!sendAddress || !sendAmount) {
+    if (!address || !amount) {
       Alert.alert("Error", "Please enter both address and amount");
       return;
     }
 
     // Trim the address to remove any whitespace
-    const trimmedAddress = sendAddress.trim();
+    const trimmedAddress = address.trim();
 
     // Validate address format
     try {
@@ -1243,7 +1243,7 @@ function AppContent() {
     }
 
     // Validate amount
-    const amountNum = parseFloat(sendAmount);
+    const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
       Alert.alert("Error", "Invalid amount");
       return;

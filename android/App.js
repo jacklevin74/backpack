@@ -4410,7 +4410,7 @@ function AppContent() {
                   </TouchableOpacity>
                 </View>
 
-                <Text style={styles.inputLabel}>Account Name</Text>
+                <Text style={styles.inputLabel}>Wallet Name</Text>
                 <TextInput
                   testID="account-name-input"
                   style={styles.walletNameInput}
@@ -5563,6 +5563,19 @@ function AppContent() {
         <WalletSettingsScreen
           isLedger={editingWalletRef.current?.isLedger || false}
           onDismiss={() => walletSettingsSheetRef.current?.dismiss()}
+          onChangeWalletName={() => {
+            console.log("[WalletSettings] Change Wallet Name clicked");
+            console.log(
+              "[WalletSettings] Current editingWallet:",
+              editingWallet?.name,
+              editingWallet?.id
+            );
+            setEditWalletName(editingWallet?.name || "");
+            walletSettingsSheetRef.current?.dismiss();
+            setTimeout(() => {
+              setShowChangeNameModal(true);
+            }, 300);
+          }}
           onShowPrivateKey={() => {
             console.log("[WalletSettings] Show Private Key clicked");
             console.log(

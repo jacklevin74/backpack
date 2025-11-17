@@ -79,8 +79,13 @@ export default function WalletManagerScreen({
               wallet.selected && styles.walletItemSelected,
             ]}
             onPress={() => {
-              selectWallet(wallet);
-              // Keep sheet open so user can continue switching wallets
+              if (wallet.selected) {
+                // If tapping the already-selected wallet, dismiss the sheet
+                onDismiss();
+              } else {
+                // Otherwise, switch to the wallet and keep sheet open
+                selectWallet(wallet);
+              }
             }}
           >
             <View style={styles.walletLeft}>

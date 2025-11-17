@@ -10,6 +10,7 @@ import {
 export default function WalletSettingsScreen({
   onDismiss,
   onShowPrivateKey,
+  onChangeWalletName,
   isLedger,
 }) {
   return (
@@ -26,11 +27,14 @@ export default function WalletSettingsScreen({
         <TouchableOpacity
           style={styles.menuItem}
           onPress={() => {
-            // Navigate to change name screen or show modal
-            onDismiss();
+            if (onChangeWalletName) {
+              onChangeWalletName();
+            } else {
+              onDismiss();
+            }
           }}
         >
-          <Text style={styles.menuItemText}>Change Account Name</Text>
+          <Text style={styles.menuItemText}>Change Wallet Name</Text>
           <Text style={styles.menuItemArrow}>›</Text>
         </TouchableOpacity>
 

@@ -967,6 +967,18 @@ function AppContent() {
     }
   };
 
+  // Handle balance updates from TokenBalances component
+  const handleBalanceUpdate = useCallback((balanceUSD, gainLossData, nativeBalance) => {
+    setBalanceUSD(balanceUSD);
+    if (gainLossData) {
+      setPortfolioGainLoss(gainLossData);
+    }
+    // Update native token balance for SendScreen (important for Solana networks)
+    if (nativeBalance !== undefined) {
+      setBalance(nativeBalance);
+    }
+  }, []);
+
   // Load initial balance
   useEffect(() => {
     if (!selectedWallet) return;
@@ -3549,7 +3561,7 @@ function AppContent() {
                     pollingIntervalSeconds={60}
                     enableColorfulIcons={easterEggMode}
                     hideZeroBalanceTokens={selectedWallet.hideZeroBalanceTokens || false}
-                    onBalanceUpdate={(balanceUSD) => setBalanceUSD(balanceUSD)}
+                    onBalanceUpdate={handleBalanceUpdate}
                   />
                 </View>
               ) : (

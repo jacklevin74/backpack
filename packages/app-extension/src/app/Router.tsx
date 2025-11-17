@@ -22,6 +22,7 @@ import {
 } from "@coral-xyz/tamagui";
 import { useRecoilValue } from "recoil";
 
+import { PopupLoadingSkeleton } from "../components/common/LoadingSkeleton";
 import { Unlocked } from "../components/Unlocked";
 import { refreshFeatureGates } from "../gates/FEATURES";
 
@@ -156,9 +157,9 @@ function FullApp() {
     }
   }, [allUsers, hasRedirected]);
 
-  // Don't render anything while we're checking for users or redirecting
+  // Show loading skeleton while we're checking for users or redirecting
   if (allUsers === null || allUsers.length === 0) {
-    return null;
+    return <PopupLoadingSkeleton />;
   }
 
   return <Unlocked />;

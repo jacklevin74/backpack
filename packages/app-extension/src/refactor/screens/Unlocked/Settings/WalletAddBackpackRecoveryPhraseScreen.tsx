@@ -29,7 +29,7 @@ function Container({
     <ImportMnemonic
       blockchain={blockchain}
       ledger={false}
-      inputMnemonic={false}
+      inputMnemonic
     />
   );
 }

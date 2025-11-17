@@ -71,11 +71,10 @@ export const refreshFeatureGates = async (background: ChannelAppUiClient) => {
 };
 
 async function fetchAndUpdateFeatureGates(background: ChannelAppUiClient) {
+  // X1 Wallet: Disable Backpack API feature gates to avoid 404 errors and improve load times
+  // All features are enabled by default via buildFullFeatureGatesMap with empty gates
   try {
-    const res = await fetch(`${FEATURE_GATE_URL}/gates`);
-    const json = await res.json();
-    if (!json.gates) throw new Error(json.message);
-    const gates = buildFullFeatureGatesMap(json.gates);
+    const gates = buildFullFeatureGatesMap({});
 
     // Cache the gates for future use
     cacheFeatureGates(gates);
@@ -85,8 +84,6 @@ async function fetchAndUpdateFeatureGates(background: ChannelAppUiClient) {
       params: [gates],
     });
   } catch (e) {
-    console.warn(
-      `Error while refreshing feature gates, falling back to defaults`
-    );
+    console.warn(`Error while setting feature gates, falling back to defaults`);
   }
 }

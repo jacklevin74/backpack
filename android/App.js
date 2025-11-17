@@ -54,7 +54,10 @@ import slip10 from "micro-key-producer/slip10.js";
 import { randomBytes, secretbox } from "tweetnacl";
 import bs58 from "bs58";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import {
+  SafeAreaProvider,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 // Replaced @gorhom/bottom-sheet with simple Modal-based implementation
 import BottomSheet, {
   SimpleBottomSheetView as BottomSheetView,
@@ -301,6 +304,9 @@ const NETWORKS = [
 const apolloClient = createApolloClient("backpack-android", "1.0.0");
 
 function AppContent() {
+  // Get safe area insets
+  const insets = useSafeAreaInsets();
+
   // Authentication states
   const [authState, setAuthState] = useState("loading"); // 'loading', 'setup', 'locked', 'unlocked'
   const [password, setPassword] = useState(null);
@@ -3634,7 +3640,7 @@ function AppContent() {
           </ScrollView>
 
           {/* Bottom Tab Bar */}
-          <View style={styles.bottomTabBar}>
+          <View style={[styles.bottomTabBar, { paddingBottom: insets.bottom }]}>
             <TouchableOpacity
               style={styles.bottomTabItem}
               onPress={() => {
@@ -7019,12 +7025,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "transparent",
     borderTopWidth: 0,
-    paddingBottom: 35,
     paddingTop: 0,
     paddingHorizontal: 20,
     justifyContent: "space-around",
     alignItems: "flex-start",
-    height: 86,
   },
   bottomTabItem: {
     flex: 1,

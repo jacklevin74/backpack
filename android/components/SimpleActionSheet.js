@@ -148,6 +148,7 @@ const SimpleActionSheet = forwardRef(
 
           {/* Sheet */}
           <Animated.View
+            {...panResponder.panHandlers}
             style={[
               styles.sheet,
               {
@@ -160,10 +161,7 @@ const SimpleActionSheet = forwardRef(
             ]}
           >
             {grabber && (
-              <View
-                {...panResponder.panHandlers}
-                style={styles.grabberContainer}
-              >
+              <View style={styles.grabberContainer}>
                 <View style={styles.grabber} />
               </View>
             )}

@@ -103,6 +103,7 @@ const MOCK_WALLETS = [
     address: "29dS...j8K2",
     publicKey: DEMO_WALLET_ADDRESS,
     selected: true,
+    isLedger: true,
   },
   {
     id: 2,
@@ -110,6 +111,7 @@ const MOCK_WALLETS = [
     address: "FSnt...DHyF",
     publicKey: "FSnt1234DHyF567890abcdefghijklmnopqrstuv",
     selected: false,
+    isLedger: true,
   },
   {
     id: 3,
@@ -117,6 +119,7 @@ const MOCK_WALLETS = [
     address: "5FMQ...kCRg",
     publicKey: "5FMQ5678kCRg012345zyxwvutsrqponmlkjihgfedcb",
     selected: false,
+    isLedger: false,
   },
   {
     id: 4,
@@ -124,6 +127,7 @@ const MOCK_WALLETS = [
     address: "H5kT...uY9L",
     publicKey: "H5kT9012uY9L345678mnopqrstuvwxyzABCDEF123456",
     selected: false,
+    isLedger: false,
   },
 ];
 
@@ -411,6 +415,7 @@ function AppContent() {
   // TrueSheet refs for React Navigation replacement
   const walletManagerSheetRef = useRef(null);
   const walletSettingsSheetRef = useRef(null);
+  const editingWalletRef = useRef(null); // Stores the wallet being edited
   const addressSelectorSheetRef = useRef(null);
   const ledgerSheetRef = useRef(null);
 
@@ -977,7 +982,7 @@ function AppContent() {
   const selectWallet = (wallet) => {
     setWallets(wallets.map((w) => ({ ...w, selected: w.id === wallet.id })));
     setSelectedWallet(wallet);
-    bottomSheetRef.current?.dismiss();
+    // Don't close the sheet - let user continue managing wallets
   };
 
   // Settings navigation helpers
@@ -3877,26 +3882,29 @@ function AppContent() {
                       onPress={(e) => {
                         e.stopPropagation();
                         console.log(
-                          "[DEBUG] ⋮ button clicked, wallet:",
+                          `[WalletSettings] Opening settings for wallet:`,
+                          wallet.name,
+                          wallet.id,
+                          `isLedger:`,
+                          wallet.isLedger
+                        );
+                        setSelectedWallet(wallet);
+                        setEditingWallet(wallet);
+                        editingWalletRef.current = wallet; // Store in ref for immediate access
+                        console.log(
+                          `[WalletSettings] Set editingWallet and editingWalletRef to:`,
                           wallet.name
                         );
-                        console.log(
-                          "[DEBUG] editWalletSheetRef:",
-                          editWalletSheetRef.current
-                        );
-                        setEditingWallet(wallet);
-                        setEditWalletName(wallet.name);
-                        if (editWalletSheetRef.current) {
+                        // Small delay to ensure state updates before opening sheet
+                        setTimeout(() => {
                           console.log(
-                            "[DEBUG] Calling present on editWalletSheetRef"
+                            `[WalletSettings] Opening wallet settings sheet, editingWallet:`,
+                            editingWallet?.name,
+                            `ref:`,
+                            editingWalletRef.current?.name
                           );
-                          editWalletSheetRef.current.present();
-                          console.log("[DEBUG] present called successfully");
-                        } else {
-                          console.log(
-                            "[DEBUG] ERROR: editWalletSheetRef.current is null"
-                          );
-                        }
+                          walletSettingsSheetRef.current?.present();
+                        }, 100);
                       }}
                     >
                       <Text style={styles.bottomSheetEditIcon}>⋮</Text>
@@ -5521,7 +5529,26 @@ function AppContent() {
           currentNetwork={currentNetwork}
           selectWallet={selectWallet}
           handleAddWallet={handleAddWallet}
-          walletSettingsSheetRef={walletSettingsSheetRef}
+          openWalletSettings={(wallet) => {
+            console.log(
+              `[WalletManager] Opening settings for wallet:`,
+              wallet.name,
+              wallet.id,
+              `isLedger:`,
+              wallet.isLedger
+            );
+            setEditingWallet(wallet);
+            editingWalletRef.current = wallet;
+            setTimeout(() => {
+              console.log(
+                `[WalletManager] Opening wallet settings sheet, editingWallet:`,
+                editingWallet?.name,
+                `ref:`,
+                editingWalletRef.current?.name
+              );
+              walletSettingsSheetRef.current?.present();
+            }, 100);
+          }}
           onDismiss={() => walletManagerSheetRef.current?.dismiss()}
         />
       </TrueSheet>
@@ -5534,21 +5561,27 @@ function AppContent() {
         backgroundColor="#000000"
       >
         <WalletSettingsScreen
+          isLedger={editingWalletRef.current?.isLedger || false}
           onDismiss={() => walletSettingsSheetRef.current?.dismiss()}
           onShowPrivateKey={() => {
             console.log("[WalletSettings] Show Private Key clicked");
-            setEditingWallet(selectedWallet);
+            console.log(
+              "[WalletSettings] Current editingWallet:",
+              editingWallet?.name,
+              editingWallet?.id
+            );
+            console.log(
+              "[WalletSettings] Current editingWalletRef:",
+              editingWalletRef.current?.name,
+              editingWalletRef.current?.id
+            );
             walletSettingsSheetRef.current?.dismiss();
             setTimeout(() => {
+              console.log(
+                "[WalletSettings] Opening Private Key sheet, editingWallet:",
+                editingWallet?.name
+              );
               privateKeySheetRef.current?.present();
-            }, 300);
-          }}
-          onShowSeedPhrase={() => {
-            console.log("[WalletSettings] Show Seed Phrase clicked");
-            setEditingWallet(selectedWallet);
-            walletSettingsSheetRef.current?.dismiss();
-            setTimeout(() => {
-              openSeedPhraseSheet();
             }, 300);
           }}
         />

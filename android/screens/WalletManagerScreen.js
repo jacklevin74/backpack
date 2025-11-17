@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,15 +8,15 @@ import {
   Image,
   ToastAndroid,
   Clipboard,
-} from 'react-native';
+} from "react-native";
 
 export default function WalletManagerScreen({
   wallets,
   currentNetwork,
   selectWallet,
   handleAddWallet,
-  walletSettingsSheetRef,
-  onDismiss
+  openWalletSettings,
+  onDismiss,
 }) {
   const [copiedWalletId, setCopiedWalletId] = useState(null);
   const scrollViewRef = useRef(null);
@@ -24,8 +24,12 @@ export default function WalletManagerScreen({
 
   // Auto-scroll to selected wallet when component mounts or wallets change
   useEffect(() => {
-    const selectedIndex = wallets.findIndex(w => w.selected);
-    if (selectedIndex !== -1 && scrollViewRef.current && walletRefs.current[selectedIndex]) {
+    const selectedIndex = wallets.findIndex((w) => w.selected);
+    if (
+      selectedIndex !== -1 &&
+      scrollViewRef.current &&
+      walletRefs.current[selectedIndex]
+    ) {
       setTimeout(() => {
         walletRefs.current[selectedIndex]?.measureLayout(
           scrollViewRef.current,
@@ -49,7 +53,10 @@ export default function WalletManagerScreen({
           <Text style={styles.headerBadge}>{currentNetwork.name}</Text>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity onPress={handleAddWallet} style={styles.headerButton}>
+          <TouchableOpacity
+            onPress={handleAddWallet}
+            style={styles.headerButton}
+          >
             <Text style={styles.headerAdd}>+</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={onDismiss} style={styles.headerButton}>
@@ -73,19 +80,16 @@ export default function WalletManagerScreen({
             ]}
             onPress={() => {
               selectWallet(wallet);
-              onDismiss();
+              // Keep sheet open so user can continue switching wallets
             }}
           >
             <View style={styles.walletLeft}>
-              <Image
-                source={currentNetwork.logo}
-                style={styles.walletLogo}
-              />
+              <Image source={currentNetwork.logo} style={styles.walletLogo} />
               <View style={styles.walletInfo}>
                 <Text style={styles.walletName}>{wallet.name}</Text>
                 <Text style={styles.walletAddress}>
                   {copiedWalletId === wallet.id
-                    ? 'Copied'
+                    ? "Copied"
                     : `${wallet.publicKey.slice(0, 12)}...${wallet.publicKey.slice(-12)}`}
                 </Text>
               </View>
@@ -97,7 +101,7 @@ export default function WalletManagerScreen({
                   e.stopPropagation();
                   Clipboard.setString(wallet.publicKey);
                   setCopiedWalletId(wallet.id);
-                  ToastAndroid.show('Address copied!', ToastAndroid.SHORT);
+                  ToastAndroid.show("Address copied!", ToastAndroid.SHORT);
                   setTimeout(() => setCopiedWalletId(null), 3000);
                 }}
               >
@@ -105,9 +109,9 @@ export default function WalletManagerScreen({
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.menuBtn}
-                onPress={async (e) => {
+                onPress={(e) => {
                   e.stopPropagation();
-                  await walletSettingsSheetRef.current?.present();
+                  openWalletSettings(wallet);
                 }}
               >
                 <Text style={styles.menuIcon}>⋮</Text>
@@ -123,73 +127,73 @@ export default function WalletManagerScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: "#000000",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1a1a1a',
+    borderBottomColor: "#1a1a1a",
   },
   headerBack: {
     fontSize: 24,
-    color: '#4A90E2',
-    fontWeight: '600',
+    color: "#4A90E2",
+    fontWeight: "600",
   },
   headerCenter: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
   headerBadge: {
     fontSize: 12,
-    color: '#888888',
+    color: "#888888",
     marginTop: 2,
   },
   headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   headerButton: {
     marginLeft: 12,
   },
   headerAdd: {
     fontSize: 28,
-    color: '#4A90E2',
-    fontWeight: '600',
+    color: "#4A90E2",
+    fontWeight: "600",
   },
   headerClose: {
     fontSize: 32,
-    color: '#888888',
-    fontWeight: '300',
+    color: "#888888",
+    fontWeight: "300",
   },
   content: {
     flex: 1,
     padding: 16,
   },
   walletItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#0a0a0a',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#0a0a0a",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: "transparent",
   },
   walletItemSelected: {
-    borderColor: '#4A90E2',
+    borderColor: "#4A90E2",
   },
   walletLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   walletLogo: {
@@ -203,17 +207,17 @@ const styles = StyleSheet.create({
   },
   walletName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: "600",
+    color: "#FFFFFF",
     marginBottom: 4,
   },
   walletAddress: {
     fontSize: 12,
-    color: '#888888',
-    fontFamily: 'monospace',
+    color: "#888888",
+    fontFamily: "monospace",
   },
   walletRight: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   copyBtn: {
@@ -221,13 +225,13 @@ const styles = StyleSheet.create({
   },
   copyIcon: {
     fontSize: 18,
-    color: '#4A90E2',
+    color: "#4A90E2",
   },
   menuBtn: {
     padding: 8,
   },
   menuIcon: {
     fontSize: 20,
-    color: '#4A90E2',
+    color: "#4A90E2",
   },
 });

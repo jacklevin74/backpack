@@ -10,7 +10,7 @@ import {
 export default function WalletSettingsScreen({
   onDismiss,
   onShowPrivateKey,
-  onShowSeedPhrase,
+  isLedger,
 }) {
   return (
     <View style={styles.container}>
@@ -34,39 +34,24 @@ export default function WalletSettingsScreen({
           <Text style={styles.menuItemArrow}>›</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => {
-            console.log(
-              "[WalletSettingsScreen] Show Private Key button pressed"
-            );
-            if (onShowPrivateKey) {
-              onShowPrivateKey();
-            } else {
-              onDismiss();
-            }
-          }}
-        >
-          <Text style={styles.menuItemText}>Show Private Key</Text>
-          <Text style={styles.menuItemArrow}>›</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => {
-            console.log(
-              "[WalletSettingsScreen] Show Seed Phrase button pressed"
-            );
-            if (onShowSeedPhrase) {
-              onShowSeedPhrase();
-            } else {
-              onDismiss();
-            }
-          }}
-        >
-          <Text style={styles.menuItemText}>Show Seed Phrase</Text>
-          <Text style={styles.menuItemArrow}>›</Text>
-        </TouchableOpacity>
+        {!isLedger && (
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              console.log(
+                "[WalletSettingsScreen] Show Private Key button pressed"
+              );
+              if (onShowPrivateKey) {
+                onShowPrivateKey();
+              } else {
+                onDismiss();
+              }
+            }}
+          >
+            <Text style={styles.menuItemText}>Show Private Key</Text>
+            <Text style={styles.menuItemArrow}>›</Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
           style={[styles.menuItem, styles.menuItemDanger]}

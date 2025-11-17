@@ -68,6 +68,7 @@ import TransportBLE from "@ledgerhq/react-native-hw-transport-ble";
 import AppSolana from "@ledgerhq/hw-app-solana";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
+import * as LocalAuthentication from "expo-local-authentication";
 import { WebView } from "react-native-webview";
 
 // Import authentication components
@@ -379,6 +380,8 @@ function AppContent() {
   const [sendConfirming, setSendConfirming] = useState(false);
   const [sendSignature, setSendSignature] = useState("");
   const [sendError, setSendError] = useState("");
+  const [pendingTransaction, setPendingTransaction] = useState(null);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
 
   // Browser/WebView states
   const [browserUrl, setBrowserUrl] = useState(
@@ -410,6 +413,7 @@ function AppContent() {
   const browserSheetRef = useRef(null);
   const privateKeySheetRef = useRef(null);
   const seedPhraseSheetRef = useRef(null);
+  const confirmTransactionSheetRef = useRef(null);
 
   const snapPoints = useMemo(() => ["50%", "90%"], []);
 
@@ -636,6 +640,16 @@ function AppContent() {
       }
     };
     checkAuth();
+  }, []);
+
+  // Check biometric availability
+  useEffect(() => {
+    const checkBiometric = async () => {
+      const compatible = await LocalAuthentication.hasHardwareAsync();
+      const enrolled = await LocalAuthentication.isEnrolledAsync();
+      setBiometricAvailable(compatible && enrolled);
+    };
+    checkBiometric();
   }, []);
 
   // Load wallets and master seed phrase on mount
@@ -1292,11 +1306,10 @@ function AppContent() {
       return;
     }
 
-    // Close send drawer and show confirmation screen
+    // Store pending transaction and show biometric confirmation
+    setPendingTransaction({ amount: amountNum, address: trimmedAddress });
     sendSheetRef.current?.close();
-    setShowSendConfirm(true);
-    setSendConfirming(true);
-    setSendError("");
+    confirmTransactionSheetRef.current?.expand();
 
     try {
       console.log("Creating transaction...");

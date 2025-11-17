@@ -975,16 +975,19 @@ function AppContent() {
   };
 
   // Handle balance updates from TokenBalances component
-  const handleBalanceUpdate = useCallback((balanceUSD, gainLossData, nativeBalance) => {
-    setBalanceUSD(balanceUSD);
-    if (gainLossData) {
-      setPortfolioGainLoss(gainLossData);
-    }
-    // Update native token balance for SendScreen (important for Solana networks)
-    if (nativeBalance !== undefined) {
-      setBalance(nativeBalance);
-    }
-  }, []);
+  const handleBalanceUpdate = useCallback(
+    (balanceUSD, gainLossData, nativeBalance) => {
+      setBalanceUSD(balanceUSD);
+      if (gainLossData) {
+        setPortfolioGainLoss(gainLossData);
+      }
+      // Update native token balance for SendScreen (important for Solana networks)
+      if (nativeBalance !== undefined) {
+        setBalance(nativeBalance);
+      }
+    },
+    []
+  );
 
   // Load initial balance
   useEffect(() => {
@@ -1463,15 +1466,30 @@ function AppContent() {
   };
 
   const handleSwap = () => {
-    Alert.alert("Swap", "Swap functionality would open here");
+    Toast.show({
+      type: "info",
+      text1: "Swap",
+      text2: "Swap functionality would open here",
+      position: "bottom",
+    });
   };
 
   const handleStake = () => {
-    Alert.alert("Stake", "Stake functionality would open here");
+    Toast.show({
+      type: "info",
+      text1: "Stake",
+      text2: "Stake functionality would open here",
+      position: "bottom",
+    });
   };
 
   const handleBridge = () => {
-    Alert.alert("Bridge", "Bridge functionality would open here");
+    Toast.show({
+      type: "info",
+      text1: "Bridge",
+      text2: "Bridge functionality would open here",
+      position: "bottom",
+    });
   };
 
   const copyAddress = () => {
@@ -3459,8 +3477,8 @@ function AppContent() {
                           portfolioGainLoss.valueChange > 0
                             ? "#00D084"
                             : portfolioGainLoss.valueChange < 0
-                            ? "#FF6B6B"
-                            : "#999999",
+                              ? "#FF6B6B"
+                              : "#999999",
                       },
                     ]}
                   >
@@ -3610,7 +3628,9 @@ function AppContent() {
                     providerId={currentNetwork.providerId}
                     pollingIntervalSeconds={60}
                     enableColorfulIcons={easterEggMode}
-                    hideZeroBalanceTokens={selectedWallet.hideZeroBalanceTokens || false}
+                    hideZeroBalanceTokens={
+                      selectedWallet.hideZeroBalanceTokens || false
+                    }
                     onBalanceUpdate={handleBalanceUpdate}
                   />
                 </View>
@@ -4680,12 +4700,18 @@ function AppContent() {
                   onValueChange={(value) => {
                     if (editingWallet) {
                       // Update states immediately for instant UI response
-                      const updatedEditingWallet = { ...editingWallet, hideZeroBalanceTokens: value };
+                      const updatedEditingWallet = {
+                        ...editingWallet,
+                        hideZeroBalanceTokens: value,
+                      };
                       setEditingWallet(updatedEditingWallet);
 
                       // Update selected wallet immediately if it's the one being edited
                       if (selectedWallet?.id === editingWallet.id) {
-                        setSelectedWallet({ ...selectedWallet, hideZeroBalanceTokens: value });
+                        setSelectedWallet({
+                          ...selectedWallet,
+                          hideZeroBalanceTokens: value,
+                        });
                       }
 
                       // Update wallets array and save to storage in background
@@ -4699,7 +4725,9 @@ function AppContent() {
                     }
                   }}
                   trackColor={{ false: "#767577", true: "#4A90E2" }}
-                  thumbColor={editingWallet?.hideZeroBalanceTokens ? "#ffffff" : "#f4f3f4"}
+                  thumbColor={
+                    editingWallet?.hideZeroBalanceTokens ? "#ffffff" : "#f4f3f4"
+                  }
                 />
               </View>
 
@@ -5973,7 +6001,9 @@ function AppContent() {
                 minWidth: 300,
               }}
             >
-              <Text style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 14 }}>
+              <Text
+                style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 14 }}
+              >
                 {props.text1}
               </Text>
               {props.text2 && (
@@ -5994,7 +6024,9 @@ function AppContent() {
                 minWidth: 300,
               }}
             >
-              <Text style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 14 }}>
+              <Text
+                style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 14 }}
+              >
                 {props.text1}
               </Text>
               {props.text2 && (
@@ -6015,7 +6047,9 @@ function AppContent() {
                 minWidth: 300,
               }}
             >
-              <Text style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 14 }}>
+              <Text
+                style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 14 }}
+              >
                 {props.text1}
               </Text>
               {props.text2 && (

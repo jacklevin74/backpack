@@ -309,6 +309,7 @@ function AppContent() {
 
   const [wallets, setWallets] = useState([]);
   const [selectedWallet, setSelectedWallet] = useState(null);
+  const [selectedAddressFromSelector, setSelectedAddressFromSelector] = useState("");
   const [accounts, setAccounts] = useState(MOCK_ACCOUNTS);
   const [selectedAccount, setSelectedAccount] = useState(MOCK_ACCOUNTS[0]);
   const [balance, setBalance] = useState("0");
@@ -949,6 +950,14 @@ function AppContent() {
     },
     [selectedWallet, currentNetwork, getNativeTokenInfo]
   );
+
+  // Handle balance updates from TokenBalances component
+  const handleBalanceUpdate = useCallback((balanceUSD, gainLossData) => {
+    setBalanceUSD(balanceUSD);
+    if (gainLossData) {
+      setPortfolioGainLoss(gainLossData);
+    }
+  }, []);
 
   // Handle pull-to-refresh
   const onRefresh = async () => {
@@ -3555,12 +3564,7 @@ function AppContent() {
                     address={selectedWallet.publicKey}
                     providerId={currentNetwork.providerId}
                     pollingIntervalSeconds={60}
-                    onBalanceUpdate={(balanceUSD, gainLossData) => {
-                      setBalanceUSD(balanceUSD);
-                      if (gainLossData) {
-                        setPortfolioGainLoss(gainLossData);
-                      }
-                    }}
+                    onBalanceUpdate={handleBalanceUpdate}
                   />
                 </View>
               ) : (
@@ -5371,6 +5375,7 @@ function AppContent() {
           handleSendSubmit={handleSendSubmit}
           wallets={wallets}
           addressSelectorSheetRef={addressSelectorSheetRef}
+          selectedAddressFromSelector={selectedAddressFromSelector}
           onDismiss={() => sendSheetRef.current?.dismiss()}
         />
       </TrueSheet>
@@ -5496,6 +5501,11 @@ function AppContent() {
         backgroundColor="#000000"
       >
         <AddressSelectorScreen
+          wallets={wallets}
+          onSelect={(address) => {
+            setSelectedAddressFromSelector(address);
+            addressSelectorSheetRef.current?.dismiss();
+          }}
           onDismiss={() => addressSelectorSheetRef.current?.dismiss()}
         />
       </TrueSheet>

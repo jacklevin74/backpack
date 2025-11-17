@@ -19,7 +19,7 @@ export type TokenBalancesProps = {
   address: string;
   providerId: ProviderId;
   pollingIntervalSeconds?: number;
-  onBalanceUpdate?: (balanceUSD: string) => void;
+  onBalanceUpdate?: (balanceUSD: string, gainLossData?: { percentChange: number; valueChange: number }) => void;
   onItemClick?: (args: {
     id: string;
     displayAmount: string;
@@ -117,9 +117,13 @@ function _TokenBalances({
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       })}`;
-      onBalanceUpdate(formattedBalance);
+      const gainLossData = {
+        percentChange: aggregate.percentChange || 0,
+        valueChange: aggregate.valueChange || 0,
+      };
+      onBalanceUpdate(formattedBalance, gainLossData);
     }
-  }, [aggregate.value, onBalanceUpdate]);
+  }, [aggregate.value, aggregate.percentChange, aggregate.valueChange, onBalanceUpdate]);
 
   // Log error if present (for debugging)
   if (error) {

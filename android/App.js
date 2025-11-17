@@ -5280,7 +5280,7 @@ function AppContent() {
                         marginBottom: 12,
                       }}
                     >
-                      Authenticate to confirm
+                      Confirm
                     </Text>
                     <TouchableOpacity
                       onPress={confirmTransactionWithBiometric}

@@ -139,7 +139,9 @@ export const OnboardAccount = ({
     ...(keyringType === "mnemonic" || keyringType === "ledger"
       ? // X1 blockchain is auto-selected, skip blockchain selector
         [
-          ...(keyringType === "ledger" || action === "import"
+          ...(keyringType === "ledger" ||
+          action === "import" ||
+          action === "create"
             ? [
               <ImportWallets
                 allowMultiple

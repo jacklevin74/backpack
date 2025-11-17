@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "@coral-xyz/i18n";
 import {
   BpPrimaryButton,
@@ -12,6 +13,8 @@ export const CreateOrImportWallet = ({
   onNext: (data: any) => void;
 }) => {
   const { t } = useTranslation();
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
   return (
     <YStack gap={40}>
       <div style={{ textAlign: "center" }}>
@@ -43,6 +46,25 @@ export const CreateOrImportWallet = ({
           label={t("import_wallet")}
           onPress={() => onNext({ action: "import" })}
         />
+
+        {/* Advanced section */}
+        <YStack gap={12} mt={8}>
+          <StyledText
+            color="$baseTextMedEmphasis"
+            textAlign="center"
+            cursor="pointer"
+            onPress={() => setShowAdvanced(!showAdvanced)}
+            hoverStyle={{ opacity: 0.8 }}
+          >
+            {showAdvanced ? "▲" : "▼"} {t("advanced")}
+          </StyledText>
+          {showAdvanced ? <BpSecondaryButton
+            label={t("with_secret_key.import")}
+            onPress={() =>
+                onNext({ action: "import", keyringType: "mnemonic" })
+              }
+            /> : null}
+        </YStack>
       </YStack>
     </YStack>
   );

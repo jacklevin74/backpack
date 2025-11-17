@@ -342,7 +342,6 @@ function AppContent() {
   const [editingWallet, setEditingWallet] = useState(null);
   const [editWalletName, setEditWalletName] = useState("");
   const [showPrivateKey, setShowPrivateKey] = useState(false);
-  const [showChangeNameModal, setShowChangeNameModal] = useState(false);
   const [showViewPrivateKeyModal, setShowViewPrivateKeyModal] = useState(false);
   const [showViewSeedPhraseModal, setShowViewSeedPhraseModal] = useState(false);
   const [showExportSeedPhraseModal, setShowExportSeedPhraseModal] =
@@ -407,10 +406,10 @@ function AppContent() {
   const settingsSheetRef = useRef(null);
   const networkSheetRef = useRef(null);
   const accountSheetRef = useRef(null);
-  const editWalletSheetRef = useRef(null);
   const browserSheetRef = useRef(null);
   const privateKeySheetRef = useRef(null);
   const seedPhraseSheetRef = useRef(null);
+  const changeNameSheetRef = useRef(null);
 
   // TrueSheet refs for React Navigation replacement
   const walletManagerSheetRef = useRef(null);
@@ -4248,227 +4247,82 @@ function AppContent() {
           </Pressable>
         </Modal>
 
-        {/* Edit Wallet Modal */}
+        {/* Change Name Sheet */}
         <TrueSheet
-          ref={editWalletSheetRef}
+          ref={changeNameSheetRef}
           sizes={["auto", "large"]}
           cornerRadius={24}
           grabber={true}
           backgroundColor="#000000"
         >
-          <View testID="edit-wallet-sheet" style={styles.bottomSheetContent}>
-            <View style={styles.bottomSheetHeader}>
-              <View style={{ width: 32 }} />
-              <Text style={styles.bottomSheetTitle}>Edit Wallet</Text>
+          <View style={styles.bottomSheetContent}>
+            <View style={styles.bottomSheetHeader} pointerEvents="box-none">
+              <View style={{ width: 32 }} pointerEvents="none" />
+              <Text style={styles.bottomSheetTitle} pointerEvents="none">
+                Change Name
+              </Text>
               <TouchableOpacity
                 onPress={() => {
-                  editWalletSheetRef.current?.dismiss();
-                  setEditingWallet(null);
+                  changeNameSheetRef.current?.dismiss();
                 }}
+                pointerEvents="auto"
               >
                 <Text style={styles.bottomSheetClose}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Menu Items */}
-            <ScrollView style={styles.settingsMenuList}>
-              <TouchableOpacity
-                testID="change-account-name-button"
-                style={styles.settingsMenuItem}
-                onPress={() => {
-                  editWalletSheetRef.current?.dismiss();
-                  setShowChangeNameModal(true);
-                }}
-              >
-                <Text style={styles.settingsMenuItemText}>
-                  Change Account Name
-                </Text>
-                <Text style={styles.settingsMenuItemArrow}>›</Text>
-              </TouchableOpacity>
+            <Text style={styles.inputLabel}>Wallet Name</Text>
+            <TextInput
+              testID="account-name-input"
+              style={styles.walletNameInput}
+              placeholder="Wallet Name"
+              placeholderTextColor="#666666"
+              value={editWalletName}
+              onChangeText={(text) => {
+                setEditWalletName(text);
+                if (editingWallet && text.trim()) {
+                  const updatedWallets = wallets.map((w) =>
+                    w.id === editingWallet.id ? { ...w, name: text.trim() } : w
+                  );
+                  setWallets(updatedWallets);
+                  saveWalletsToStorage(updatedWallets);
+                }
+              }}
+              autoCorrect={false}
+            />
 
-              <TouchableOpacity
-                testID="show-private-key-button"
-                style={styles.settingsMenuItem}
-                onPress={() => {
-                  console.log("[ShowPrivateKey] Button pressed");
-                  console.log(
-                    "[ShowPrivateKey] editWalletSheetRef.current:",
-                    editWalletSheetRef.current
+            <TouchableOpacity
+              style={{ paddingVertical: 16, paddingHorizontal: 20 }}
+              onPress={() => {
+                console.log("SAVE BUTTON PRESSED");
+                console.log("editingWallet:", editingWallet);
+                console.log("editWalletName:", editWalletName);
+                if (editingWallet && editWalletName.trim()) {
+                  console.log("Saving wallet name:", editWalletName.trim());
+                  const updatedWallets = wallets.map((w) =>
+                    w.id === editingWallet.id
+                      ? { ...w, name: editWalletName.trim() }
+                      : w
                   );
-                  console.log(
-                    "[ShowPrivateKey] privateKeySheetRef.current:",
-                    privateKeySheetRef.current
-                  );
-                  editWalletSheetRef.current?.dismiss();
-                  console.log(
-                    "[ShowPrivateKey] Dismiss called, waiting 300ms..."
-                  );
-                  setTimeout(() => {
-                    console.log(
-                      "[ShowPrivateKey] Timeout fired, calling present()..."
-                    );
-                    console.log(
-                      "[ShowPrivateKey] privateKeySheetRef.current before present:",
-                      privateKeySheetRef.current
-                    );
-                    privateKeySheetRef.current?.present();
-                    console.log("[ShowPrivateKey] Present called");
-                  }, 300);
-                }}
+                  setWallets(updatedWallets);
+                  saveWalletsToStorage(updatedWallets);
+                  console.log("Closing change name sheet");
+                  changeNameSheetRef.current?.dismiss();
+                  setEditingWallet(null);
+                }
+              }}
+            >
+              <Text
+                style={[
+                  styles.bottomSheetTitle,
+                  { fontSize: 18, fontWeight: "600" },
+                ]}
               >
-                <Text style={styles.settingsMenuItemText}>
-                  Show Private Key
-                </Text>
-                <Text style={styles.settingsMenuItemArrow}>›</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                testID="delete-account-button"
-                style={styles.settingsMenuItem}
-                onPress={() => {
-                  Alert.alert(
-                    "Delete Account",
-                    `Are you sure you want to delete "${editingWallet?.name}"? This action cannot be undone.`,
-                    [
-                      {
-                        text: "Cancel",
-                        style: "cancel",
-                      },
-                      {
-                        text: "Delete",
-                        style: "destructive",
-                        onPress: async () => {
-                          if (editingWallet) {
-                            const updatedWallets = wallets.filter(
-                              (w) => w.id !== editingWallet.id
-                            );
-                            setWallets(updatedWallets);
-                            await saveWalletsToStorage(updatedWallets);
-                            editWalletSheetRef.current?.dismiss();
-                            setEditingWallet(null);
-                          }
-                        },
-                      },
-                    ]
-                  );
-                }}
-              >
-                <Text
-                  style={[styles.settingsMenuItemText, { color: "#FF4444" }]}
-                >
-                  Delete Account
-                </Text>
-                <Text style={styles.settingsMenuItemArrow}>›</Text>
-              </TouchableOpacity>
-            </ScrollView>
+                Save
+              </Text>
+            </TouchableOpacity>
           </View>
         </TrueSheet>
-
-        {/* Change Name Modal */}
-        <Modal
-          visible={showChangeNameModal}
-          transparent={true}
-          animationType="slide"
-        >
-          <Pressable
-            style={styles.settingsDrawerOverlay}
-            onPress={() => {
-              console.log("OVERLAY PRESSED - Closing all modals");
-              setShowChangeNameModal(false);
-              editWalletSheetRef.current?.dismiss();
-              setEditingWallet(null);
-            }}
-          >
-            <Pressable
-              style={styles.settingsDrawerContent}
-              onPress={(e) => e.stopPropagation()}
-            >
-              <View style={styles.settingsDrawerContentArea}>
-                <View style={styles.settingsDrawerHeader}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      console.log(
-                        "BACK BUTTON PRESSED (<) - Closing all modals"
-                      );
-                      setShowChangeNameModal(false);
-                      editWalletSheetRef.current?.dismiss();
-                      setEditingWallet(null);
-                    }}
-                  >
-                    <Text style={styles.settingsDrawerClose}>‹</Text>
-                  </TouchableOpacity>
-                  <Text style={styles.settingsDrawerTitle}>Change Name</Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      console.log("X BUTTON PRESSED - Closing all modals");
-                      setShowChangeNameModal(false);
-                      editWalletSheetRef.current?.dismiss();
-                      setEditingWallet(null);
-                    }}
-                  >
-                    <Text style={styles.settingsDrawerClose}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <Text style={styles.inputLabel}>Wallet Name</Text>
-                <TextInput
-                  testID="account-name-input"
-                  style={styles.walletNameInput}
-                  placeholder="Wallet Name"
-                  placeholderTextColor="#666666"
-                  value={editWalletName}
-                  onChangeText={(text) => {
-                    setEditWalletName(text);
-                    if (editingWallet && text.trim()) {
-                      const updatedWallets = wallets.map((w) =>
-                        w.id === editingWallet.id
-                          ? { ...w, name: text.trim() }
-                          : w
-                      );
-                      setWallets(updatedWallets);
-                      saveWalletsToStorage(updatedWallets);
-                    }
-                  }}
-                  autoCorrect={false}
-                />
-
-                <TouchableOpacity
-                  style={{ paddingVertical: 16, paddingHorizontal: 20 }}
-                  onPress={() => {
-                    console.log("SAVE BUTTON PRESSED");
-                    console.log("editingWallet:", editingWallet);
-                    console.log("editWalletName:", editWalletName);
-                    if (editingWallet && editWalletName.trim()) {
-                      console.log("Saving wallet name:", editWalletName.trim());
-                      const updatedWallets = wallets.map((w) =>
-                        w.id === editingWallet.id
-                          ? { ...w, name: editWalletName.trim() }
-                          : w
-                      );
-                      setWallets(updatedWallets);
-                      saveWalletsToStorage(updatedWallets);
-                      console.log("Closing both modals");
-                      setShowChangeNameModal(false);
-                      editWalletSheetRef.current?.dismiss();
-                      setEditingWallet(null);
-                    } else {
-                      console.log("Not saving - wallet or name is empty");
-                    }
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.settingsDrawerTitle,
-                      { fontSize: 18, fontWeight: "600" },
-                    ]}
-                  >
-                    Save
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </Pressable>
-          </Pressable>
-        </Modal>
 
         {/* View Private Key Bottom Sheet */}
         <TrueSheet
@@ -4479,13 +4333,16 @@ function AppContent() {
           backgroundColor="#000000"
         >
           <View style={styles.bottomSheetContent}>
-            <View style={styles.bottomSheetHeader}>
-              <View style={{ width: 32 }} />
-              <Text style={styles.bottomSheetTitle}>Private Key</Text>
+            <View style={styles.bottomSheetHeader} pointerEvents="box-none">
+              <View style={{ width: 32 }} pointerEvents="none" />
+              <Text style={styles.bottomSheetTitle} pointerEvents="none">
+                Private Key
+              </Text>
               <TouchableOpacity
                 onPress={() => {
                   privateKeySheetRef.current?.dismiss();
                 }}
+                pointerEvents="auto"
               >
                 <Text style={styles.bottomSheetClose}>✕</Text>
               </TouchableOpacity>
@@ -5022,7 +4879,6 @@ function AppContent() {
                                 setEditingWallet(null);
                                 setEditWalletName("");
                                 setShowAddWalletModal(false);
-                                setShowChangeNameModal(false);
                                 setShowViewPrivateKeyModal(false);
                                 setShowViewSeedPhraseModal(false);
                                 setShowExportSeedPhraseModal(false);
@@ -5573,7 +5429,7 @@ function AppContent() {
             setEditWalletName(editingWallet?.name || "");
             walletSettingsSheetRef.current?.dismiss();
             setTimeout(() => {
-              setShowChangeNameModal(true);
+              changeNameSheetRef.current?.present();
             }, 300);
           }}
           onShowPrivateKey={() => {

@@ -1310,6 +1310,18 @@ function AppContent() {
     setPendingTransaction({ amount: amountNum, address: trimmedAddress });
     sendSheetRef.current?.close();
     confirmTransactionSheetRef.current?.expand();
+  };
+
+  // Execute the pending transaction after biometric confirmation
+  const executePendingTransaction = async () => {
+    if (!pendingTransaction) return;
+
+    setShowSendConfirm(true);
+    setSendConfirming(true);
+    setSendError("");
+    confirmTransactionSheetRef.current?.close();
+
+    const { amount: amountNum, address: trimmedAddress } = pendingTransaction;
 
     try {
       console.log("Creating transaction...");
@@ -1463,6 +1475,36 @@ function AppContent() {
       console.error("Send transaction error:", error);
       setSendConfirming(false);
       setSendError(error.message || "Transaction failed");
+    } finally {
+      setPendingTransaction(null);
+    }
+  };
+
+  // Confirm transaction with biometric or approve button
+  const confirmTransactionWithBiometric = async () => {
+    if (biometricAvailable) {
+      try {
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: "Confirm transaction",
+          fallbackLabel: "Use passcode",
+          disableDeviceFallback: false,
+        });
+
+        if (result.success) {
+          await executePendingTransaction();
+        } else {
+          // User cancelled biometric
+          confirmTransactionSheetRef.current?.close();
+          setPendingTransaction(null);
+        }
+      } catch (error) {
+        console.error("Biometric authentication error:", error);
+        confirmTransactionSheetRef.current?.close();
+        setPendingTransaction(null);
+      }
+    } else {
+      // No biometric available, just execute
+      await executePendingTransaction();
     }
   };
 
@@ -5131,6 +5173,164 @@ function AppContent() {
             ) : (
               <View style={styles.ledgerStatus}>
                 <Text style={styles.ledgerStatusText}>Scanning...</Text>
+              </View>
+            )}
+          </BottomSheetView>
+        </BottomSheet>
+
+        {/* Transaction Confirmation Bottom Sheet */}
+        <BottomSheet
+          ref={confirmTransactionSheetRef}
+          index={-1}
+          snapPoints={["45%"]}
+          enablePanDownToClose={true}
+          backdropComponent={renderBackdrop}
+          backgroundStyle={{
+            backgroundColor: easterEggMode ? "#111827" : "#000",
+          }}
+          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+        >
+          <BottomSheetView style={styles.bottomSheetContent}>
+            <View style={styles.bottomSheetHeader}>
+              <View style={{ width: 32 }} />
+              <Text style={styles.bottomSheetTitle}>Confirm Transaction</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  confirmTransactionSheetRef.current?.close();
+                  setPendingTransaction(null);
+                }}
+              >
+                <Text style={styles.bottomSheetClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {pendingTransaction && (
+              <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
+                {/* Transaction details */}
+                <View
+                  style={{
+                    backgroundColor: "#1a1a1a",
+                    borderRadius: 12,
+                    padding: 16,
+                    marginBottom: 20,
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <Text style={{ color: "#999", fontSize: 14 }}>Amount</Text>
+                    <Text
+                      style={{ color: "#fff", fontSize: 14, fontWeight: "600" }}
+                    >
+                      {pendingTransaction.amount} SOL
+                    </Text>
+                  </View>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <Text style={{ color: "#999", fontSize: 14 }}>To</Text>
+                    <Text
+                      style={{
+                        color: "#fff",
+                        fontSize: 12,
+                        fontFamily: "monospace",
+                      }}
+                    >
+                      {pendingTransaction.address.substring(0, 8)}...
+                      {pendingTransaction.address.substring(
+                        pendingTransaction.address.length - 8
+                      )}
+                    </Text>
+                  </View>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <Text style={{ color: "#999", fontSize: 14 }}>
+                      Network Fee
+                    </Text>
+                    <Text style={{ color: "#fff", fontSize: 14 }}>
+                      ~0.000005 SOL
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Biometric or Approve button */}
+                {biometricAvailable ? (
+                  <View
+                    style={{
+                      alignItems: "center",
+                      marginBottom: 20,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "#4A90E2",
+                        fontSize: 16,
+                        marginBottom: 12,
+                      }}
+                    >
+                      Authenticate to confirm
+                    </Text>
+                    <TouchableOpacity
+                      onPress={confirmTransactionWithBiometric}
+                      style={{
+                        width: 64,
+                        height: 64,
+                        borderRadius: 32,
+                        backgroundColor: "#4A90E2",
+                        justifyContent: "center",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text style={{ fontSize: 32 }}>🔒</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    onPress={confirmTransactionWithBiometric}
+                    style={{
+                      backgroundColor: "#4A90E2",
+                      paddingVertical: 16,
+                      borderRadius: 8,
+                      alignItems: "center",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "#fff",
+                        fontSize: 16,
+                        fontWeight: "600",
+                      }}
+                    >
+                      Approve Transaction
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity
+                  onPress={() => {
+                    confirmTransactionSheetRef.current?.close();
+                    setPendingTransaction(null);
+                  }}
+                  style={{
+                    paddingVertical: 12,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: "#999", fontSize: 14 }}>Cancel</Text>
+                </TouchableOpacity>
               </View>
             )}
           </BottomSheetView>

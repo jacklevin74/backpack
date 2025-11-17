@@ -971,13 +971,13 @@ function AppContent() {
     // Use cache for instant switch, then fetch fresh data in background
     checkBalance(network, true);
     checkTransactions(network);
-    networkSheetRef.current?.close();
+    networkSheetRef.current?.dismiss();
   };
 
   const selectWallet = (wallet) => {
     setWallets(wallets.map((w) => ({ ...w, selected: w.id === wallet.id })));
     setSelectedWallet(wallet);
-    bottomSheetRef.current?.close();
+    bottomSheetRef.current?.dismiss();
   };
 
   // Settings navigation helpers
@@ -1153,7 +1153,7 @@ function AppContent() {
   const selectAccount = (account) => {
     setAccounts(accounts.map((a) => ({ ...a, selected: a.id === account.id })));
     setSelectedAccount(account);
-    accountSheetRef.current?.close();
+    accountSheetRef.current?.dismiss();
   };
 
   const showWalletSelector = async () => {
@@ -1167,11 +1167,11 @@ function AppContent() {
   };
 
   const showNetworkSelector = () => {
-    networkSheetRef.current?.expand();
+    networkSheetRef.current?.present();
   };
 
   const showAccountSelector = () => {
-    accountSheetRef.current?.expand();
+    accountSheetRef.current?.present();
   };
 
   const handleReceive = async () => {
@@ -1223,7 +1223,7 @@ function AppContent() {
     }
 
     // Close send drawer and show confirmation screen
-    sendSheetRef.current?.close();
+    sendSheetRef.current?.dismiss();
     setShowSendConfirm(true);
     setSendConfirming(true);
     setSendError("");
@@ -3650,20 +3650,18 @@ function AppContent() {
         </SafeAreaView>
 
         {/* Network Selector Side Drawer */}
-        <BottomSheet
+        <TrueSheet
           ref={networkSheetRef}
-          index={-1}
-          snapPoints={snapPoints}
-          enablePanDownToClose={true}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#000000" }}
-          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+          sizes={["auto", "large"]}
+          cornerRadius={24}
+          grabber={true}
+          backgroundColor="#000000"
         >
-          <BottomSheetView style={styles.bottomSheetContent}>
+          <View style={styles.bottomSheetContent}>
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
               <TouchableOpacity
-                onPress={() => networkSheetRef.current?.close()}
+                onPress={() => networkSheetRef.current?.dismiss()}
               >
                 <Text style={styles.bottomSheetClose}>✕</Text>
               </TouchableOpacity>
@@ -3691,8 +3689,8 @@ function AppContent() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-          </BottomSheetView>
-        </BottomSheet>
+          </View>
+        </TrueSheet>
 
         {/* Bluetooth Devices Drawer */}
         {showBluetoothDrawer && (
@@ -3786,24 +3784,23 @@ function AppContent() {
         )}
 
         {/* Wallet Selector Bottom Sheet */}
-        <BottomSheet
+        <TrueSheet
           ref={bottomSheetRef}
-          index={-1}
-          snapPoints={snapPoints}
-          onChange={handleSheetChanges}
-          enablePanDownToClose={true}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#000000" }}
-          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+          sizes={["auto", "large"]}
+          cornerRadius={24}
+          grabber={true}
+          backgroundColor="#000000"
         >
-          <BottomSheetScrollView
+          <ScrollView
             testID="wallet-list-sheet"
             contentContainerStyle={styles.bottomSheetScrollContent}
             showsVerticalScrollIndicator={false}
           >
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
-              <TouchableOpacity onPress={() => bottomSheetRef.current?.close()}>
+              <TouchableOpacity
+                onPress={() => bottomSheetRef.current?.dismiss()}
+              >
                 <Text style={styles.bottomSheetClose}>✕</Text>
               </TouchableOpacity>
               <View style={styles.bottomSheetTitleContainer}>
@@ -3908,24 +3905,22 @@ function AppContent() {
                 </TouchableOpacity>
               ))}
             </View>
-          </BottomSheetScrollView>
-        </BottomSheet>
+          </ScrollView>
+        </TrueSheet>
 
         {/* Account Selector Side Drawer */}
-        <BottomSheet
+        <TrueSheet
           ref={accountSheetRef}
-          index={-1}
-          snapPoints={snapPoints}
-          enablePanDownToClose={true}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: "#000000" }}
-          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+          sizes={["auto", "large"]}
+          cornerRadius={24}
+          grabber={true}
+          backgroundColor="#000000"
         >
-          <BottomSheetView style={styles.bottomSheetContent}>
+          <View style={styles.bottomSheetContent}>
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
               <TouchableOpacity
-                onPress={() => accountSheetRef.current?.close()}
+                onPress={() => accountSheetRef.current?.dismiss()}
               >
                 <Text style={styles.bottomSheetClose}>✕</Text>
               </TouchableOpacity>
@@ -3964,8 +3959,8 @@ function AppContent() {
             <TouchableOpacity style={styles.addAccountButton}>
               <Text style={styles.addAccountButtonText}>+ New Account</Text>
             </TouchableOpacity>
-          </BottomSheetView>
-        </BottomSheet>
+          </View>
+        </TrueSheet>
 
         {/* Debug Console - Full Page */}
         <Modal
@@ -4372,7 +4367,7 @@ function AppContent() {
             onPress={() => {
               console.log("OVERLAY PRESSED - Closing all modals");
               setShowChangeNameModal(false);
-              editWalletSheetRef.current?.close();
+              editWalletSheetRef.current?.dismiss();
               setEditingWallet(null);
             }}
           >
@@ -4595,25 +4590,18 @@ function AppContent() {
         </TrueSheet>
 
         {/* Browser BottomSheet */}
-        <BottomSheet
+        <TrueSheet
           ref={browserSheetRef}
-          index={-1}
-          snapPoints={["90%"]}
-          enablePanDownToClose={true}
-          backdropComponent={(props) => (
-            <BottomSheetBackdrop
-              {...props}
-              disappearsOnIndex={-1}
-              appearsOnIndex={0}
-              opacity={0.5}
-            />
-          )}
+          sizes={["large"]}
+          cornerRadius={24}
+          grabber={true}
+          backgroundColor="#000000"
         >
-          <BottomSheetView style={{ flex: 1 }}>
+          <View style={{ flex: 1 }}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Browser</Text>
               <TouchableOpacity
-                onPress={() => browserSheetRef.current?.close()}
+                onPress={() => browserSheetRef.current?.dismiss()}
               >
                 <Text style={styles.closeButton}>✕</Text>
               </TouchableOpacity>
@@ -4796,8 +4784,8 @@ function AppContent() {
               `}
               />
             </View>
-          </BottomSheetView>
-        </BottomSheet>
+          </View>
+        </TrueSheet>
       </GestureHandlerRootView>
 
       {/* Settings - Full Page - Outside GestureHandler */}
@@ -4894,7 +4882,7 @@ function AppContent() {
                     style={styles.settingsMenuItem}
                     onPress={() => {
                       setShowSettingsModal(false);
-                      networkSheetRef.current?.expand();
+                      networkSheetRef.current?.present();
                     }}
                   >
                     <Text style={styles.settingsMenuItemText}>Network</Text>

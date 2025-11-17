@@ -295,6 +295,10 @@ function AppContent() {
   const [selectedAccount, setSelectedAccount] = useState(MOCK_ACCOUNTS[0]);
   const [balance, setBalance] = useState("0");
   const [balanceUSD, setBalanceUSD] = useState("$0.00");
+  const [portfolioGainLoss, setPortfolioGainLoss] = useState({
+    percentChange: 0,
+    valueChange: 0,
+  });
   const [tokenPrice, setTokenPrice] = useState(null);
   const [tokens, setTokens] = useState([]);
   const [transactions, setTransactions] = useState([]);

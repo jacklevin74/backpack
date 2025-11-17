@@ -5606,6 +5606,7 @@ function AppContent() {
 
       {/* Toast notifications */}
       <Toast
+        bottomOffset={80}
         config={{
           success: (props) => (
             <View
@@ -5614,8 +5615,10 @@ function AppContent() {
                 borderLeftColor: "#4CAF50",
                 borderLeftWidth: 6,
                 borderRadius: 12,
-                padding: 16,
-                marginHorizontal: 16,
+                paddingVertical: 18,
+                paddingHorizontal: 20,
+                marginHorizontal: 20,
+                marginBottom: 8,
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.3,
@@ -5628,12 +5631,12 @@ function AppContent() {
                   color: "#FFFFFF",
                   fontSize: 14,
                   fontWeight: "600",
-                  marginBottom: 4,
+                  marginBottom: 6,
                 }}
               >
                 {props.text1}
               </Text>
-              <Text style={{ color: "#CCCCCC", fontSize: 12 }}>
+              <Text style={{ color: "#CCCCCC", fontSize: 12, lineHeight: 18 }}>
                 {props.text2}
               </Text>
             </View>
@@ -5645,8 +5648,10 @@ function AppContent() {
                 borderLeftColor: "#F44336",
                 borderLeftWidth: 6,
                 borderRadius: 12,
-                padding: 16,
-                marginHorizontal: 16,
+                paddingVertical: 18,
+                paddingHorizontal: 20,
+                marginHorizontal: 20,
+                marginBottom: 8,
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.3,
@@ -5659,12 +5664,12 @@ function AppContent() {
                   color: "#FFFFFF",
                   fontSize: 14,
                   fontWeight: "600",
-                  marginBottom: 4,
+                  marginBottom: 6,
                 }}
               >
                 {props.text1}
               </Text>
-              <Text style={{ color: "#CCCCCC", fontSize: 12 }}>
+              <Text style={{ color: "#CCCCCC", fontSize: 12, lineHeight: 18 }}>
                 {props.text2}
               </Text>
             </View>
@@ -5676,8 +5681,10 @@ function AppContent() {
                 borderLeftColor: "#4A90E2",
                 borderLeftWidth: 6,
                 borderRadius: 12,
-                padding: 16,
-                marginHorizontal: 16,
+                paddingVertical: 18,
+                paddingHorizontal: 20,
+                marginHorizontal: 20,
+                marginBottom: 8,
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.3,
@@ -5690,12 +5697,12 @@ function AppContent() {
                   color: "#FFFFFF",
                   fontSize: 14,
                   fontWeight: "600",
-                  marginBottom: 4,
+                  marginBottom: 6,
                 }}
               >
                 {props.text1}
               </Text>
-              <Text style={{ color: "#CCCCCC", fontSize: 12 }}>
+              <Text style={{ color: "#CCCCCC", fontSize: 12, lineHeight: 18 }}>
                 {props.text2}
               </Text>
             </View>

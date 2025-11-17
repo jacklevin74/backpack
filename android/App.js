@@ -74,6 +74,9 @@ import { PinUnlock } from "./src/auth/PinUnlock";
 import { ChangePin } from "./src/auth/ChangePin";
 import { BiometricSettings } from "./src/auth/BiometricSettings";
 
+// Import Toast notifications
+import Toast from "react-native-toast-message";
+
 // Import native USB Ledger module
 const { LedgerUsb } = NativeModules;
 
@@ -1217,37 +1220,67 @@ function AppContent() {
     console.log("📋 selectedWallet.address:", selectedWallet?.address);
     console.log("📋 selectedWallet.publicKey:", selectedWallet?.publicKey);
     Clipboard.setString(text);
-    Alert.alert("Copied", "Address copied to clipboard");
+    Toast.show({
+      type: "success",
+      text1: "Copied",
+      text2: "Address copied to clipboard",
+      position: "bottom",
+    });
   };
 
-  const handleSendSubmit = async () => {
+  const handleSendSubmit = async (amount, address) => {
     // Dismiss keyboard when Send button is pressed
     Keyboard.dismiss();
 
     if (!selectedWallet) {
-      Alert.alert("Error", "No wallet selected");
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "No wallet selected",
+        position: "bottom",
+      });
       return;
     }
-    if (!sendAddress || !sendAmount) {
-      Alert.alert("Error", "Please enter both address and amount");
+    if (!address || !amount) {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Please enter both address and amount",
+        position: "bottom",
+      });
       return;
     }
 
     // Trim the address to remove any whitespace
-    const trimmedAddress = sendAddress.trim();
+    // Store values in state for confirmation screen
+    setSendAmount(amount);
+    setSendAddress(address);
+
+    // Trim the address to remove any whitespace
+    const trimmedAddress = address.trim();
 
     // Validate address format
     try {
       new PublicKey(trimmedAddress);
     } catch (e) {
-      Alert.alert("Error", "Invalid recipient address");
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Invalid recipient address",
+        position: "bottom",
+      });
       return;
     }
 
     // Validate amount
-    const amountNum = parseFloat(sendAmount);
+    const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
-      Alert.alert("Error", "Invalid amount");
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Invalid amount",
+        position: "bottom",
+      });
       return;
     }
 

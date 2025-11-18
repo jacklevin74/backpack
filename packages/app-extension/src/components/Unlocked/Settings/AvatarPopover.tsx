@@ -20,7 +20,15 @@ import {
   temporarilyMakeStylesForBrowserExtension,
   useTheme,
 } from "@coral-xyz/tamagui";
-import { Add, Check } from "@mui/icons-material";
+import {
+  AccountCircleOutlined,
+  Add,
+  Check,
+  Info,
+  Language,
+  Lock,
+  Settings,
+} from "@mui/icons-material";
 import { Button, IconButton, Popover, Typography } from "@mui/material";
 import { useNavigation } from "@react-navigation/native";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -126,6 +134,54 @@ export function AvatarPopoverButton({
 
 function AvatarMenu() {
   const theme = useTheme();
+  const navigation = useNavigation<any>();
+  const userClient = useRecoilValue(userClientAtom);
+  const { close } = usePopoverContext();
+  const { t } = useTranslation();
+
+  const menuItems = [
+    {
+      label: t("network"),
+      icon: Language,
+      onClick: () => {
+        close();
+        navigation.push(SettingsRoutes.NetworkSelectScreen);
+      },
+    },
+    {
+      label: t("your_account"),
+      icon: AccountCircleOutlined,
+      onClick: () => {
+        close();
+        navigation.push(SettingsRoutes.YourAccountScreen);
+      },
+    },
+    {
+      label: t("preferences"),
+      icon: Settings,
+      onClick: () => {
+        close();
+        navigation.push(SettingsRoutes.PreferencesScreen);
+      },
+    },
+    {
+      label: t("lock"),
+      icon: Lock,
+      onClick: () => {
+        close();
+        userClient.lockKeyring();
+      },
+    },
+    {
+      label: t("about_backpack"),
+      icon: Info,
+      onClick: () => {
+        close();
+        navigation.push(SettingsRoutes.AboutScreen);
+      },
+    },
+  ];
+
   return (
     <div
       style={{
@@ -134,13 +190,34 @@ function AvatarMenu() {
         borderRadius: "6px",
       }}
     >
-      <AuxMenuList />
-      <div
-        style={{
-          borderTop: `solid 2px ${theme.baseBorderLight.val}`,
-        }}
-      />
-      <LockMenuList />
+      <MenuList>
+        {menuItems.map((item, index) => (
+          <MenuListItem key={item.label} onClick={item.onClick}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+              }}
+            >
+              <item.icon
+                style={{
+                  fontSize: "18px",
+                  color: theme.baseIcon.val,
+                }}
+              />
+              <Typography
+                style={{
+                  fontSize: "14px",
+                  color: theme.baseTextHighEmphasis.val,
+                }}
+              >
+                {item.label}
+              </Typography>
+            </div>
+          </MenuListItem>
+        ))}
+      </MenuList>
     </div>
   );
 }

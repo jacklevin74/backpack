@@ -14,15 +14,15 @@ import { View, Text, Image, StyleSheet } from "react-native";
  * @param {number} [props.size] - Size of the icon (default: 40)
  */
 const TokenIcon = ({ symbol, logo, logoUrl, style, imageStyle, size = 40 }) => {
-  const [showLogo, setShowLogo] = useState(false);
+  const [showUrlLogo, setShowUrlLogo] = useState(false);
   const [urlLoadError, setUrlLoadError] = useState(false);
 
   useEffect(() => {
-    // Always show character icon first, then load logo after 1 second
-    // Only delay if we have a logo or logoUrl to load
-    if (logo || logoUrl) {
+    // Only delay URL-based logos by 1 second
+    // Local require() assets should load immediately
+    if (logoUrl && !logo) {
       const timer = setTimeout(() => {
-        setShowLogo(true);
+        setShowUrlLogo(true);
       }, 1000);
 
       return () => clearTimeout(timer);
@@ -33,8 +33,8 @@ const TokenIcon = ({ symbol, logo, logoUrl, style, imageStyle, size = 40 }) => {
   const charIcon = symbol ? symbol.charAt(0).toUpperCase() : "?";
 
   // Determine which icon to show
-  // Show character icon if: not ready to show logo yet, or URL loading failed
-  const shouldShowChar = !showLogo || (logoUrl && !logo && urlLoadError);
+  // Show local logo immediately, or character icon while waiting for URL
+  const shouldShowChar = !logo && (!logoUrl || !showUrlLogo || urlLoadError);
 
   return (
     <View style={[styles.container, { width: size, height: size }, style]}>
@@ -53,13 +53,13 @@ const TokenIcon = ({ symbol, logo, logoUrl, style, imageStyle, size = 40 }) => {
       ) : (
         // Show logo (local or URL-based)
         <Image
-          source={logoUrl && !logo ? { uri: logoUrl } : logo}
+          source={showUrlLogo && logoUrl && !logo ? { uri: logoUrl } : logo}
           style={[
             { width: size, height: size, borderRadius: size / 2 },
             imageStyle,
           ]}
           onError={() => {
-            if (logoUrl && !logo) {
+            if (showUrlLogo && logoUrl && !logo) {
               console.log(`Failed to load token logo from URL: ${logoUrl}`);
               setUrlLoadError(true);
             }

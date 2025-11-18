@@ -1607,8 +1607,8 @@ function AppContent() {
               }
 
               try {
-                // Connect to Ledger via BLE
-                const transport = await TransportBLE.open(deviceId);
+                // Connect to Ledger via BLE with retry logic for stale connections
+                const transport = await openLedgerTransportWithRetry(deviceId);
                 const solana = new AppSolana(transport);
 
                 // Get the derivation path for this wallet
@@ -1730,9 +1730,9 @@ function AppContent() {
               }
 
               try {
-                // Connect to Ledger via BLE first
+                // Connect to Ledger via BLE with retry logic for stale connections
                 console.log("Connecting to Ledger...");
-                const transport = await TransportBLE.open(deviceId);
+                const transport = await openLedgerTransportWithRetry(deviceId);
                 const solana = new AppSolana(transport);
 
                 // Get the derivation path
@@ -1938,8 +1938,8 @@ function AppContent() {
                 "[testSignMemo] Created memo transaction, connecting to Ledger..."
               );
 
-              // Connect to Ledger via BLE
-              const testTransport = await TransportBLE.open(
+              // Connect to Ledger via BLE with retry logic for stale connections
+              const testTransport = await openLedgerTransportWithRetry(
                 testWalletData.ledgerDeviceId
               );
               const testSolana = new AppSolana(testTransport);
@@ -2646,6 +2646,100 @@ function AppContent() {
         text2: error.message || "Failed to start Ledger scan",
         position: "bottom",
       });
+    }
+  };
+
+  // Helper function to open Ledger BLE transport with retry logic for stale connections
+  const openLedgerTransportWithRetry = async (deviceId, retryCount = 0) => {
+    const MAX_RETRIES = 3;
+
+    try {
+      console.log(
+        `[openLedgerTransport] Attempting to connect to device: ${deviceId}`
+      );
+      if (retryCount > 0) {
+        console.log(
+          `[openLedgerTransport] Retry attempt ${retryCount} of ${MAX_RETRIES}`
+        );
+      }
+
+      // First, try to disconnect any existing stale connection
+      try {
+        console.log(
+          "[openLedgerTransport] Disconnecting any stale connection..."
+        );
+        await TransportBLE.disconnect(deviceId);
+        console.log("[openLedgerTransport] Stale connection disconnected");
+        // Wait for BLE stack to settle
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      } catch (disconnectError) {
+        console.log(
+          "[openLedgerTransport] No stale connection or disconnect failed (ignoring):",
+          disconnectError.message
+        );
+      }
+
+      // Open the transport with timeout
+      console.log("[openLedgerTransport] Opening BLE transport...");
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Connection timeout after 10 seconds")),
+          10000
+        )
+      );
+
+      const transport = await Promise.race([
+        TransportBLE.open(deviceId),
+        timeoutPromise,
+      ]);
+
+      console.log("[openLedgerTransport] BLE transport opened successfully");
+      return transport;
+    } catch (error) {
+      console.error(
+        "[openLedgerTransport] Error opening transport:",
+        error.message
+      );
+
+      // Check if this is a "cancelled" or "operation cancelled" error
+      const isCancelledError =
+        (error.message &&
+          (error.message.toLowerCase().includes("cancelled") ||
+            error.message.toLowerCase().includes("canceled") ||
+            error.message.toLowerCase().includes("operation was cancelled"))) ||
+        error.errorCode === 2;
+
+      // Check if this is a BleError
+      const isBleError =
+        error.name === "BleError" ||
+        (error.message && error.message.includes("BleError"));
+
+      // Retry if it's a cancelled/BLE error and we haven't exceeded max retries
+      if ((isCancelledError || isBleError) && retryCount < MAX_RETRIES) {
+        // Calculate exponential backoff delay: 1s, 2s, 4s
+        const delayMs = 1000 * Math.pow(2, retryCount);
+        console.log(
+          `[openLedgerTransport] Connection error, retrying in ${delayMs}ms...`
+        );
+
+        // Wait for exponential backoff delay
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+
+        // Retry connection
+        return openLedgerTransportWithRetry(deviceId, retryCount + 1);
+      }
+
+      // If we've exhausted retries or it's a different error, throw it
+      if (isCancelledError || isBleError) {
+        throw new Error(
+          `Bluetooth connection failed after ${retryCount + 1} attempts. ` +
+            `Please ensure your Ledger's Bluetooth is turned on and try again. ` +
+            `If the issue persists, try toggling Bluetooth off and on in your phone settings.`
+        );
+      }
+
+      // For other errors, just throw them as-is
+      throw error;
     }
   };
 

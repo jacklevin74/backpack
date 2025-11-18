@@ -78,7 +78,15 @@ export function AvatarPopoverButton({
           setAnchorEl(e.currentTarget);
         }}
       >
-        <IncognitoAvatar uuid={user.uuid} variant="md" />
+        <img
+          src="/assets/gear.png"
+          alt="Settings"
+          style={{
+            width: "24px",
+            height: "24px",
+            filter: theme.baseIcon.val.includes("255") ? "invert(1)" : "none",
+          }}
+        />
       </IconButton>
       <Popover
         open={Boolean(anchorEl)}

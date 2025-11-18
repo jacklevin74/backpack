@@ -191,14 +191,10 @@ export function rootNavHeaderOptions({ navigation }: { navigation: any }): any {
     title: "",
     headerTitleAlign: "center",
     headerTitle: () => <ActiveWalletDrawerButton navigation={navigation} />,
-    headerLeft: () => (
-      <NavButtonContainer>
-        <AvatarPopoverButton />
-      </NavButtonContainer>
-    ),
+    headerLeft: () => null,
     headerRight: () => (
       <NavButtonContainer>
-        <SettingsButton />
+        <AvatarPopoverButton />
       </NavButtonContainer>
     ),
   };

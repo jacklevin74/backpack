@@ -59,11 +59,12 @@ import {
   SafeAreaProvider,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+// Replaced @gorhom/bottom-sheet with simple Modal-based implementation
 import BottomSheet, {
-  BottomSheetBackdrop,
-  BottomSheetView,
-  BottomSheetScrollView,
-} from "@gorhom/bottom-sheet";
+  SimpleBottomSheetView as BottomSheetView,
+  SimpleBottomSheetScrollView as BottomSheetScrollView,
+  SimpleBottomSheetBackdrop as BottomSheetBackdrop,
+} from "./components/SimpleBottomSheet";
 import QRCode from "react-native-qrcode-svg";
 import TransportBLE from "@ledgerhq/react-native-hw-transport-ble";
 import AppSolana from "@ledgerhq/hw-app-solana";

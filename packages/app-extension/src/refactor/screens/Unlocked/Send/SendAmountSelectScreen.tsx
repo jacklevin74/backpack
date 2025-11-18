@@ -371,11 +371,27 @@ function SendV2({
   const theme = useTheme();
   const { blockchain } = useActiveWallet();
 
-  // Use X1 blockchain logo when on X1 network
-  const tokenLogo =
-    blockchain === Blockchain.X1
-      ? "./x1.png"
-      : token.tokenListEntry?.logo ?? UNKNOWN_ICON_SRC;
+  // Determine token's native blockchain based on token symbol or use token's logo
+  // SOL tokens should show Solana logo, XNT should show X1 logo
+  const getTokenLogo = () => {
+    const symbol = token.tokenListEntry?.symbol?.toUpperCase();
+
+    // If token already has a logo, use it
+    if (token.tokenListEntry?.logo) {
+      return token.tokenListEntry.logo;
+    }
+
+    // Otherwise, determine by symbol
+    if (symbol === "SOL" || symbol === "WSOL") {
+      return getBlockchainLogo(Blockchain.SOLANA);
+    } else if (symbol === "XNT" || symbol === "X1") {
+      return "./x1.png";
+    }
+
+    return UNKNOWN_ICON_SRC;
+  };
+
+  const tokenLogo = getTokenLogo();
 
   return (
     <>

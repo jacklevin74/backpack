@@ -168,7 +168,7 @@ export const BalancesTableRow = ({
       <View style={styles.logoContainer}>
         {logo && !logoError ? (
           <Image
-            source={{ uri: logo }}
+            source={{ uri: logo, cache: 'force-cache' }}
             style={styles.logo}
             onError={() => setLogoError(true)}
           />

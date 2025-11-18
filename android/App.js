@@ -1023,7 +1023,6 @@ function AppContent() {
   useEffect(() => {
     if (!selectedWallet) return;
     checkBalance();
-    checkTransactions();
   }, [selectedWallet?.publicKey, currentNetwork]);
 
   // Auto-refresh balance every 3 seconds
@@ -1041,7 +1040,6 @@ function AppContent() {
     setCurrentNetwork(network);
     // Use cache for instant switch, then fetch fresh data in background
     checkBalance(network, true);
-    checkTransactions(network);
     networkSheetRef.current?.close();
   };
 

@@ -13,7 +13,7 @@ import {
 } from "@apollo/client";
 import { RetryLink } from "@apollo/client/link/retry";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { AsyncStorageWrapper, persistCacheSync } from "apollo3-cache-persist";
+import { AsyncStorageWrapper, persistCache } from "apollo3-cache-persist";
 
 // Backpack GraphQL API URL
 const BACKPACK_GRAPHQL_API_URL = "https://backpack-api.xnfts.dev/v2/graphql";
@@ -132,15 +132,13 @@ export function createApolloClient(
     headers,
   });
 
-  // Persist cache to AsyncStorage for React Native
-  try {
-    persistCacheSync({
-      cache,
-      storage: new AsyncStorageWrapper(AsyncStorage),
-    });
-  } catch (error) {
+  // Persist cache to AsyncStorage for React Native (async, non-blocking)
+  persistCache({
+    cache,
+    storage: new AsyncStorageWrapper(AsyncStorage),
+  }).catch((error) => {
     console.warn("Failed to persist Apollo cache:", error);
-  }
+  });
 
   const version = SEMVER_RX.test(clientVersion)
     ? clientVersion.split("-")[0]

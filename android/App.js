@@ -59,12 +59,8 @@ import {
   SafeAreaProvider,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-// Replaced @gorhom/bottom-sheet with simple Modal-based implementation
-import BottomSheet, {
-  SimpleBottomSheetView as BottomSheetView,
-  SimpleBottomSheetScrollView as BottomSheetScrollView,
-  SimpleBottomSheetBackdrop as BottomSheetBackdrop,
-} from "./components/SimpleBottomSheet";
+// Replaced @gorhom/bottom-sheet with SimpleActionSheet
+import SimpleActionSheet from "./components/SimpleActionSheet";
 import QRCode from "react-native-qrcode-svg";
 import TransportBLE from "@ledgerhq/react-native-hw-transport-ble";
 import AppSolana from "@ledgerhq/hw-app-solana";
@@ -1046,13 +1042,13 @@ function AppContent() {
     setCurrentNetwork(network);
     // Use cache for instant switch, then fetch fresh data in background
     checkBalance(network, true);
-    networkSheetRef.current?.close();
+    networkSheetRef.current?.dismiss();
   };
 
   const selectWallet = (wallet) => {
     setWallets(wallets.map((w) => ({ ...w, selected: w.id === wallet.id })));
     setSelectedWallet(wallet);
-    bottomSheetRef.current?.close();
+    bottomSheetRef.current?.dismiss();
   };
 
   // Settings navigation helpers
@@ -1174,7 +1170,7 @@ function AppContent() {
       setWalletSeedPhraseForDisplay(null);
     } finally {
       setWalletSeedPhraseLoading(false);
-      seedPhraseSheetRef.current?.expand();
+      seedPhraseSheetRef.current?.present();
     }
   }, [editingWallet]);
 
@@ -1217,27 +1213,27 @@ function AppContent() {
   const selectAccount = (account) => {
     setAccounts(accounts.map((a) => ({ ...a, selected: a.id === account.id })));
     setSelectedAccount(account);
-    accountSheetRef.current?.close();
+    accountSheetRef.current?.dismiss();
   };
 
   const showWalletSelector = () => {
-    bottomSheetRef.current?.expand();
+    bottomSheetRef.current?.present();
   };
 
   const showNetworkSelector = () => {
-    networkSheetRef.current?.expand();
+    networkSheetRef.current?.present();
   };
 
   const showAccountSelector = () => {
-    accountSheetRef.current?.expand();
+    accountSheetRef.current?.present();
   };
 
   const handleReceive = () => {
-    receiveSheetRef.current?.expand();
+    receiveSheetRef.current?.present();
   };
 
   const handleSend = () => {
-    sendSheetRef.current?.expand();
+    sendSheetRef.current?.present();
   };
 
   // Handle token click to show chart
@@ -1322,8 +1318,8 @@ function AppContent() {
 
     // Store pending transaction and show biometric confirmation
     setPendingTransaction({ amount: amountNum, address: trimmedAddress });
-    sendSheetRef.current?.close();
-    confirmTransactionSheetRef.current?.expand();
+    sendSheetRef.current?.dismiss();
+    confirmTransactionSheetRef.current?.present();
   };
 
   // Execute the pending transaction after biometric confirmation
@@ -1333,7 +1329,7 @@ function AppContent() {
     setShowSendConfirm(true);
     setSendConfirming(true);
     setSendError("");
-    confirmTransactionSheetRef.current?.close();
+    confirmTransactionSheetRef.current?.dismiss();
 
     const { amount: amountNum, address: trimmedAddress } = pendingTransaction;
 
@@ -1508,12 +1504,12 @@ function AppContent() {
           await executePendingTransaction();
         } else {
           // User cancelled biometric
-          confirmTransactionSheetRef.current?.close();
+          confirmTransactionSheetRef.current?.dismiss();
           setPendingTransaction(null);
         }
       } catch (error) {
         console.error("Biometric authentication error:", error);
-        confirmTransactionSheetRef.current?.close();
+        confirmTransactionSheetRef.current?.dismiss();
         setPendingTransaction(null);
       }
     } else {
@@ -2413,7 +2409,7 @@ function AppContent() {
     // If Bluetooth device is already stored/connected, skip setup instructions
     if (ledgerDeviceInfo || ledgerDeviceId) {
       console.log("Bluetooth device already known, skipping setup dialog");
-      ledgerSheetRef.current?.expand();
+      ledgerSheetRef.current?.present();
       scanForLedger();
       return;
     }
@@ -2425,7 +2421,7 @@ function AppContent() {
       text2: "Ensure Ledger is unlocked with Solana app open",
       position: "bottom",
     });
-    ledgerSheetRef.current?.expand();
+    ledgerSheetRef.current?.present();
     scanForLedger();
   };
 
@@ -3064,7 +3060,7 @@ function AppContent() {
     // Set the new wallet as the selected wallet
     setSelectedWallet(newWallet);
 
-    ledgerSheetRef.current?.close();
+    ledgerSheetRef.current?.dismiss();
     setLedgerAccounts([]);
 
     // Register the wallet with the transaction indexer
@@ -3083,7 +3079,7 @@ function AppContent() {
 
   const renderBackdrop = useCallback(
     (props) => (
-      <BottomSheetBackdrop
+      <SimpleActionSheetBackdrop
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
@@ -3495,7 +3491,7 @@ function AppContent() {
                 style={styles.activityIcon}
                 onPress={() => {
                   triggerHaptic();
-                  activitySheetRef.current?.expand();
+                  activitySheetRef.current?.present();
                 }}
               >
                 <Image
@@ -3852,22 +3848,15 @@ function AppContent() {
         </SafeAreaView>
 
         {/* Network Selector Side Drawer */}
-        <BottomSheet
+        <SimpleActionSheet
           ref={networkSheetRef}
-          index={-1}
-          snapPoints={snapPoints}
-          enablePanDownToClose={true}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{
-            backgroundColor: easterEggMode ? "#111827" : "#000",
-          }}
-          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+          backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <BottomSheetView style={styles.bottomSheetContent}>
+          <View style={styles.bottomSheetContent}>
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
               <TouchableOpacity
-                onPress={() => networkSheetRef.current?.close()}
+                onPress={() => networkSheetRef.current?.dismiss()}
               >
                 <Text style={styles.bottomSheetClose}>✕</Text>
               </TouchableOpacity>
@@ -3895,8 +3884,8 @@ function AppContent() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-          </BottomSheetView>
-        </BottomSheet>
+          </View>
+        </SimpleActionSheet>
 
         {/* Bluetooth Devices Drawer */}
         {showBluetoothDrawer && (
@@ -3977,7 +3966,7 @@ function AppContent() {
                     style={styles.bluetoothRefreshButton}
                     onPress={async () => {
                       setShowBluetoothDrawer(false);
-                      ledgerSheetRef.current?.expand();
+                      ledgerSheetRef.current?.present();
                       await scanForLedger();
                     }}
                   >
@@ -3990,26 +3979,20 @@ function AppContent() {
         )}
 
         {/* Wallet Selector Bottom Sheet */}
-        <BottomSheet
+        <SimpleActionSheet
           ref={bottomSheetRef}
-          index={-1}
-          snapPoints={snapPoints}
-          onChange={handleSheetChanges}
-          enablePanDownToClose={true}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{
-            backgroundColor: easterEggMode ? "#111827" : "#000",
-          }}
-          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+          backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <BottomSheetScrollView
+          <ScrollView
             testID="wallet-list-sheet"
             contentContainerStyle={styles.bottomSheetScrollContent}
             showsVerticalScrollIndicator={false}
           >
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
-              <TouchableOpacity onPress={() => bottomSheetRef.current?.close()}>
+              <TouchableOpacity
+                onPress={() => bottomSheetRef.current?.dismiss()}
+              >
                 <Text style={styles.bottomSheetClose}>✕</Text>
               </TouchableOpacity>
               <View style={styles.bottomSheetTitleContainer}>
@@ -4087,7 +4070,7 @@ function AppContent() {
                         e.stopPropagation();
                         setEditingWallet(wallet);
                         setEditWalletName(wallet.name);
-                        editWalletSheetRef.current?.expand();
+                        editWalletSheetRef.current?.present();
                       }}
                     >
                       <Text style={styles.bottomSheetEditIcon}>⋮</Text>
@@ -4096,26 +4079,19 @@ function AppContent() {
                 </TouchableOpacity>
               ))}
             </View>
-          </BottomSheetScrollView>
-        </BottomSheet>
+          </ScrollView>
+        </SimpleActionSheet>
 
         {/* Account Selector Side Drawer */}
-        <BottomSheet
+        <SimpleActionSheet
           ref={accountSheetRef}
-          index={-1}
-          snapPoints={snapPoints}
-          enablePanDownToClose={true}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{
-            backgroundColor: easterEggMode ? "#111827" : "#000",
-          }}
-          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+          backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <BottomSheetView style={styles.bottomSheetContent}>
+          <View style={styles.bottomSheetContent}>
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
               <TouchableOpacity
-                onPress={() => accountSheetRef.current?.close()}
+                onPress={() => accountSheetRef.current?.dismiss()}
               >
                 <Text style={styles.bottomSheetClose}>✕</Text>
               </TouchableOpacity>
@@ -4154,8 +4130,8 @@ function AppContent() {
             <TouchableOpacity style={styles.addAccountButton}>
               <Text style={styles.addAccountButtonText}>+ New Account</Text>
             </TouchableOpacity>
-          </BottomSheetView>
-        </BottomSheet>
+          </View>
+        </SimpleActionSheet>
 
         {/* Debug Console - Full Page */}
         <Modal
@@ -4202,25 +4178,18 @@ function AppContent() {
         </Modal>
 
         {/* Receive Drawer */}
-        <BottomSheet
+        <SimpleActionSheet
           ref={receiveSheetRef}
-          index={-1}
-          snapPoints={snapPoints}
-          enablePanDownToClose={true}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{
-            backgroundColor: easterEggMode ? "#111827" : "#000",
-          }}
-          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+          backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <BottomSheetView style={styles.bottomSheetContent}>
+          <View style={styles.bottomSheetContent}>
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
               <Text style={styles.bottomSheetTitle}>
                 Receive {getNativeTokenInfo().symbol}
               </Text>
               <TouchableOpacity
-                onPress={() => receiveSheetRef.current?.close()}
+                onPress={() => receiveSheetRef.current?.dismiss()}
               >
                 <Text style={styles.bottomSheetClose}>✕</Text>
               </TouchableOpacity>
@@ -4261,25 +4230,18 @@ function AppContent() {
             >
               <Text style={styles.receiveCopyButtonText}>Copy Address</Text>
             </TouchableOpacity>
-          </BottomSheetView>
-        </BottomSheet>
+          </View>
+        </SimpleActionSheet>
 
         {/* Send Drawer */}
-        <BottomSheet
+        <SimpleActionSheet
           ref={sendSheetRef}
-          index={-1}
-          snapPoints={snapPoints}
-          enablePanDownToClose={true}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{
-            backgroundColor: easterEggMode ? "#111827" : "#000",
-          }}
-          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+          backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <BottomSheetView style={styles.bottomSheetContent}>
+          <View style={styles.bottomSheetContent}>
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
-              <TouchableOpacity onPress={() => sendSheetRef.current?.close()}>
+              <TouchableOpacity onPress={() => sendSheetRef.current?.dismiss()}>
                 <Text style={styles.bottomSheetClose}>✕</Text>
               </TouchableOpacity>
               <View style={styles.bottomSheetTitleContainer}>
@@ -4318,7 +4280,7 @@ function AppContent() {
               <View style={styles.sendAddressHeader}>
                 <Text style={styles.sendInputLabel}>Recipient Address</Text>
                 <TouchableOpacity
-                  onPress={() => addressSheetRef.current?.expand()}
+                  onPress={() => addressSheetRef.current?.present()}
                 >
                   <Text style={styles.sendSelectAddressText}>
                     Select Address
@@ -4342,27 +4304,20 @@ function AppContent() {
             >
               <Text style={styles.sendSubmitButtonText}>Send</Text>
             </TouchableOpacity>
-          </BottomSheetView>
-        </BottomSheet>
+          </View>
+        </SimpleActionSheet>
 
         {/* Address Selector Modal */}
-        <BottomSheet
+        <SimpleActionSheet
           ref={addressSheetRef}
-          index={-1}
-          snapPoints={snapPoints}
-          enablePanDownToClose={true}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{
-            backgroundColor: easterEggMode ? "#111827" : "#000",
-          }}
-          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+          backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <BottomSheetView style={styles.bottomSheetContent}>
+          <View style={styles.bottomSheetContent}>
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
               <Text style={styles.bottomSheetTitle}>Select Address</Text>
               <TouchableOpacity
-                onPress={() => addressSheetRef.current?.close()}
+                onPress={() => addressSheetRef.current?.dismiss()}
               >
                 <Text style={styles.bottomSheetClose}>✕</Text>
               </TouchableOpacity>
@@ -4381,7 +4336,7 @@ function AppContent() {
                   }
                   onPress={() => {
                     setSendAddress(wallet.publicKey);
-                    addressSheetRef.current?.close();
+                    addressSheetRef.current?.dismiss();
                   }}
                 >
                   <View style={styles.addressItemContent}>
@@ -4393,36 +4348,17 @@ function AppContent() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-          </BottomSheetView>
-        </BottomSheet>
+          </View>
+        </SimpleActionSheet>
 
         {/* Activity Drawer */}
         {/* Activity Bottom Sheet */}
-        <BottomSheet
+        <SimpleActionSheet
           ref={activitySheetRef}
-          index={-1}
-          snapPoints={["75%"]}
-          enablePanDownToClose={true}
-          backdropComponent={(props) => (
-            <BottomSheetBackdrop
-              {...props}
-              opacity={0.5}
-              enableTouchThrough={false}
-              appearsOnIndex={0}
-              disappearsOnIndex={-1}
-              style={[
-                { backgroundColor: "rgba(0, 0, 0, 1)" },
-                StyleSheet.absoluteFillObject,
-              ]}
-            />
-          )}
-          backgroundStyle={{
-            backgroundColor: easterEggMode ? "#111827" : "#000",
-          }}
-          handleIndicatorStyle={{ backgroundColor: "#4E5056" }}
+          backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
           {/* Activity List with BottomSheetScrollView */}
-          <BottomSheetScrollView
+          <ScrollView
             contentContainerStyle={styles.sheetScrollContent}
             showsVerticalScrollIndicator={false}
           >
@@ -4500,8 +4436,8 @@ function AppContent() {
                 </TouchableOpacity>
               ))
             )}
-          </BottomSheetScrollView>
-        </BottomSheet>
+          </ScrollView>
+        </SimpleActionSheet>
 
         {/* Add Wallet Modal - Choice */}
         <Modal
@@ -4738,27 +4674,17 @@ function AppContent() {
         </Modal>
 
         {/* Edit Wallet Modal */}
-        <BottomSheet
+        <SimpleActionSheet
           ref={editWalletSheetRef}
-          index={-1}
-          snapPoints={snapPoints}
-          enablePanDownToClose={true}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{
-            backgroundColor: easterEggMode ? "#111827" : "#000",
-          }}
-          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+          backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <BottomSheetView
-            testID="edit-wallet-sheet"
-            style={styles.bottomSheetContent}
-          >
+          <View testID="edit-wallet-sheet" style={styles.bottomSheetContent}>
             <View style={styles.bottomSheetHeader}>
               <View style={{ width: 32 }} />
               <Text style={styles.bottomSheetTitle}>Edit Wallet</Text>
               <TouchableOpacity
                 onPress={() => {
-                  editWalletSheetRef.current?.close();
+                  editWalletSheetRef.current?.dismiss();
                   setEditingWallet(null);
                 }}
               >
@@ -4772,7 +4698,7 @@ function AppContent() {
                 testID="change-account-name-button"
                 style={styles.settingsMenuItem}
                 onPress={() => {
-                  editWalletSheetRef.current?.close();
+                  editWalletSheetRef.current?.dismiss();
                   setShowChangeNameModal(true);
                 }}
               >
@@ -4830,9 +4756,9 @@ function AppContent() {
                 testID="show-private-key-button"
                 style={styles.settingsMenuItem}
                 onPress={() => {
-                  editWalletSheetRef.current?.close();
+                  editWalletSheetRef.current?.dismiss();
                   setTimeout(() => {
-                    privateKeySheetRef.current?.expand();
+                    privateKeySheetRef.current?.present();
                   }, 100);
                 }}
               >
@@ -4852,7 +4778,7 @@ function AppContent() {
                     );
                     setWallets(updatedWallets);
                     await saveWalletsToStorage(updatedWallets);
-                    editWalletSheetRef.current?.close();
+                    editWalletSheetRef.current?.dismiss();
                     setEditingWallet(null);
                     Toast.show({
                       type: "success",
@@ -4871,8 +4797,8 @@ function AppContent() {
                 <Text style={styles.settingsMenuItemArrow}>›</Text>
               </TouchableOpacity>
             </ScrollView>
-          </BottomSheetView>
-        </BottomSheet>
+          </View>
+        </SimpleActionSheet>
 
         {/* Change Name Modal */}
         <Modal
@@ -4885,7 +4811,7 @@ function AppContent() {
             onPress={() => {
               console.log("OVERLAY PRESSED - Closing all modals");
               setShowChangeNameModal(false);
-              editWalletSheetRef.current?.close();
+              editWalletSheetRef.current?.dismiss();
               setEditingWallet(null);
             }}
           >
@@ -4901,7 +4827,7 @@ function AppContent() {
                         "BACK BUTTON PRESSED (<) - Closing all modals"
                       );
                       setShowChangeNameModal(false);
-                      editWalletSheetRef.current?.close();
+                      editWalletSheetRef.current?.dismiss();
                       setEditingWallet(null);
                     }}
                   >
@@ -4912,7 +4838,7 @@ function AppContent() {
                     onPress={() => {
                       console.log("X BUTTON PRESSED - Closing all modals");
                       setShowChangeNameModal(false);
-                      editWalletSheetRef.current?.close();
+                      editWalletSheetRef.current?.dismiss();
                       setEditingWallet(null);
                     }}
                   >
@@ -4959,7 +4885,7 @@ function AppContent() {
                       saveWalletsToStorage(updatedWallets);
                       console.log("Closing both modals");
                       setShowChangeNameModal(false);
-                      editWalletSheetRef.current?.close();
+                      editWalletSheetRef.current?.dismiss();
                       setEditingWallet(null);
                     } else {
                       console.log("Not saving - wallet or name is empty");
@@ -4981,24 +4907,17 @@ function AppContent() {
         </Modal>
 
         {/* View Private Key Bottom Sheet */}
-        <BottomSheet
+        <SimpleActionSheet
           ref={privateKeySheetRef}
-          index={-1}
-          snapPoints={snapPoints}
-          enablePanDownToClose={true}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{
-            backgroundColor: easterEggMode ? "#111827" : "#000",
-          }}
-          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+          backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <BottomSheetView style={styles.bottomSheetContent}>
+          <View style={styles.bottomSheetContent}>
             <View style={styles.bottomSheetHeader}>
               <View style={{ width: 32 }} />
               <Text style={styles.bottomSheetTitle}>Private Key</Text>
               <TouchableOpacity
                 onPress={() => {
-                  privateKeySheetRef.current?.close();
+                  privateKeySheetRef.current?.dismiss();
                 }}
               >
                 <Text style={styles.bottomSheetClose}>✕</Text>
@@ -5037,28 +4956,21 @@ function AppContent() {
                 )}
               </View>
             )}
-          </BottomSheetView>
-        </BottomSheet>
+          </View>
+        </SimpleActionSheet>
 
         {/* View Seed Phrase Bottom Sheet */}
-        <BottomSheet
+        <SimpleActionSheet
           ref={seedPhraseSheetRef}
-          index={-1}
-          snapPoints={snapPoints}
-          enablePanDownToClose={true}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{
-            backgroundColor: easterEggMode ? "#111827" : "#000",
-          }}
-          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+          backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <BottomSheetView style={styles.bottomSheetContent}>
+          <View style={styles.bottomSheetContent}>
             <View style={styles.bottomSheetHeader}>
               <View style={{ width: 32 }} />
               <Text style={styles.bottomSheetTitle}>Seed Phrase</Text>
               <TouchableOpacity
                 onPress={() => {
-                  seedPhraseSheetRef.current?.close();
+                  seedPhraseSheetRef.current?.dismiss();
                   setWalletSeedPhraseForDisplay(null);
                   setWalletSeedPhraseLoading(false);
                 }}
@@ -5112,26 +5024,21 @@ function AppContent() {
                 )}
               </View>
             )}
-          </BottomSheetView>
-        </BottomSheet>
+          </View>
+        </SimpleActionSheet>
 
         {/* Ledger Connection Bottom Sheet */}
-        <BottomSheet
+        <SimpleActionSheet
           ref={ledgerSheetRef}
-          index={-1}
-          snapPoints={snapPoints}
-          enablePanDownToClose={true}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{
-            backgroundColor: easterEggMode ? "#111827" : "#000",
-          }}
-          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+          backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <BottomSheetView style={styles.bottomSheetContent}>
+          <View style={styles.bottomSheetContent}>
             <View style={styles.bottomSheetHeader}>
               <View style={{ width: 32 }} />
               <Text style={styles.bottomSheetTitle}>Connect Ledger</Text>
-              <TouchableOpacity onPress={() => ledgerSheetRef.current?.close()}>
+              <TouchableOpacity
+                onPress={() => ledgerSheetRef.current?.dismiss()}
+              >
                 <Text style={styles.bottomSheetClose}>✕</Text>
               </TouchableOpacity>
             </View>
@@ -5190,28 +5097,22 @@ function AppContent() {
                 <Text style={styles.ledgerStatusText}>Scanning...</Text>
               </View>
             )}
-          </BottomSheetView>
-        </BottomSheet>
+          </View>
+        </SimpleActionSheet>
 
         {/* Transaction Confirmation Bottom Sheet */}
-        <BottomSheet
+        <SimpleActionSheet
           ref={confirmTransactionSheetRef}
-          index={-1}
           snapPoints={["45%"]}
-          enablePanDownToClose={true}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{
-            backgroundColor: easterEggMode ? "#111827" : "#000",
-          }}
-          handleIndicatorStyle={{ backgroundColor: "#4A90E2" }}
+          backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <BottomSheetView style={styles.bottomSheetContent}>
+          <View style={styles.bottomSheetContent}>
             <View style={styles.bottomSheetHeader}>
               <View style={{ width: 32 }} />
               <Text style={styles.bottomSheetTitle}>Confirm Transaction</Text>
               <TouchableOpacity
                 onPress={() => {
-                  confirmTransactionSheetRef.current?.close();
+                  confirmTransactionSheetRef.current?.dismiss();
                   setPendingTransaction(null);
                 }}
               >
@@ -5338,7 +5239,7 @@ function AppContent() {
 
                 <TouchableOpacity
                   onPress={() => {
-                    confirmTransactionSheetRef.current?.close();
+                    confirmTransactionSheetRef.current?.dismiss();
                     setPendingTransaction(null);
                   }}
                   style={{
@@ -5350,29 +5251,16 @@ function AppContent() {
                 </TouchableOpacity>
               </View>
             )}
-          </BottomSheetView>
-        </BottomSheet>
+          </View>
+        </SimpleActionSheet>
 
         {/* Browser BottomSheet */}
-        <BottomSheet
-          ref={browserSheetRef}
-          index={-1}
-          snapPoints={["90%"]}
-          enablePanDownToClose={true}
-          backdropComponent={(props) => (
-            <BottomSheetBackdrop
-              {...props}
-              disappearsOnIndex={-1}
-              appearsOnIndex={0}
-              opacity={0.5}
-            />
-          )}
-        >
-          <BottomSheetView style={{ flex: 1 }}>
+        <SimpleActionSheet ref={browserSheetRef}>
+          <View style={{ flex: 1 }}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Browser</Text>
               <TouchableOpacity
-                onPress={() => browserSheetRef.current?.close()}
+                onPress={() => browserSheetRef.current?.dismiss()}
               >
                 <Text style={styles.closeButton}>✕</Text>
               </TouchableOpacity>
@@ -5555,8 +5443,8 @@ function AppContent() {
               `}
               />
             </View>
-          </BottomSheetView>
-        </BottomSheet>
+          </View>
+        </SimpleActionSheet>
       </GestureHandlerRootView>
 
       {/* Settings - Full Page - Outside GestureHandler */}
@@ -5653,7 +5541,7 @@ function AppContent() {
                     style={styles.settingsMenuItem}
                     onPress={() => {
                       setShowSettingsModal(false);
-                      networkSheetRef.current?.expand();
+                      networkSheetRef.current?.present();
                     }}
                   >
                     <Text style={styles.settingsMenuItemText}>Network</Text>

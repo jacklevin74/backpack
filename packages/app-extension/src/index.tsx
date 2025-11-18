@@ -1,4 +1,8 @@
 const startTime = Date.now();
+console.log(`[PERF] Popup script start: ${startTime}ms`);
+
+// Store start time globally for other components to access
+(window as any).__APP_START_TIME__ = startTime;
 
 // Suppress React Native BackHandler warning in web environment
 const originalConsoleWarn = console.warn;
@@ -25,10 +29,7 @@ import {
   ToSecureUITransportReceiver,
 } from "@coral-xyz/secure-clients";
 import type { SECURE_EVENTS } from "@coral-xyz/secure-clients/types";
-import SecureUI, {
-  QuickTheme,
-  RequireUserUnlocked,
-} from "@coral-xyz/secure-ui";
+import SecureUI, { RequireUserUnlocked } from "@coral-xyz/secure-ui";
 import { config as tamaguiConfig, TamaguiProvider } from "@coral-xyz/tamagui";
 import { RecoilRoot } from "recoil";
 import { v4 } from "uuid";
@@ -75,6 +76,10 @@ const secureUITransportSender = new FromExtensionTransportSender<SECURE_EVENTS>(
 const notificationBroadcastListener =
   new NotificationExtensionBroadcastListener();
 
+console.log(
+  `[PERF] Imports and initialization complete: ${Date.now() - startTime}ms`
+);
+
 //
 // Configure event listeners.
 //
@@ -108,6 +113,7 @@ document.addEventListener("keydown", async function onKeyDown(event) {
 // TOOD(react) createRoot is required: https://reactjs.org/blog/2022/03/08/react-18-upgrade-guide.html#updates-to-client-rendering-apis
 const container = document.getElementById("root");
 const root = createRoot(container!);
+console.log(`[PERF] Starting React render: ${Date.now() - startTime}ms`);
 root.render(
   <>
     <OptClickToComponent />
@@ -130,7 +136,11 @@ root.render(
               onReset={() => {
                 window.close();
               }}
-              onSuccess={() => {}}
+              onSuccess={() => {
+                console.log(
+                  `[PERF] User unlocked, ready to show app: ${Date.now() - startTime}ms`
+                );
+              }}
             >
               <App />
             </RequireUserUnlocked>

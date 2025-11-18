@@ -5142,7 +5142,8 @@ function AppContent() {
                     <Text
                       style={{ color: "#fff", fontSize: 14, fontWeight: "600" }}
                     >
-                      {pendingTransaction.amount} SOL
+                      {pendingTransaction.amount}{" "}
+                      {currentNetwork.nativeToken.symbol}
                     </Text>
                   </View>
                   <View
@@ -5176,7 +5177,7 @@ function AppContent() {
                       Network Fee
                     </Text>
                     <Text style={{ color: "#fff", fontSize: 14 }}>
-                      ~0.000005 SOL
+                      ~0.000005 {currentNetwork.nativeToken.symbol}
                     </Text>
                   </View>
                 </View>

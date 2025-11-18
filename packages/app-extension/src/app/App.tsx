@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { HashRouter } from "react-router-dom";
 import { EXTENSION_HEIGHT, EXTENSION_WIDTH } from "@coral-xyz/common";
 import {
@@ -14,6 +14,14 @@ import { ErrorBoundary } from "./ErrorBoundary";
 const Router = lazy(() => import("./Router"));
 
 import { useTheme } from "@coral-xyz/tamagui";
+
+// Get start time from window
+declare global {
+  interface Window {
+    __APP_START_TIME__: number;
+  }
+}
+const startTime = (window as any).__APP_START_TIME__ || Date.now();
 
 import "@fontsource/inter";
 
@@ -34,6 +42,16 @@ export default function App() {
   //
   // const pStr = window.localStorage.getItem("secureUser");
   // const preferences = pStr ? JSON.parse(pStr).preferences : {};
+
+  useEffect(() => {
+    console.log(`[PERF] App component mounted: ${Date.now() - startTime}ms`);
+
+    // Log when browser has painted
+    requestAnimationFrame(() => {
+      console.log(`[PERF] First paint complete: ${Date.now() - startTime}ms`);
+    });
+  }, []);
+
   return (
     <div
       style={{

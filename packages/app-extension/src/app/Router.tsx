@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   BACKEND_API_URL,
   Blockchain,
@@ -130,6 +130,8 @@ function FullApp() {
   const background = useBackgroundClient();
   const allUsers = useAllUsersNullable();
   const [hasRedirected, setHasRedirected] = useState(false);
+  const startTime = (window as any).__APP_START_TIME__ || Date.now();
+  const hasLoggedUnlocked = useRef(false);
 
   useEffect(() => {
     // Refresh feature gates in background without blocking UI render
@@ -138,6 +140,13 @@ function FullApp() {
       console.warn("Failed to refresh feature gates:", err);
     });
   }, [background]);
+
+  useEffect(() => {
+    // Log when FullApp component mounts (only once)
+    console.log(
+      `[PERF] FullApp component mounted: ${Date.now() - startTime}ms`
+    );
+  }, []);
 
   // Check if there are no users and redirect to onboarding
   // This handles the case where user started onboarding but didn't finish
@@ -156,6 +165,20 @@ function FullApp() {
       }
     }
   }, [allUsers, hasRedirected]);
+
+  // Log when we're ready to show Unlocked (only once)
+  useEffect(() => {
+    if (
+      allUsers !== null &&
+      allUsers.length > 0 &&
+      !hasLoggedUnlocked.current
+    ) {
+      console.log(
+        `[PERF] Showing Unlocked component: ${Date.now() - startTime}ms`
+      );
+      hasLoggedUnlocked.current = true;
+    }
+  }, [allUsers]);
 
   // Show loading skeleton while we're checking for users or redirecting
   if (allUsers === null || allUsers.length === 0) {

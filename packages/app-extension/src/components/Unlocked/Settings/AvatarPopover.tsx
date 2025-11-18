@@ -145,7 +145,9 @@ function AvatarMenu() {
       icon: Language,
       onClick: () => {
         close();
-        navigation.push(SettingsRoutes.NetworkSelectScreen);
+        navigation.push(Routes.SettingsNavigator, {
+          screen: SettingsRoutes.NetworkSelectScreen,
+        });
       },
     },
     {
@@ -153,7 +155,9 @@ function AvatarMenu() {
       icon: AccountCircleOutlined,
       onClick: () => {
         close();
-        navigation.push(SettingsRoutes.YourAccountScreen);
+        navigation.push(Routes.SettingsNavigator, {
+          screen: SettingsRoutes.YourAccountScreen,
+        });
       },
     },
     {
@@ -161,7 +165,9 @@ function AvatarMenu() {
       icon: Settings,
       onClick: () => {
         close();
-        navigation.push(SettingsRoutes.PreferencesScreen);
+        navigation.push(Routes.SettingsNavigator, {
+          screen: SettingsRoutes.PreferencesScreen,
+        });
       },
     },
     {
@@ -177,7 +183,9 @@ function AvatarMenu() {
       icon: Info,
       onClick: () => {
         close();
-        navigation.push(SettingsRoutes.AboutScreen);
+        navigation.push(Routes.SettingsNavigator, {
+          screen: SettingsRoutes.AboutScreen,
+        });
       },
     },
   ];
@@ -191,7 +199,7 @@ function AvatarMenu() {
       }}
     >
       <MenuList>
-        {menuItems.map((item, index) => (
+        {menuItems.map((item) => (
           <MenuListItem key={item.label} onClick={item.onClick}>
             <div
               style={{

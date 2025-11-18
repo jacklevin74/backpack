@@ -12,6 +12,7 @@ import React, {
 import { ApolloProvider } from "@apollo/client";
 import { createApolloClient } from "./apollo/client";
 import { TokenBalances } from "./components/TokenBalances";
+import { TokenChartModal } from "./components/TokenChartModal";
 import {
   SafeAreaView,
   StyleSheet,
@@ -398,6 +399,10 @@ function AppContent() {
   const [easterEggMode, setEasterEggMode] = useState(false); // Easter egg: gray background + colorful icons
   const [tapCount, setTapCount] = useState(0);
   const tapTimerRef = useRef(null);
+
+  // Token Chart Modal states
+  const [showChartModal, setShowChartModal] = useState(false);
+  const [selectedChartToken, setSelectedChartToken] = useState(null);
 
   // Bottom sheet refs
   const bottomSheetRef = useRef(null);
@@ -1232,6 +1237,16 @@ function AppContent() {
 
   const handleSend = () => {
     sendSheetRef.current?.expand();
+  };
+
+  // Handle token click to show chart
+  const handleTokenClick = (tokenInfo) => {
+    console.log("Token clicked:", tokenInfo);
+    setSelectedChartToken({
+      symbol: tokenInfo.symbol,
+      name: tokenInfo.symbol, // We can enhance this later with full token names
+    });
+    setShowChartModal(true);
   };
 
   const copyToClipboard = (text) => {
@@ -3799,6 +3814,7 @@ function AppContent() {
                       selectedWallet.hideZeroBalanceTokens || false
                     }
                     onBalanceUpdate={handleBalanceUpdate}
+                    onItemClick={handleTokenClick}
                   />
                 </View>
               ) : (
@@ -6358,6 +6374,14 @@ function AppContent() {
         }}
         position="bottom"
         bottomOffset={80}
+      />
+
+      {/* Token Chart Modal */}
+      <TokenChartModal
+        visible={showChartModal}
+        onClose={() => setShowChartModal(false)}
+        tokenSymbol={selectedChartToken?.symbol}
+        tokenName={selectedChartToken?.name}
       />
     </>
   );

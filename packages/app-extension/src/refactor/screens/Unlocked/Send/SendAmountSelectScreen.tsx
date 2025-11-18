@@ -5,6 +5,7 @@ import { useTranslation } from "@coral-xyz/i18n";
 import { PrimaryButton } from "@coral-xyz/react-common";
 import {
   blockchainClientAtom,
+  getBlockchainLogo,
   useActiveWallet,
   useAnchorContext,
   useBlockchainConnectionUrl,
@@ -81,27 +82,37 @@ function _Send({
 
         if (connectionUrl) {
           // Check for Solana networks first (including QuickNode)
-          if (connectionUrl.includes('solana.com') || connectionUrl.includes('solana-mainnet.quiknode.pro') || connectionUrl.includes('solana-devnet') || connectionUrl.includes('solana-testnet')) {
-            if (connectionUrl.includes('mainnet')) {
-              providerId = 'SOLANA-mainnet';
-            } else if (connectionUrl.includes('devnet')) {
-              providerId = 'SOLANA-devnet';
-            } else if (connectionUrl.includes('testnet')) {
-              providerId = 'SOLANA-testnet';
+          if (
+            connectionUrl.includes("solana.com") ||
+            connectionUrl.includes("solana-mainnet.quiknode.pro") ||
+            connectionUrl.includes("solana-devnet") ||
+            connectionUrl.includes("solana-testnet")
+          ) {
+            if (connectionUrl.includes("mainnet")) {
+              providerId = "SOLANA-mainnet";
+            } else if (connectionUrl.includes("devnet")) {
+              providerId = "SOLANA-devnet";
+            } else if (connectionUrl.includes("testnet")) {
+              providerId = "SOLANA-testnet";
             }
           }
           // Check for X1 networks
-          else if (connectionUrl.includes('x1.xyz')) {
-            if (connectionUrl.includes('testnet')) {
-              providerId = 'X1-testnet';
-            } else if (connectionUrl.includes('mainnet')) {
-              providerId = 'X1-mainnet';
+          else if (connectionUrl.includes("x1.xyz")) {
+            if (connectionUrl.includes("testnet")) {
+              providerId = "X1-testnet";
+            } else if (connectionUrl.includes("mainnet")) {
+              providerId = "X1-mainnet";
             }
           }
         }
 
         const url = `${apiUrl}/wallet/${publicKey}?providerId=${providerId}`;
-        console.log("🌐 [SendAmountSelect] Fetching from:", url, "| ConnectionURL:", connectionUrl);
+        console.log(
+          "🌐 [SendAmountSelect] Fetching from:",
+          url,
+          "| ConnectionURL:",
+          connectionUrl
+        );
 
         const response = await fetch(url);
         if (!response.ok) {
@@ -274,10 +285,10 @@ function _SendInner({
       noValidate
       className={classes.container}
       onSubmit={(e) => {
-          e.preventDefault();
-          onPressNext();
-        }}
-      >
+        e.preventDefault();
+        onPressNext();
+      }}
+    >
       <SendV2
         to={to}
         sendButton={sendButton}
@@ -286,7 +297,7 @@ function _SendInner({
         maxAmount={maxAmount}
         setAmount={setAmount}
         setStrAmount={setStrAmount}
-        />
+      />
     </form>
   );
 }
@@ -352,7 +363,15 @@ function SendV2({
               style={{ marginBottom: 6 }}
             >
               <div className={classes.topImageOuter}>
-                <IncognitoAvatar uuid={to.uuid} size={80} fontSize={40} />
+                <img
+                  src={getBlockchainLogo(blockchain)}
+                  style={{
+                    width: "80px",
+                    height: "80px",
+                    borderRadius: "50%",
+                  }}
+                  alt={blockchain}
+                />
               </div>
             </div>
           ) : null}

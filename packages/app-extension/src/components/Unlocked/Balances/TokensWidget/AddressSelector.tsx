@@ -7,6 +7,7 @@ import {
   PrimaryButton,
 } from "@coral-xyz/react-common";
 import {
+  getBlockchainLogo,
   useActiveEthereumWallet,
   useActiveSolanaWallet,
   useAllWallets,
@@ -293,7 +294,7 @@ const AddressListItem = ({
   isFirst: boolean;
   isLast: boolean;
 }) => {
-  const { onSelect } = useAddressSelectorContext();
+  const { onSelect, blockchain } = useAddressSelectorContext();
 
   return (
     <ListItemButton
@@ -327,13 +328,17 @@ const AddressListItem = ({
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",
+            marginRight: "12px",
           }}
         >
-          <IncognitoAvatar
-            marginRight="$3"
-            size={32}
-            fontSize={16}
-            uuid={user.uuid}
+          <img
+            src={getBlockchainLogo(blockchain)}
+            style={{
+              width: "32px",
+              height: "32px",
+              borderRadius: "50%",
+            }}
+            alt={blockchain}
           />
         </div>
         <div

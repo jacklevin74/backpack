@@ -1,18 +1,25 @@
-import { useUser } from "@coral-xyz/recoil";
+import { getBlockchainLogo, useActiveWallet, useUser } from "@coral-xyz/recoil";
 import { useTheme } from "@coral-xyz/tamagui";
 import { Typography } from "@mui/material";
 import styled from "@mui/system/styled";
 
-import { IncognitoAvatar } from "../AvatarPopover";
-
 export function AvatarHeader() {
   const user = useUser();
   const theme = useTheme();
+  const { blockchain } = useActiveWallet();
 
   return (
     <div style={{ marginBottom: "24px" }}>
       <AvatarWrapper>
-        <IncognitoAvatar uuid={user.uuid} variant="lg" />
+        <img
+          src={getBlockchainLogo(blockchain)}
+          style={{
+            width: "100%",
+            height: "100%",
+            borderRadius: "50%",
+          }}
+          alt={blockchain}
+        />
       </AvatarWrapper>
       <Typography
         style={{

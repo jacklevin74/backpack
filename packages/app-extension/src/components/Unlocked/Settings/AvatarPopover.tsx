@@ -134,12 +134,6 @@ function AvatarMenu() {
         borderRadius: "6px",
       }}
     >
-      <UsersMenuList />
-      <div
-        style={{
-          borderTop: `solid 2px ${theme.baseBorderLight.val}`,
-        }}
-      />
       <AuxMenuList />
       <div
         style={{

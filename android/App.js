@@ -61,6 +61,7 @@ import {
 } from "react-native-safe-area-context";
 // Replaced @gorhom/bottom-sheet with SimpleActionSheet
 import SimpleActionSheet from "./components/SimpleActionSheet";
+import TokenIcon from "./src/components/TokenIcon";
 import QRCode from "react-native-qrcode-svg";
 import TransportBLE from "@ledgerhq/react-native-hw-transport-ble";
 import AppSolana from "@ledgerhq/hw-app-solana";
@@ -3734,13 +3735,13 @@ function AppContent() {
                         ]}
                       >
                         <View style={styles.tokenLeft}>
-                          <View style={styles.tokenIconLarge}>
-                            <Image
-                              testID={`native-token-icon-${currentNetwork.id.toLowerCase()}`}
-                              source={nativeToken.logo}
-                              style={styles.x1LogoLarge}
-                            />
-                          </View>
+                          <TokenIcon
+                            symbol={nativeToken.symbol}
+                            logo={nativeToken.logo}
+                            logoUrl={nativeToken.logoUrl}
+                            size={50}
+                            imageStyle={styles.x1LogoLarge}
+                          />
                           <View style={styles.tokenInfo}>
                             <Text style={styles.tokenNameLarge}>
                               {nativeToken.name}

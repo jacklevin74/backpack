@@ -14,25 +14,27 @@ import { View, Text, Image, StyleSheet } from "react-native";
  * @param {number} [props.size] - Size of the icon (default: 40)
  */
 const TokenIcon = ({ symbol, logo, logoUrl, style, imageStyle, size = 40 }) => {
-  const [showUrlLogo, setShowUrlLogo] = useState(false);
+  const [showLogo, setShowLogo] = useState(false);
   const [urlLoadError, setUrlLoadError] = useState(false);
 
   useEffect(() => {
-    // If a logoUrl is provided, attempt to load it after 1 second
-    if (logoUrl) {
+    // Always show character icon first, then load logo after 1 second
+    // Only delay if we have a logo or logoUrl to load
+    if (logo || logoUrl) {
       const timer = setTimeout(() => {
-        setShowUrlLogo(true);
+        setShowLogo(true);
       }, 1000);
 
       return () => clearTimeout(timer);
     }
-  }, [logoUrl]);
+  }, [logo, logoUrl]);
 
   // Get first character of symbol for fallback
   const charIcon = symbol ? symbol.charAt(0).toUpperCase() : "?";
 
   // Determine which icon to show
-  const shouldShowChar = !logo && (!logoUrl || !showUrlLogo || urlLoadError);
+  // Show character icon if: not ready to show logo yet, or URL loading failed
+  const shouldShowChar = !showLogo || (logoUrl && !logo && urlLoadError);
 
   return (
     <View style={[styles.container, { width: size, height: size }, style]}>
@@ -51,15 +53,13 @@ const TokenIcon = ({ symbol, logo, logoUrl, style, imageStyle, size = 40 }) => {
       ) : (
         // Show logo (local or URL-based)
         <Image
-          source={
-            showUrlLogo && logoUrl && !urlLoadError ? { uri: logoUrl } : logo
-          }
+          source={logoUrl && !logo ? { uri: logoUrl } : logo}
           style={[
             { width: size, height: size, borderRadius: size / 2 },
             imageStyle,
           ]}
           onError={() => {
-            if (showUrlLogo && logoUrl) {
+            if (logoUrl && !logo) {
               console.log(`Failed to load token logo from URL: ${logoUrl}`);
               setUrlLoadError(true);
             }

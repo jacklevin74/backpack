@@ -4242,15 +4242,15 @@ function AppContent() {
           <View style={styles.bottomSheetContent}>
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
-              <TouchableOpacity onPress={() => sendSheetRef.current?.dismiss()}>
-                <Text style={styles.bottomSheetClose}>✕</Text>
-              </TouchableOpacity>
+              <View style={{ width: 24 }} />
               <View style={styles.bottomSheetTitleContainer}>
                 <Text style={styles.bottomSheetTitle}>
                   Send {getNativeTokenInfo().symbol}
                 </Text>
               </View>
-              <View style={{ width: 24 }} />
+              <TouchableOpacity onPress={() => sendSheetRef.current?.dismiss()}>
+                <Text style={styles.bottomSheetClose}>✕</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Balance Display */}
@@ -4369,7 +4369,11 @@ function AppContent() {
                 <Text style={styles.sheetHeaderButton}>↻</Text>
               </TouchableOpacity>
               <Text style={styles.activitySheetTitle}>Activity</Text>
-              <View style={{ width: 32 }} />
+              <TouchableOpacity
+                onPress={() => activitySheetRef.current?.dismiss()}
+              >
+                <Text style={styles.sheetHeaderButton}>✕</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Transactions List */}

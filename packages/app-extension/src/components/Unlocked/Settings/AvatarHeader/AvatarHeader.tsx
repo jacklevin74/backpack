@@ -1,4 +1,10 @@
-import { getBlockchainLogo, useActiveWallet, useUser } from "@coral-xyz/recoil";
+import { Blockchain } from "@coral-xyz/common";
+import {
+  getBlockchainLogo,
+  useActiveWallet,
+  useBlockchainConnectionUrl,
+  useUser,
+} from "@coral-xyz/recoil";
 import { useTheme } from "@coral-xyz/tamagui";
 import { Typography } from "@mui/material";
 import styled from "@mui/system/styled";
@@ -7,18 +13,36 @@ export function AvatarHeader() {
   const user = useUser();
   const theme = useTheme();
   const { blockchain } = useActiveWallet();
+  const connectionUrl = useBlockchainConnectionUrl(blockchain);
+
+  // Determine actual network from connection URL
+  const getActualBlockchain = () => {
+    if (connectionUrl) {
+      if (
+        connectionUrl.includes("solana.com") ||
+        connectionUrl.includes("solana-mainnet.quiknode.pro") ||
+        connectionUrl.includes("solana-devnet") ||
+        connectionUrl.includes("solana-testnet")
+      ) {
+        return Blockchain.SOLANA;
+      }
+    }
+    return blockchain;
+  };
+
+  const actualBlockchain = getActualBlockchain();
 
   return (
     <div style={{ marginBottom: "24px" }}>
       <AvatarWrapper>
         <img
-          src={getBlockchainLogo(blockchain)}
+          src={getBlockchainLogo(actualBlockchain)}
           style={{
             width: "100%",
             height: "100%",
             borderRadius: "50%",
           }}
-          alt={blockchain}
+          alt={actualBlockchain}
         />
       </AvatarWrapper>
       <Typography

@@ -13,6 +13,7 @@ import {
   useAllWallets,
   useAnchorContext,
   useAvatarUrl,
+  useBlockchainConnectionUrl,
   useEthereumCtx,
   useIsValidAddress,
   useUser,
@@ -97,6 +98,24 @@ export const AddressSelector = ({
   const { provider: solanaProvider } = useAnchorContext();
   const ethereumCtx = useEthereumCtx();
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const connectionUrl = useBlockchainConnectionUrl(blockchain);
+
+  // Determine actual network from connection URL
+  const getActualBlockchain = () => {
+    if (connectionUrl) {
+      if (
+        connectionUrl.includes("solana.com") ||
+        connectionUrl.includes("solana-mainnet.quiknode.pro") ||
+        connectionUrl.includes("solana-devnet") ||
+        connectionUrl.includes("solana-testnet")
+      ) {
+        return Blockchain.SOLANA;
+      }
+    }
+    return blockchain;
+  };
+
+  const actualBlockchain = getActualBlockchain();
 
   // For X1, create a connection to X1 RPC instead of Solana
   const [x1Connection, setX1Connection] = useState<any>(null);
@@ -122,7 +141,7 @@ export const AddressSelector = ({
     );
 
   return (
-    <AddressSelectorProvider blockchain={blockchain} onSelect={onSelect}>
+    <AddressSelectorProvider blockchain={actualBlockchain} onSelect={onSelect}>
       <YStack space="$3" minHeight="100%">
         <YStack paddingHorizontal="$4">
           <SearchInput

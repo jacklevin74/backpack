@@ -65,6 +65,23 @@ function _Send({
   const [token, setToken] = useState<TokenTableBalance | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Determine actual network from connection URL
+  const getActualBlockchain = () => {
+    if (connectionUrl) {
+      if (
+        connectionUrl.includes("solana.com") ||
+        connectionUrl.includes("solana-mainnet.quiknode.pro") ||
+        connectionUrl.includes("solana-devnet") ||
+        connectionUrl.includes("solana-testnet")
+      ) {
+        return Blockchain.SOLANA;
+      }
+    }
+    return blockchain;
+  };
+
+  const actualBlockchain = getActualBlockchain();
+
   console.log("🔍 [SendAmountSelect] Component mounted");
   console.log("🔍 [SendAmountSelect] assetId:", assetId);
   console.log("🔍 [SendAmountSelect] blockchain:", blockchain);
@@ -182,13 +199,21 @@ function _Send({
     return <LoadingContainer />;
   }
 
-  return <_SendInner navigation={navigation} token={token} to={to} />;
+  return (
+    <_SendInner
+      navigation={navigation}
+      token={token}
+      to={to}
+      actualBlockchain={actualBlockchain}
+    />
+  );
 }
 
 function _SendInner({
   navigation,
   token,
   to,
+  actualBlockchain,
 }: {
   navigation: SendAmountSelectScreenProps["navigation"];
   token: TokenTableBalance;
@@ -199,6 +224,7 @@ function _SendInner({
     image?: string;
     uuid?: string;
   };
+  actualBlockchain: Blockchain;
 }) {
   const classes = useStyles();
   const { t } = useTranslation();
@@ -297,6 +323,7 @@ function _SendInner({
         maxAmount={maxAmount}
         setAmount={setAmount}
         setStrAmount={setStrAmount}
+        actualBlockchain={actualBlockchain}
       />
     </form>
   );
@@ -323,6 +350,7 @@ function SendV2({
   setStrAmount,
   sendButton,
   to,
+  actualBlockchain,
 }: {
   token: TokenTableBalance;
   maxAmount: BigNumber;
@@ -337,6 +365,7 @@ function SendV2({
     image?: string;
     uuid?: string;
   };
+  actualBlockchain: Blockchain;
 }) {
   const classes = useStyles();
   const theme = useTheme();
@@ -364,13 +393,13 @@ function SendV2({
             >
               <div className={classes.topImageOuter}>
                 <img
-                  src={getBlockchainLogo(blockchain)}
+                  src={getBlockchainLogo(actualBlockchain)}
                   style={{
                     width: "80px",
                     height: "80px",
                     borderRadius: "50%",
                   }}
-                  alt={blockchain}
+                  alt={actualBlockchain}
                 />
               </div>
             </div>

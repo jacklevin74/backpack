@@ -3491,6 +3491,7 @@ function AppContent() {
                 style={styles.activityIcon}
                 onPress={() => {
                   triggerHaptic();
+                  checkTransactions();
                   activitySheetRef.current?.present();
                 }}
               >

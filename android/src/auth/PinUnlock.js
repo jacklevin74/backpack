@@ -28,6 +28,17 @@ export const PinUnlock = ({ onUnlock }) => {
     checkBiometric();
   }, []);
 
+  // Auto-trigger biometric authentication if enabled
+  useEffect(() => {
+    if (biometricAvailable && lockoutMs === 0) {
+      // Delay to ensure component is fully mounted
+      const timer = setTimeout(() => {
+        handleBiometric();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [biometricAvailable, lockoutMs]);
+
   useEffect(() => {
     if (lockoutMs > 0) {
       const timer = setInterval(() => {

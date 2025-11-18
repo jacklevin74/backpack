@@ -201,9 +201,12 @@ function UsersMenuList() {
   const { close } = usePopoverContext();
   const { t } = useTranslation();
 
+  // X1 Wallet: Only show Account 1, disable account switching
+  const firstUser = users.length > 0 ? [users[0]] : [];
+
   return (
     <MenuList>
-      {users.map((user: any) => {
+      {firstUser.map((user: any) => {
         return (
           <UserMenuItem
             key={user.uuid}
@@ -215,36 +218,7 @@ function UsersMenuList() {
           />
         );
       })}
-      <MenuListItem
-        onClick={() => {
-          close();
-          openAddUserAccount();
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            flexDirection: "column",
-            marginRight: "4px",
-          }}
-        >
-          <Add
-            style={{
-              fontSize: "14px",
-              color: theme.baseTextMedEmphasis.val,
-            }}
-          />
-        </div>
-        <Typography
-          style={{
-            fontSize: 14,
-            color: theme.baseTextMedEmphasis.val,
-          }}
-        >
-          {t("add_account")}
-        </Typography>
-      </MenuListItem>
+      {/* X1 Wallet: Removed "Add Account" functionality - users can only add wallets */}
     </MenuList>
   );
 }

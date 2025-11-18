@@ -29,6 +29,7 @@ function Container({
   const hasMnemonic = useKeyringHasMnemonic();
   const { t } = useTranslation();
 
+  // X1 Wallet: Removed account removal - users must keep Account 1
   const menuItems = {
     [t("update_account_name")]: {
       onClick: () => navigation.push(Routes.YourAccountUpdateNameScreen),
@@ -44,9 +45,6 @@ function Container({
           },
         }
       : {}),
-    [t("remove")]: {
-      onClick: () => navigation.push(Routes.YourAccountRemoveScreen),
-    },
   };
 
   return <SettingsList menuItems={menuItems} />;

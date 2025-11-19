@@ -4557,12 +4557,15 @@ function AppContent() {
 
             {/* Transactions List */}
             {transactions.length === 0 ? (
-              <View style={styles.emptyStateContainer}>
-                <Text style={styles.emptyStateText}>No transactions yet</Text>
-                <Text style={styles.emptyStateSubtext}>
-                  Your transaction history will appear here
-                </Text>
-              </View>
+              <>
+                <View style={styles.emptyStateSpacer} />
+                <View style={styles.emptyStateContainer}>
+                  <Text style={styles.emptyStateText}>No transactions yet</Text>
+                  <Text style={styles.emptyStateSubtext}>
+                    Your transaction history will appear here
+                  </Text>
+                </View>
+              </>
             ) : (
               transactions.map((tx) => (
                 <TouchableOpacity
@@ -6634,18 +6637,19 @@ const styles = StyleSheet.create({
   },
   emptyStateScrollContent: {
     flexGrow: 1,
-    justifyContent: "center",
-    paddingTop: 60,
-    paddingBottom: 16,
     paddingHorizontal: 16,
+    paddingBottom: 16,
+    paddingTop: 0,
+  },
+  emptyStateSpacer: {
+    height: 40,
   },
   emptyStateContainer: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingTop: 40,
     paddingBottom: 40,
     paddingHorizontal: 32,
-    minHeight: 200,
   },
   emptyStateText: {
     color: "#FFFFFF",

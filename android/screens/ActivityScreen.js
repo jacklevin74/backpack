@@ -135,10 +135,12 @@ const styles = StyleSheet.create({
   },
   emptyStateScrollContent: {
     flexGrow: 1,
-    justifyContent: "center",
-    paddingTop: 60,
-    paddingBottom: 16,
     paddingHorizontal: 16,
+    paddingBottom: 16,
+    paddingTop: 0,
+  },
+  emptyStateSpacer: {
+    height: 40,
   },
   activityCard: {
     backgroundColor: "#0a0a0a",
@@ -188,12 +190,11 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   emptyStateContainer: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingTop: 40,
     paddingBottom: 40,
     paddingHorizontal: 32,
-    minHeight: 200,
   },
   emptyStateText: {
     color: "#FFFFFF",

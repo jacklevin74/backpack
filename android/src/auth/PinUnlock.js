@@ -7,12 +7,15 @@ import {
   Alert,
   Image,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PinPad } from "./PinPad";
 import { PinDots } from "./PinDots";
 import { AuthManager, PinLockoutError } from "./AuthManager";
 import { Toast } from "./Toast";
 
 export const PinUnlock = ({ onUnlock }) => {
+  const insets = useSafeAreaInsets();
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [lockoutMs, setLockoutMs] = useState(0);
@@ -161,31 +164,63 @@ export const PinUnlock = ({ onUnlock }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Enter PIN</Text>
-        <Text style={styles.subtitle}>
-          {lockoutMs > 0
-            ? `Locked for ${formatLockoutTime(lockoutMs)}`
-            : "Enter your 6-digit PIN to unlock"}
-        </Text>
-      </View>
-
-      <PinDots length={6} filled={pin.length} />
-
-      {biometricAvailable && lockoutMs === 0 && (
-        <TouchableOpacity
-          style={styles.biometricButton}
-          onPress={handleBiometric}
-          activeOpacity={0.6}
-        >
+      <Image
+        source={require("../../assets/bg.png")}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      />
+      {/* Dark blue to transparent gradient overlay */}
+      <LinearGradient
+        colors={["#1a1a2e", "transparent"]}
+        style={styles.gradientOverlay}
+      />
+      <View style={[styles.content, { paddingTop: insets.top + 20 }]}>
+        {/* Logo with blur background */}
+        <View style={styles.logoContainer}>
           <Image
-            source={require("../../assets/fingerprint.png")}
-            style={styles.fingerprintImage}
+            source={require("../../assets/x1-logo-with-blur.png")}
+            style={styles.logoBlur}
+            resizeMode="contain"
           />
-        </TouchableOpacity>
-      )}
+          <Image
+            source={require("../../assets/x1-wallet.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
 
-      <PinPad onNumberPress={handleNumberPress} onBackspace={handleBackspace} />
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Enter PIN</Text>
+          <Text style={styles.subtitle}>
+            {lockoutMs > 0
+              ? `Locked for ${formatLockoutTime(lockoutMs)}`
+              : "Enter your 6-digit PIN to unlock"}
+          </Text>
+        </View>
+
+        {/* PIN Dots */}
+        <PinDots length={6} filled={pin.length} />
+
+        {/* Biometric button (if available) */}
+        {biometricAvailable && lockoutMs === 0 && (
+          <TouchableOpacity
+            style={styles.biometricButton}
+            onPress={handleBiometric}
+            activeOpacity={0.6}
+          >
+            <Image
+              source={require("../../assets/fingerprint.png")}
+              style={styles.fingerprintImage}
+            />
+          </TouchableOpacity>
+        )}
+
+        {/* Keypad */}
+        <View style={[styles.keypadContainer, { paddingBottom: insets.bottom + 20 }]}>
+          <PinPad onNumberPress={handleNumberPress} onBackspace={handleBackspace} />
+        </View>
+      </View>
 
       <Toast
         message={toast.message}
@@ -200,20 +235,58 @@ export const PinUnlock = ({ onUnlock }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#111827",
+    position: "relative",
+  },
+  backgroundImage: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+  },
+  gradientOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+  },
+  content: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    paddingHorizontal: 20,
+  },
+  logoContainer: {
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  logoBlur: {
+    position: "absolute",
+    width: 100,
+    height: 100,
+    zIndex: 0,
+  },
+  logo: {
+    width: 100,
+    height: 100,
+    zIndex: 1,
   },
   header: {
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 16,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "bold",
     color: "#FFFFFF",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
@@ -229,13 +302,18 @@ const styles = StyleSheet.create({
   },
   biometricButton: {
     alignSelf: "center",
-    marginTop: -10,
-    marginBottom: 15,
+    marginTop: 8,
+    marginBottom: 16,
     padding: 10,
   },
   fingerprintImage: {
     width: 95,
     height: 95,
     opacity: 0.5,
+  },
+  keypadContainer: {
+    marginTop: 20,
+    width: "100%",
+    alignItems: "center",
   },
 });

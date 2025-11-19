@@ -59,6 +59,7 @@ import {
   SafeAreaProvider,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 // Replaced @gorhom/bottom-sheet with SimpleActionSheet
 import SimpleActionSheet from "./components/SimpleActionSheet";
 import TokenIcon from "./src/components/TokenIcon";
@@ -2091,19 +2092,19 @@ function AppContent() {
   const handleCreateNewWallet = async () => {
     setShowAddWalletModal(false);
 
-    // If master seed phrase already exists, create wallet directly without showing seed phrase
+    // Always show seed phrase modal when creating wallet
+    // If master seed phrase already exists, use it; otherwise generate new one
     if (masterSeedPhrase) {
-      console.log("Master seed phrase exists, creating wallet directly");
-      await handleConfirmCreateWallet();
-      return;
+      console.log("Master seed phrase exists, showing it for backup");
+      setNewMnemonic(masterSeedPhrase);
+    } else {
+      // First wallet - generate master seed phrase and show it for backup
+      const newMasterSeed = bip39.generateMnemonic();
+      setMasterSeedPhrase(newMasterSeed);
+      await saveMasterSeedPhrase(newMasterSeed);
+      setNewMnemonic(newMasterSeed);
+      console.log("Generated and saved new master seed phrase");
     }
-
-    // First wallet - generate master seed phrase and show it for backup
-    const newMasterSeed = bip39.generateMnemonic();
-    setMasterSeedPhrase(newMasterSeed);
-    await saveMasterSeedPhrase(newMasterSeed);
-    setNewMnemonic(newMasterSeed);
-    console.log("Generated and saved new master seed phrase");
     setShowCreateWalletModal(true);
   };
 
@@ -3427,6 +3428,66 @@ function AppContent() {
       >
         <Text style={{ color: "#FFFFFF", fontSize: 18 }}>Loading...</Text>
       </View>
+    );
+  }
+
+  // Show empty state when no wallets exist (but not when modals are open)
+  if (authState === "unlocked" && wallets.length === 0 && !showCreateWalletModal && !showAddWalletModal && !showImportWalletModal) {
+    return (
+      <SafeAreaView style={styles.emptyStateContainer}>
+        <StatusBar hidden={true} />
+        <Image
+          source={require("./assets/bg.png")}
+          style={styles.emptyStateBackground}
+          resizeMode="cover"
+        />
+        {/* Dark blue to transparent gradient overlay */}
+        <LinearGradient
+          colors={["#1a1a2e", "transparent"]}
+          style={styles.emptyStateGradientOverlay}
+        />
+        <View style={[styles.emptyStateContent, { paddingTop: insets.top + 20 }]}>
+          {/* Logo with blur background */}
+          <View style={styles.emptyStateLogoContainer}>
+            <Image
+              source={require("./assets/x1-logo-with-blur.png")}
+              style={styles.emptyStateLogoBlur}
+              resizeMode="contain"
+            />
+            <Image
+              source={require("./assets/x1-wallet.png")}
+              style={styles.emptyStateLogo}
+              resizeMode="contain"
+            />
+          </View>
+          
+          {/* Title */}
+          <Text style={styles.emptyStateTitle}>X1 Wallet</Text>
+          
+          {/* Buttons */}
+          <View style={[styles.emptyStateButtons, { paddingBottom: insets.bottom + 20 }]}>
+            <TouchableOpacity
+              style={styles.emptyStateCreateButton}
+              onPress={async () => {
+                triggerHaptic();
+                await handleCreateNewWallet();
+              }}
+            >
+              <Text style={styles.emptyStateCreateButtonText}>Create Wallet</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.emptyStateImportButton}
+              onPress={() => {
+                triggerHaptic();
+                setShowAddWalletModal(true);
+              }}
+            >
+              <Text style={styles.emptyStateImportButtonText}>Import Wallet</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -7815,6 +7876,93 @@ const styles = StyleSheet.create({
     color: "#4A90E2",
     fontWeight: "600",
   },
+  // Empty State Styles
+  emptyStateContainer: {
+    flex: 1,
+    position: "relative",
+  },
+  emptyStateBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+  },
+  emptyStateGradientOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+  },
+  emptyStateContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 40,
+  },
+  emptyStateLogoContainer: {
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
+  },
+  emptyStateLogoBlur: {
+    position: "absolute",
+    width: 120,
+    height: 120,
+    zIndex: 0,
+  },
+  emptyStateLogo: {
+    width: 120,
+    height: 120,
+    zIndex: 1,
+  },
+  emptyStateTitle: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: 60,
+    textAlign: "center",
+  },
+  emptyStateButtons: {
+    width: "100%",
+  },
+  emptyStateCreateButton: {
+    backgroundColor: "#4A90E2",
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    marginBottom: 16,
+  },
+  emptyStateCreateButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  emptyStateImportButton: {
+    backgroundColor: "#1a1a1a",
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "#333333",
+  },
+  emptyStateImportButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
   // QR Scanner styles
   scanIcon: {
     width: 24,
@@ -7832,9 +7980,6 @@ const styles = StyleSheet.create({
   qrOverlayTop: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.6)",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 40,
   },
   qrOverlayMiddle: {
     flexDirection: "row",

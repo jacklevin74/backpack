@@ -6514,9 +6514,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   quickSwitchIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
   },
   topBarRightIcons: {
     position: "absolute",

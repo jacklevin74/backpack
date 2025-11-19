@@ -7,7 +7,7 @@ import {
   Alert,
   Image,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+// import { LinearGradient } from "expo-linear-gradient"; // Temporarily disabled
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PinPad } from "./PinPad";
 import { PinDots } from "./PinDots";
@@ -169,10 +169,12 @@ export const PinUnlock = ({ onUnlock }) => {
         style={styles.backgroundImage}
         resizeMode="cover"
       />
-      {/* Dark blue to transparent gradient overlay */}
-      <LinearGradient
-        colors={["#1a1a2e", "transparent"]}
-        style={styles.gradientOverlay}
+      {/* Dark blue overlay (gradient temporarily disabled) */}
+      <View
+        style={[
+          styles.gradientOverlay,
+          { backgroundColor: "rgba(26, 26, 46, 0.3)" },
+        ]}
       />
       <View style={[styles.content, { paddingTop: insets.top + 20 }]}>
         {/* Logo with blur background */}
@@ -217,8 +219,16 @@ export const PinUnlock = ({ onUnlock }) => {
         )}
 
         {/* Keypad */}
-        <View style={[styles.keypadContainer, { paddingBottom: insets.bottom + 20 }]}>
-          <PinPad onNumberPress={handleNumberPress} onBackspace={handleBackspace} />
+        <View
+          style={[
+            styles.keypadContainer,
+            { paddingBottom: insets.bottom + 20 },
+          ]}
+        >
+          <PinPad
+            onNumberPress={handleNumberPress}
+            onBackspace={handleBackspace}
+          />
         </View>
       </View>
 

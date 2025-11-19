@@ -301,6 +301,7 @@ function AppContent() {
   const [securityAuthenticated, setSecurityAuthenticated] = useState(false); // Track if authenticated for security
 
   const [wallets, setWallets] = useState([]);
+  const [walletsLoaded, setWalletsLoaded] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState(null);
   const [accounts, setAccounts] = useState(MOCK_ACCOUNTS);
   const [selectedAccount, setSelectedAccount] = useState(MOCK_ACCOUNTS[0]);
@@ -582,6 +583,8 @@ function AppContent() {
       }
     } catch (error) {
       console.error("Error loading wallets:", error);
+    } finally {
+      setWalletsLoaded(true);
     }
   };
 
@@ -3416,7 +3419,7 @@ function AppContent() {
   }
 
   // Show loading screen
-  if (authState === "loading") {
+  if (authState === "loading" || (authState === "unlocked" && !walletsLoaded)) {
     return (
       <View
         style={{
@@ -3432,7 +3435,14 @@ function AppContent() {
   }
 
   // Show empty state when no wallets exist (but not when modals are open)
-  if (authState === "unlocked" && wallets.length === 0 && !showCreateWalletModal && !showAddWalletModal && !showImportWalletModal) {
+  if (
+    authState === "unlocked" &&
+    walletsLoaded &&
+    wallets.length === 0 &&
+    !showCreateWalletModal &&
+    !showAddWalletModal &&
+    !showImportWalletModal
+  ) {
     return (
       <SafeAreaView style={styles.emptyStateContainer}>
         <StatusBar hidden={true} />
@@ -3446,7 +3456,9 @@ function AppContent() {
           colors={["#1a1a2e", "transparent"]}
           style={styles.emptyStateGradientOverlay}
         />
-        <View style={[styles.emptyStateContent, { paddingTop: insets.top + 20 }]}>
+        <View
+          style={[styles.emptyStateContent, { paddingTop: insets.top + 20 }]}
+        >
           {/* Logo with blur background */}
           <View style={styles.emptyStateLogoContainer}>
             <Image
@@ -3460,12 +3472,17 @@ function AppContent() {
               resizeMode="contain"
             />
           </View>
-          
+
           {/* Title */}
           <Text style={styles.emptyStateTitle}>X1 Wallet</Text>
-          
+
           {/* Buttons */}
-          <View style={[styles.emptyStateButtons, { paddingBottom: insets.bottom + 20 }]}>
+          <View
+            style={[
+              styles.emptyStateButtons,
+              { paddingBottom: insets.bottom + 20 },
+            ]}
+          >
             <TouchableOpacity
               style={styles.emptyStateCreateButton}
               onPress={async () => {
@@ -3473,9 +3490,11 @@ function AppContent() {
                 await handleCreateNewWallet();
               }}
             >
-              <Text style={styles.emptyStateCreateButtonText}>Create Wallet</Text>
+              <Text style={styles.emptyStateCreateButtonText}>
+                Create Wallet
+              </Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={styles.emptyStateImportButton}
               onPress={() => {
@@ -3483,7 +3502,9 @@ function AppContent() {
                 setShowAddWalletModal(true);
               }}
             >
-              <Text style={styles.emptyStateImportButtonText}>Import Wallet</Text>
+              <Text style={styles.emptyStateImportButtonText}>
+                Import Wallet
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -4321,9 +4342,13 @@ function AppContent() {
             {/* Address */}
             <View style={styles.receiveAddressContainer}>
               <Text style={styles.receiveAddressLabel}>Your Address</Text>
-              <Text style={styles.receiveAddressText} numberOfLines={1}>
+              <Text
+                style={styles.receiveAddressText}
+                numberOfLines={1}
+                adjustsFontSizeToFit={true}
+              >
                 {addressCopied
-                  ? "Copied"
+                  ? "Copied!"
                   : selectedWallet?.publicKey || "No wallet selected"}
               </Text>
             </View>

@@ -38,6 +38,7 @@ import {
   Animated,
   Switch,
   BackHandler,
+  ActivityIndicator,
 } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import {
@@ -58,6 +59,7 @@ import bs58 from "bs58";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
   SafeAreaProvider,
+  SafeAreaView as SafeAreaViewContext,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -3448,15 +3450,15 @@ function AppContent() {
   // Show loading screen
   if (authState === "loading" || (authState === "unlocked" && !walletsLoaded)) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: easterEggMode ? "#111827" : "#000",
-          justifyContent: "center",
-          alignments: "center",
-        }}
-      >
-        <Text style={{ color: "#FFFFFF", fontSize: 18 }}>Loading...</Text>
+      <View style={styles.loadingContainer}>
+        <Image
+          source={require("./assets/bg.png")}
+          style={styles.loadingBackground}
+          resizeMode="cover"
+        />
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#4A90E2" />
+        </View>
       </View>
     );
   }
@@ -4011,7 +4013,7 @@ function AppContent() {
           ref={networkSheetRef}
           backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <View style={styles.bottomSheetContent}>
+          <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
               <TouchableOpacity
@@ -4144,7 +4146,7 @@ function AppContent() {
         >
           <ScrollView
             testID="wallet-list-sheet"
-            contentContainerStyle={styles.bottomSheetScrollContent}
+            contentContainerStyle={[styles.bottomSheetScrollContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}
             showsVerticalScrollIndicator={false}
           >
             {/* Header */}
@@ -4246,7 +4248,7 @@ function AppContent() {
           ref={accountSheetRef}
           backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <View style={styles.bottomSheetContent}>
+          <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
               <TouchableOpacity
@@ -4341,7 +4343,7 @@ function AppContent() {
           ref={receiveSheetRef}
           backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <View style={styles.bottomSheetContent}>
+          <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
               <Text style={styles.bottomSheetTitle}>
@@ -4401,7 +4403,7 @@ function AppContent() {
           ref={sendSheetRef}
           backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <View style={styles.bottomSheetContent}>
+          <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
               <TouchableOpacity onPress={() => sendSheetRef.current?.dismiss()}>
@@ -4486,7 +4488,7 @@ function AppContent() {
           ref={addressSheetRef}
           backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <View style={styles.bottomSheetContent}>
+          <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
               <Text style={styles.bottomSheetTitle}>Select Address</Text>
@@ -4533,7 +4535,11 @@ function AppContent() {
         >
           {/* Activity List with BottomSheetScrollView */}
           <ScrollView
-            contentContainerStyle={styles.sheetScrollContent}
+            contentContainerStyle={
+              transactions.length === 0
+                ? styles.emptyStateScrollContent
+                : styles.sheetScrollContent
+            }
             showsVerticalScrollIndicator={false}
           >
             {/* Header */}
@@ -4628,7 +4634,7 @@ function AppContent() {
             onPress={() => setShowAddWalletModal(false)}
           >
             <Pressable
-              style={styles.settingsDrawerContent}
+              style={[styles.settingsDrawerContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}
               onPress={(e) => e.stopPropagation()}
             >
               <View style={styles.settingsDrawerContentArea}>
@@ -4675,7 +4681,7 @@ function AppContent() {
             onPress={() => setShowCreateWalletModal(false)}
           >
             <Pressable
-              style={styles.settingsDrawerContent}
+              style={[styles.settingsDrawerContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}
               onPress={(e) => e.stopPropagation()}
             >
               <View style={styles.settingsDrawerContentArea}>
@@ -4741,7 +4747,7 @@ function AppContent() {
             onPress={() => setShowImportWalletModal(false)}
           >
             <Pressable
-              style={styles.settingsDrawerContent}
+              style={[styles.settingsDrawerContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}
               onPress={(e) => e.stopPropagation()}
             >
               <View style={styles.settingsDrawerContentArea}>
@@ -4987,14 +4993,18 @@ function AppContent() {
           <Pressable
             style={styles.settingsDrawerOverlay}
             onPress={() => {
-              console.log("OVERLAY PRESSED - Closing all modals");
+              console.log("OVERLAY PRESSED - Cancelling changes");
+              // Reset to original name
+              if (editingWallet) {
+                setEditWalletName(editingWallet.name);
+              }
               setShowChangeNameModal(false);
               editWalletSheetRef.current?.dismiss();
               setEditingWallet(null);
             }}
           >
             <Pressable
-              style={styles.settingsDrawerContent}
+              style={[styles.settingsDrawerContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}
               onPress={(e) => e.stopPropagation()}
             >
               <View style={styles.settingsDrawerContentArea}>
@@ -5002,8 +5012,12 @@ function AppContent() {
                   <TouchableOpacity
                     onPress={() => {
                       console.log(
-                        "BACK BUTTON PRESSED (<) - Closing all modals"
+                        "BACK BUTTON PRESSED (<) - Cancelling changes"
                       );
+                      // Reset to original name
+                      if (editingWallet) {
+                        setEditWalletName(editingWallet.name);
+                      }
                       setShowChangeNameModal(false);
                       editWalletSheetRef.current?.dismiss();
                       setEditingWallet(null);
@@ -5014,7 +5028,11 @@ function AppContent() {
                   <Text style={styles.settingsDrawerTitle}>Change Name</Text>
                   <TouchableOpacity
                     onPress={() => {
-                      console.log("X BUTTON PRESSED - Closing all modals");
+                      console.log("X BUTTON PRESSED - Cancelling changes");
+                      // Reset to original name
+                      if (editingWallet) {
+                        setEditWalletName(editingWallet.name);
+                      }
                       setShowChangeNameModal(false);
                       editWalletSheetRef.current?.dismiss();
                       setEditingWallet(null);
@@ -5033,52 +5051,62 @@ function AppContent() {
                   value={editWalletName}
                   onChangeText={(text) => {
                     setEditWalletName(text);
-                    if (editingWallet && text.trim()) {
-                      const updatedWallets = wallets.map((w) =>
-                        w.id === editingWallet.id
-                          ? { ...w, name: text.trim() }
-                          : w
-                      );
-                      setWallets(updatedWallets);
-                      saveWalletsToStorage(updatedWallets);
-                    }
                   }}
                   autoCorrect={false}
                 />
 
-                <TouchableOpacity
-                  style={{ paddingVertical: 16, paddingHorizontal: 20 }}
-                  onPress={() => {
-                    console.log("SAVE BUTTON PRESSED");
-                    console.log("editingWallet:", editingWallet);
-                    console.log("editWalletName:", editWalletName);
-                    if (editingWallet && editWalletName.trim()) {
-                      console.log("Saving wallet name:", editWalletName.trim());
-                      const updatedWallets = wallets.map((w) =>
-                        w.id === editingWallet.id
-                          ? { ...w, name: editWalletName.trim() }
-                          : w
-                      );
-                      setWallets(updatedWallets);
-                      saveWalletsToStorage(updatedWallets);
-                      console.log("Closing both modals");
+                <View style={styles.changeNameButtonContainer}>
+                  <TouchableOpacity
+                    style={styles.changeNameCancelButton}
+                    onPress={() => {
+                      console.log("CANCEL BUTTON PRESSED - Discarding changes");
+                      // Reset to original name
+                      if (editingWallet) {
+                        setEditWalletName(editingWallet.name);
+                      }
                       setShowChangeNameModal(false);
                       editWalletSheetRef.current?.dismiss();
                       setEditingWallet(null);
-                    } else {
-                      console.log("Not saving - wallet or name is empty");
-                    }
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.settingsDrawerTitle,
-                      { fontSize: 18, fontWeight: "600" },
-                    ]}
+                    }}
                   >
-                    Save
-                  </Text>
-                </TouchableOpacity>
+                    <Text style={styles.changeNameCancelButtonText}>
+                      Cancel
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.changeNameConfirmButton,
+                      !editWalletName.trim() && styles.changeNameConfirmButtonDisabled,
+                    ]}
+                    onPress={() => {
+                      console.log("CONFIRM BUTTON PRESSED");
+                      console.log("editingWallet:", editingWallet);
+                      console.log("editWalletName:", editWalletName);
+                      if (editingWallet && editWalletName.trim()) {
+                        console.log("Saving wallet name:", editWalletName.trim());
+                        const updatedWallets = wallets.map((w) =>
+                          w.id === editingWallet.id
+                            ? { ...w, name: editWalletName.trim() }
+                            : w
+                        );
+                        setWallets(updatedWallets);
+                        saveWalletsToStorage(updatedWallets);
+                        console.log("Closing both modals");
+                        setShowChangeNameModal(false);
+                        editWalletSheetRef.current?.dismiss();
+                        setEditingWallet(null);
+                      } else {
+                        console.log("Not saving - wallet or name is empty");
+                      }
+                    }}
+                    disabled={!editWalletName.trim()}
+                  >
+                    <Text style={styles.changeNameConfirmButtonText}>
+                      Confirm
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </Pressable>
           </Pressable>
@@ -5089,7 +5117,7 @@ function AppContent() {
           ref={privateKeySheetRef}
           backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <View style={styles.bottomSheetContent}>
+          <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
             <View style={styles.bottomSheetHeader}>
               <View style={{ width: 32 }} />
               <Text style={styles.bottomSheetTitle}>Private Key</Text>
@@ -5142,7 +5170,7 @@ function AppContent() {
           ref={seedPhraseSheetRef}
           backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <View style={styles.bottomSheetContent}>
+          <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
             <View style={styles.bottomSheetHeader}>
               <View style={{ width: 32 }} />
               <Text style={styles.bottomSheetTitle}>Seed Phrase</Text>
@@ -5210,8 +5238,8 @@ function AppContent() {
           ref={ledgerSheetRef}
           backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <View style={styles.bottomSheetContent}>
-            <View style={styles.bottomSheetHeader}>
+          <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
+            <View style={[styles.bottomSheetHeader, { paddingTop: Math.max(insets.top, 8) }]}>
               <View style={{ width: 32 }} />
               <Text style={styles.bottomSheetTitle}>Connect Ledger</Text>
               <TouchableOpacity
@@ -5326,7 +5354,7 @@ function AppContent() {
           snapPoints={["45%"]}
           backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <View style={styles.bottomSheetContent}>
+          <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
             <View style={styles.bottomSheetHeader}>
               <View style={{ width: 32 }} />
               <Text style={styles.bottomSheetTitle}>Confirm Transaction</Text>
@@ -5476,7 +5504,10 @@ function AppContent() {
         </SimpleActionSheet>
 
         {/* Browser BottomSheet */}
-        <SimpleActionSheet ref={browserSheetRef}>
+        <SimpleActionSheet
+          ref={browserSheetRef}
+          backgroundColor={easterEggMode ? "#111827" : "#000"}
+        >
           <View style={{ flex: 1 }}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Browser</Text>
@@ -5674,8 +5705,12 @@ function AppContent() {
           visible={showQRScanner}
           animationType="slide"
           onRequestClose={() => setShowQRScanner(false)}
+          statusBarTranslucent
         >
-          <View style={styles.qrScannerContainer}>
+          <SafeAreaViewContext 
+            style={styles.qrScannerContainer}
+            edges={['top']}
+          >
             <CameraView
               onBarcodeScanned={handleQRCodeScanned}
               barcodeScannerSettings={{
@@ -5688,10 +5723,12 @@ function AppContent() {
             <View style={styles.qrOverlayContainer}>
               {/* Top overlay */}
               <View style={styles.qrOverlayTop}>
-                <Text style={styles.qrScannerTitle}>Scan QR Code</Text>
-                <Text style={styles.qrScannerSubtitle}>
-                  Align QR code within the frame
-                </Text>
+                <View style={styles.qrScannerTopContent}>
+                  <Text style={styles.qrScannerTitle}>Scan QR Code</Text>
+                  <Text style={styles.qrScannerSubtitle}>
+                    Align QR code within the frame
+                  </Text>
+                </View>
               </View>
 
               {/* Middle section with scanning frame */}
@@ -5717,7 +5754,7 @@ function AppContent() {
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </SafeAreaViewContext>
         </Modal>
       )}
 
@@ -6166,7 +6203,7 @@ function AppContent() {
                   settingsNavigationStack.length - 1
                 ] === "exportSeed" ? (
                 // Export Seed Phrase Screen
-                <View style={styles.bottomSheetContent}>
+                <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
                   {masterSeedPhrase ? (
                     <>
                       <Text style={styles.seedPhraseTitle}>
@@ -6203,7 +6240,7 @@ function AppContent() {
                 </View>
               ) : (
                 // Change Seed Phrase Screen
-                <View style={styles.bottomSheetContent}>
+                <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
                   {/* Mode Selector */}
                   <View
                     style={{
@@ -6595,22 +6632,31 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "500",
   },
+  emptyStateScrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    padding: 16,
+  },
   emptyStateContainer: {
-    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 60,
+    paddingVertical: 40,
+    paddingHorizontal: 32,
+    minHeight: 200,
   },
   emptyStateText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 8,
+    textAlign: "center",
+    width: "100%",
   },
   emptyStateSubtext: {
     color: "#999999",
     fontSize: 14,
     textAlign: "center",
+    width: "100%",
   },
   badge: {
     width: 32,
@@ -7143,19 +7189,18 @@ const styles = StyleSheet.create({
   bottomSheetContent: {
     flex: 1,
     paddingHorizontal: 20,
-    backgroundColor: "#000",
   },
   bottomSheetScrollContent: {
     paddingHorizontal: 20,
     paddingTop: 30,
     paddingBottom: 20,
-    backgroundColor: "#000",
   },
   bottomSheetHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 20,
+    paddingTop: 8,
   },
   bottomSheetClose: {
     fontSize: 24,
@@ -7366,7 +7411,6 @@ const styles = StyleSheet.create({
   },
   settingsDrawerContent: {
     height: "95%",
-    backgroundColor: "#000",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
@@ -7740,6 +7784,42 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#333333",
   },
+  changeNameButtonContainer: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 24,
+    paddingHorizontal: 4,
+  },
+  changeNameCancelButton: {
+    flex: 1,
+    backgroundColor: "#1a1a1a",
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  changeNameCancelButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  changeNameConfirmButton: {
+    flex: 1,
+    backgroundColor: "#4A90E2",
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  changeNameConfirmButtonDisabled: {
+    backgroundColor: "#333333",
+    opacity: 0.5,
+  },
+  changeNameConfirmButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
   showPrivateKeyButton: {
     backgroundColor: "#333333",
     borderRadius: 8,
@@ -8096,6 +8176,13 @@ const styles = StyleSheet.create({
   qrOverlayTop: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.6)",
+    justifyContent: "flex-start",
+    alignItems: "center",
+    paddingTop: 60,
+  },
+  qrScannerTopContent: {
+    alignItems: "center",
+    paddingHorizontal: 20,
   },
   qrOverlayMiddle: {
     flexDirection: "row",
@@ -8122,6 +8209,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#FFFFFF",
     marginBottom: 10,
+    textAlign: "center",
   },
   qrScannerSubtitle: {
     fontSize: 14,
@@ -8179,6 +8267,25 @@ const styles = StyleSheet.create({
     borderBottomWidth: 4,
     borderRightWidth: 4,
     borderColor: "#888888",
+  },
+  loadingContainer: {
+    flex: 1,
+    position: "relative",
+  },
+  loadingBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+  },
+  loadingOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
   },
 });
 

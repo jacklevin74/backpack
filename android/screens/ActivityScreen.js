@@ -29,7 +29,11 @@ export default function ActivityScreen({
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        contentContainerStyle={transactions.length === 0 ? styles.emptyStateScrollContent : undefined}
+        showsVerticalScrollIndicator={false}
+      >
         {transactions.length === 0 ? (
           <View style={styles.emptyStateContainer}>
             <Text style={styles.emptyStateText}>No transactions yet</Text>
@@ -128,6 +132,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  emptyStateScrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
     padding: 16,
   },
   activityCard: {
@@ -178,19 +186,24 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   emptyStateContainer: {
-    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 60,
+    paddingVertical: 40,
+    paddingHorizontal: 32,
+    minHeight: 200,
   },
   emptyStateText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 8,
+    textAlign: "center",
+    width: "100%",
   },
   emptyStateSubtext: {
     color: "#999999",
     fontSize: 14,
+    textAlign: "center",
+    width: "100%",
   },
 });

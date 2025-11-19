@@ -38,6 +38,12 @@ const SimpleActionSheet = forwardRef(
     const [visible, setVisible] = useState(false);
     const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
     const opacity = useRef(new Animated.Value(0)).current;
+    
+    // Calculate backdrop color based on backgroundColor
+    // If it's easter egg mode (#111827), use a matching backdrop
+    const backdropColor = backgroundColor === "#111827" 
+      ? "rgba(17, 24, 39, 0.5)" 
+      : "rgba(0, 0, 0, 0.5)";
 
     const panResponder = useRef(
       PanResponder.create({
@@ -146,7 +152,7 @@ const SimpleActionSheet = forwardRef(
           {/* Backdrop */}
           <TouchableWithoutFeedback onPress={handleBackdropPress}>
             <Animated.View
-              style={[styles.backdrop, { opacity }]}
+              style={[styles.backdrop, { opacity, backgroundColor: backdropColor }]}
               pointerEvents="auto"
             />
           </TouchableWithoutFeedback>
@@ -162,6 +168,12 @@ const SimpleActionSheet = forwardRef(
                 borderTopRightRadius: cornerRadius,
                 paddingBottom: 20 + insets.bottom,
                 transform: [{ translateY }],
+                // Shadow/glow effect
+                shadowColor: "#888888",
+                shadowOffset: { width: 0, height: -4 },
+                shadowOpacity: 0.4,
+                shadowRadius: 12,
+                elevation: 16,
               },
             ]}
           >
@@ -185,7 +197,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    // backgroundColor will be set dynamically based on easter egg mode
   },
   sheet: {
     height: SCREEN_HEIGHT * 0.9,

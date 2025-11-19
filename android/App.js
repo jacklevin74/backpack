@@ -64,6 +64,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import SimpleActionSheet from "./components/SimpleActionSheet";
 import TokenIcon from "./src/components/TokenIcon";
 import QRCode from "react-native-qrcode-svg";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import TransportBLE from "@ledgerhq/react-native-hw-transport-ble";
 import AppSolana from "@ledgerhq/hw-app-solana";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -372,10 +373,17 @@ function AppContent() {
   const ledgerScanSubscriptionRef = useRef(null); // Store scan subscription for cleanup
   const ledgerCleaningRef = useRef(false); // Prevent concurrent cleanup
   const ledgerCleanedUpRef = useRef(false); // Track if cleanup has already been completed
+  const sendAddressInputRef = useRef(null); // Ref for send address TextInput
 
   // Send and Receive states
   const [sendAmount, setSendAmount] = useState("");
   const [sendAddress, setSendAddress] = useState("");
+  const [addressSelection, setAddressSelection] = useState({
+    start: 0,
+    end: 0,
+  });
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [showSendConfirm, setShowSendConfirm] = useState(false);
   const [sendConfirming, setSendConfirming] = useState(false);
   const [sendSignature, setSendSignature] = useState("");
@@ -1260,6 +1268,46 @@ function AppContent() {
       text2: "Address copied to clipboard",
       position: "bottom",
     });
+  };
+
+  // QR Scanner functions
+  const handleOpenQRScanner = async () => {
+    if (!cameraPermission) {
+      return;
+    }
+
+    if (!cameraPermission.granted) {
+      const result = await requestCameraPermission();
+      if (!result.granted) {
+        Toast.show({
+          type: "error",
+          text1: "Permission Denied",
+          text2: "Please enable camera permission in settings",
+          position: "bottom",
+        });
+        return;
+      }
+    }
+    setShowQRScanner(true);
+  };
+
+  const handleQRCodeScanned = (result) => {
+    if (result && result.data) {
+      setShowQRScanner(false);
+      setSendAddress(result.data);
+
+      // Delay setting selection to ensure text is rendered first
+      setTimeout(() => {
+        setAddressSelection({ start: 0, end: 0 });
+      }, 100);
+
+      Toast.show({
+        type: "success",
+        text1: "QR Code Scanned",
+        text2: "Address populated",
+        position: "bottom",
+      });
+    }
   };
 
   const handleSendSubmit = async (amount, address) => {
@@ -3510,7 +3558,7 @@ function AppContent() {
               >
                 <Image
                   source={require("./assets/x1.png")}
-                  style={styles.quickSwitchIcon}
+                  style={styles.quickSwitchIconX1}
                 />
               </TouchableOpacity>
               <TouchableOpacity
@@ -4304,14 +4352,19 @@ function AppContent() {
           <View style={styles.bottomSheetContent}>
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
-              <View style={{ width: 24 }} />
+              <TouchableOpacity onPress={() => sendSheetRef.current?.dismiss()}>
+                <Text style={styles.bottomSheetClose}>✕</Text>
+              </TouchableOpacity>
               <View style={styles.bottomSheetTitleContainer}>
                 <Text style={styles.bottomSheetTitle}>
                   Send {getNativeTokenInfo().symbol}
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => sendSheetRef.current?.dismiss()}>
-                <Text style={styles.bottomSheetClose}>✕</Text>
+              <TouchableOpacity onPress={handleOpenQRScanner}>
+                <Image
+                  source={require("./assets/scan2.png")}
+                  style={styles.scanIcon}
+                />
               </TouchableOpacity>
             </View>
 
@@ -4351,12 +4404,18 @@ function AppContent() {
                 </TouchableOpacity>
               </View>
               <TextInput
+                ref={sendAddressInputRef}
                 style={styles.sendInput}
                 placeholder="Enter address..."
                 placeholderTextColor="#666666"
                 value={sendAddress}
-                onChangeText={setSendAddress}
+                onChangeText={(text) => {
+                  setSendAddress(text);
+                  setAddressSelection(null); // Clear selection control when user types
+                }}
+                selection={addressSelection}
                 autoCapitalize="none"
+                textAlign="left"
               />
             </View>
 
@@ -5515,6 +5574,59 @@ function AppContent() {
         </SimpleActionSheet>
       </GestureHandlerRootView>
 
+      {/* QR Scanner Modal */}
+      {showQRScanner && (
+        <Modal
+          visible={showQRScanner}
+          animationType="slide"
+          onRequestClose={() => setShowQRScanner(false)}
+        >
+          <View style={styles.qrScannerContainer}>
+            <CameraView
+              onBarcodeScanned={handleQRCodeScanned}
+              barcodeScannerSettings={{
+                barcodeTypes: ["qr"],
+              }}
+              style={StyleSheet.absoluteFillObject}
+            />
+
+            {/* Overlay with scanning frame */}
+            <View style={styles.qrOverlayContainer}>
+              {/* Top overlay */}
+              <View style={styles.qrOverlayTop}>
+                <Text style={styles.qrScannerTitle}>Scan QR Code</Text>
+                <Text style={styles.qrScannerSubtitle}>
+                  Align QR code within the frame
+                </Text>
+              </View>
+
+              {/* Middle section with scanning frame */}
+              <View style={styles.qrOverlayMiddle}>
+                <View style={styles.qrOverlaySide} />
+                <View style={styles.qrScanFrame}>
+                  {/* Corner brackets */}
+                  <View style={styles.qrCornerTopLeft} />
+                  <View style={styles.qrCornerTopRight} />
+                  <View style={styles.qrCornerBottomLeft} />
+                  <View style={styles.qrCornerBottomRight} />
+                </View>
+                <View style={styles.qrOverlaySide} />
+              </View>
+
+              {/* Bottom overlay */}
+              <View style={styles.qrOverlayBottom}>
+                <TouchableOpacity
+                  style={styles.qrScannerCloseButton}
+                  onPress={() => setShowQRScanner(false)}
+                >
+                  <Text style={styles.qrScannerCloseText}>✕ Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
       {/* Settings - Full Page - Outside GestureHandler */}
       {showSettingsModal && (
         <View
@@ -6314,6 +6426,11 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
   },
+  sheetHeaderButton: {
+    fontSize: 18,
+    color: "#888888",
+    fontWeight: "400",
+  },
   activityCard: {
     backgroundColor: "#0a0a0a",
     borderRadius: 8,
@@ -6447,7 +6564,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#000000",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
@@ -6458,9 +6575,14 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   quickSwitchIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
+  quickSwitchIconX1: {
+    width: 21,
+    height: 21,
+    borderRadius: 10.5,
   },
   topBarRightIcons: {
     position: "absolute",
@@ -7754,6 +7876,7 @@ const styles = StyleSheet.create({
     color: "#4A90E2",
     fontWeight: "600",
   },
+<<<<<<< HEAD
   // Empty State Styles
   emptyStateContainer: {
     flex: 1,
@@ -7840,6 +7963,107 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#FFFFFF",
+  },
+  // QR Scanner styles
+  scanIcon: {
+    width: 24,
+    height: 24,
+    tintColor: "#888888",
+  },
+  qrScannerContainer: {
+    flex: 1,
+    backgroundColor: "#000000",
+  },
+  qrOverlayContainer: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
+  qrOverlayTop: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+  },
+  qrOverlayMiddle: {
+    flexDirection: "row",
+    height: 300,
+  },
+  qrOverlaySide: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+  },
+  qrScanFrame: {
+    width: 300,
+    height: 300,
+    backgroundColor: "transparent",
+    position: "relative",
+  },
+  qrOverlayBottom: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  qrScannerTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: 10,
+  },
+  qrScannerSubtitle: {
+    fontSize: 14,
+    color: "rgba(255, 255, 255, 0.9)",
+    textAlign: "center",
+  },
+  qrScannerCloseButton: {
+    backgroundColor: "#4A90E2",
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  qrScannerCloseText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  // Corner brackets
+  qrCornerTopLeft: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: 40,
+    height: 40,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+    borderColor: "#888888",
+  },
+  qrCornerTopRight: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: 40,
+    height: 40,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+    borderColor: "#888888",
+  },
+  qrCornerBottomLeft: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    width: 40,
+    height: 40,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+    borderColor: "#888888",
+  },
+  qrCornerBottomRight: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 40,
+    height: 40,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+    borderColor: "#888888",
   },
 });
 

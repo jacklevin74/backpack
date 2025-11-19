@@ -63,6 +63,7 @@ import {
 import SimpleActionSheet from "./components/SimpleActionSheet";
 import TokenIcon from "./src/components/TokenIcon";
 import QRCode from "react-native-qrcode-svg";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import TransportBLE from "@ledgerhq/react-native-hw-transport-ble";
 import AppSolana from "@ledgerhq/hw-app-solana";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -375,6 +376,8 @@ function AppContent() {
   // Send and Receive states
   const [sendAmount, setSendAmount] = useState("");
   const [sendAddress, setSendAddress] = useState("");
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [showSendConfirm, setShowSendConfirm] = useState(false);
   const [sendConfirming, setSendConfirming] = useState(false);
   const [sendSignature, setSendSignature] = useState("");
@@ -1259,6 +1262,40 @@ function AppContent() {
       text2: "Address copied to clipboard",
       position: "bottom",
     });
+  };
+
+  // QR Scanner functions
+  const handleOpenQRScanner = async () => {
+    if (!cameraPermission) {
+      return;
+    }
+
+    if (!cameraPermission.granted) {
+      const result = await requestCameraPermission();
+      if (!result.granted) {
+        Toast.show({
+          type: "error",
+          text1: "Permission Denied",
+          text2: "Please enable camera permission in settings",
+          position: "bottom",
+        });
+        return;
+      }
+    }
+    setShowQRScanner(true);
+  };
+
+  const handleQRCodeScanned = (result) => {
+    if (result && result.data) {
+      setShowQRScanner(false);
+      setSendAddress(result.data);
+      Toast.show({
+        type: "success",
+        text1: "QR Code Scanned",
+        text2: "Address populated",
+        position: "bottom",
+      });
+    }
   };
 
   const handleSendSubmit = async (amount, address) => {
@@ -4243,14 +4280,19 @@ function AppContent() {
           <View style={styles.bottomSheetContent}>
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
-              <View style={{ width: 24 }} />
+              <TouchableOpacity onPress={() => sendSheetRef.current?.dismiss()}>
+                <Text style={styles.bottomSheetClose}>✕</Text>
+              </TouchableOpacity>
               <View style={styles.bottomSheetTitleContainer}>
                 <Text style={styles.bottomSheetTitle}>
                   Send {getNativeTokenInfo().symbol}
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => sendSheetRef.current?.dismiss()}>
-                <Text style={styles.bottomSheetClose}>✕</Text>
+              <TouchableOpacity onPress={handleOpenQRScanner}>
+                <Image
+                  source={require("./assets/scan2.png")}
+                  style={styles.scanIcon}
+                />
               </TouchableOpacity>
             </View>
 
@@ -5453,6 +5495,59 @@ function AppContent() {
           </View>
         </SimpleActionSheet>
       </GestureHandlerRootView>
+
+      {/* QR Scanner Modal */}
+      {showQRScanner && (
+        <Modal
+          visible={showQRScanner}
+          animationType="slide"
+          onRequestClose={() => setShowQRScanner(false)}
+        >
+          <View style={styles.qrScannerContainer}>
+            <CameraView
+              onBarcodeScanned={handleQRCodeScanned}
+              barcodeScannerSettings={{
+                barcodeTypes: ["qr"],
+              }}
+              style={StyleSheet.absoluteFillObject}
+            />
+
+            {/* Overlay with scanning frame */}
+            <View style={styles.qrOverlayContainer}>
+              {/* Top overlay */}
+              <View style={styles.qrOverlayTop}>
+                <Text style={styles.qrScannerTitle}>Scan QR Code</Text>
+                <Text style={styles.qrScannerSubtitle}>
+                  Align QR code within the frame
+                </Text>
+              </View>
+
+              {/* Middle section with scanning frame */}
+              <View style={styles.qrOverlayMiddle}>
+                <View style={styles.qrOverlaySide} />
+                <View style={styles.qrScanFrame}>
+                  {/* Corner brackets */}
+                  <View style={styles.qrCornerTopLeft} />
+                  <View style={styles.qrCornerTopRight} />
+                  <View style={styles.qrCornerBottomLeft} />
+                  <View style={styles.qrCornerBottomRight} />
+                </View>
+                <View style={styles.qrOverlaySide} />
+              </View>
+
+              {/* Bottom overlay */}
+              <View style={styles.qrOverlayBottom}>
+                <TouchableOpacity
+                  style={styles.qrScannerCloseButton}
+                  onPress={() => setShowQRScanner(false)}
+                >
+                  <Text style={styles.qrScannerCloseText}>✕ Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
 
       {/* Settings - Full Page - Outside GestureHandler */}
       {showSettingsModal && (
@@ -7692,6 +7787,110 @@ const styles = StyleSheet.create({
   bottomTabTextActive: {
     color: "#4A90E2",
     fontWeight: "600",
+  },
+  // QR Scanner styles
+  scanIcon: {
+    width: 24,
+    height: 24,
+    tintColor: "#888888",
+  },
+  qrScannerContainer: {
+    flex: 1,
+    backgroundColor: "#000000",
+  },
+  qrOverlayContainer: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
+  qrOverlayTop: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 40,
+  },
+  qrOverlayMiddle: {
+    flexDirection: "row",
+    height: 300,
+  },
+  qrOverlaySide: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+  },
+  qrScanFrame: {
+    width: 300,
+    height: 300,
+    backgroundColor: "transparent",
+    position: "relative",
+  },
+  qrOverlayBottom: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  qrScannerTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: 10,
+  },
+  qrScannerSubtitle: {
+    fontSize: 14,
+    color: "rgba(255, 255, 255, 0.9)",
+    textAlign: "center",
+  },
+  qrScannerCloseButton: {
+    backgroundColor: "#4A90E2",
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  qrScannerCloseText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  // Corner brackets
+  qrCornerTopLeft: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: 40,
+    height: 40,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+    borderColor: "#888888",
+  },
+  qrCornerTopRight: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: 40,
+    height: 40,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+    borderColor: "#888888",
+  },
+  qrCornerBottomLeft: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    width: 40,
+    height: 40,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+    borderColor: "#888888",
+  },
+  qrCornerBottomRight: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 40,
+    height: 40,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+    borderColor: "#888888",
   },
 });
 

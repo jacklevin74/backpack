@@ -3497,7 +3497,7 @@ function AppContent() {
               >
                 <Image
                   source={require("./assets/x1.png")}
-                  style={styles.quickSwitchIcon}
+                  style={styles.quickSwitchIconX1}
                 />
               </TouchableOpacity>
               <TouchableOpacity
@@ -6517,6 +6517,11 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
+  },
+  quickSwitchIconX1: {
+    width: 21,
+    height: 21,
+    borderRadius: 10.5,
   },
   topBarRightIcons: {
     position: "absolute",

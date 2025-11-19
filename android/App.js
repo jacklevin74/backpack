@@ -6365,6 +6365,11 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
   },
+  sheetHeaderButton: {
+    fontSize: 18,
+    color: "#888888",
+    fontWeight: "400",
+  },
   activityCard: {
     backgroundColor: "#0a0a0a",
     borderRadius: 8,

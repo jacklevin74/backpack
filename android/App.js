@@ -37,6 +37,7 @@ import {
   Vibration,
   Animated,
   Switch,
+  BackHandler,
 } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import {
@@ -365,6 +366,7 @@ function AppContent() {
   // Ledger states
   const [ledgerScanning, setLedgerScanning] = useState(false);
   const [ledgerAccounts, setLedgerAccounts] = useState([]);
+  const [discoveredDevices, setDiscoveredDevices] = useState([]); // List of found Bluetooth devices
   const [ledgerConnecting, setLedgerConnecting] = useState(false);
   const [ledgerDeviceName, setLedgerDeviceName] = useState(null);
   const [ledgerDeviceId, setLedgerDeviceId] = useState(null); // Store device ID to skip scanning
@@ -391,6 +393,7 @@ function AppContent() {
   const [sendError, setSendError] = useState("");
   const [pendingTransaction, setPendingTransaction] = useState(null);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [showAuthForPrivateKey, setShowAuthForPrivateKey] = useState(false);
 
   // Browser/WebView states
   const [browserUrl, setBrowserUrl] = useState(
@@ -1096,6 +1099,47 @@ function AppContent() {
     setChangeSeedPhraseMode("enter");
   };
 
+  // Handle hardware back button
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        // If settings modal is open
+        if (showSettingsModal) {
+          if (settingsNavigationStack.length > 0) {
+            navigateBackInSettings();
+          } else {
+            closeAllSettings();
+          }
+          return true; // Prevent default back behavior
+        }
+
+        // If wallet edit modal is open
+        if (editingWallet) {
+          editWalletSheetRef.current?.dismiss();
+          setEditingWallet(null);
+          return true;
+        }
+
+        // If token chart modal is open
+        if (selectedChartToken) {
+          setSelectedChartToken(null);
+          return true;
+        }
+
+        // Let the app handle default back behavior (exit)
+        return false;
+      }
+    );
+
+    return () => backHandler.remove();
+  }, [
+    showSettingsModal,
+    settingsNavigationStack,
+    editingWallet,
+    selectedChartToken,
+  ]);
+
   const handleChangeSeedPhrase = (seedPhrase) => {
     // If seedPhrase is provided (from generated), use it; otherwise it will be read from input
     if (seedPhrase) {
@@ -1718,29 +1762,23 @@ function AppContent() {
                   errorMessage += "Invalid transaction data. Please try again.";
                 } else if (
                   ledgerError.message &&
-                  ledgerError.message.includes("0x6985")
+                  (ledgerError.message.includes("0x6b0c") ||
+                    ledgerError.message.includes("0x5515"))
                 ) {
                   errorMessage +=
-                    "Transaction rejected by user on Ledger device.";
+                    "Ledger is locked or Solana app is not ready. Please unlock your device and open the Solana app.";
                 } else if (
                   ledgerError.message &&
-                  ledgerError.message.includes("0x6b0c")
+                  (ledgerError.message.includes("Invalid tag") ||
+                    ledgerError.message.includes("TransportError"))
                 ) {
                   errorMessage +=
-                    "Ledger is locked. Please unlock your device and try again.";
-                } else if (
-                  ledgerError.message &&
-                  ledgerError.message.includes("BleError")
-                ) {
-                  errorMessage +=
-                    "Bluetooth connection failed. Please ensure Ledger is connected via Bluetooth.";
+                    "Communication error (Invalid Tag). Please update your Ledger firmware and Solana app, or try a different cable/connection.";
+                } else if (ledgerError.message) {
+                  errorMessage += ledgerError.message;
                 } else {
-                  errorMessage +=
-                    ledgerError.message ||
-                    "Device not connected or operation cancelled.";
+                  throw new Error(errorMessage);
                 }
-
-                throw new Error(errorMessage);
               }
             } else {
               // Sign with keypair for regular wallets
@@ -2459,21 +2497,7 @@ function AppContent() {
       return;
     }
 
-    // If Bluetooth device is already stored/connected, skip setup instructions
-    if (ledgerDeviceInfo || ledgerDeviceId) {
-      console.log("Bluetooth device already known, skipping setup dialog");
-      ledgerSheetRef.current?.present();
-      scanForLedger();
-      return;
-    }
-
-    // Show setup instructions for first-time connection
-    Toast.show({
-      type: "info",
-      text1: "Ledger Setup",
-      text2: "Ensure Ledger is unlocked with Solana app open",
-      position: "bottom",
-    });
+    // Always show sheet and scan to allow selection
     ledgerSheetRef.current?.present();
     scanForLedger();
   };
@@ -2632,6 +2656,7 @@ function AppContent() {
 
       setLedgerScanning(true);
       setLedgerAccounts([]);
+      setDiscoveredDevices([]); // Clear previous results
       console.log("Starting Ledger Bluetooth scan...");
 
       const subscription = TransportBLE.listen({
@@ -2639,37 +2664,18 @@ function AppContent() {
           console.log("Ledger scan complete");
           setLedgerScanning(false);
         },
-        next: async (e) => {
+        next: (e) => {
           console.log("Ledger device event received!");
           console.log("Event type:", e.type);
           if (e.type === "add") {
             const device = e.descriptor;
             console.log("Found Ledger device:", device);
 
-            // Unsubscribe immediately to prevent finding the device multiple times
-            try {
-              subscription.unsubscribe();
-              console.log("✓ Stopped scan to prevent duplicate connections");
-              ledgerScanSubscriptionRef.current = null;
-            } catch (unsubError) {
-              console.log("⚠ Error stopping scan:", unsubError.message);
-            }
-
-            setLedgerScanning(false);
-
-            // Store device name for UI display
-            const deviceName =
-              device.deviceName || device.name || "Ledger Device";
-            setLedgerDeviceName(deviceName);
-            console.log("Device name:", deviceName);
-
-            // Wait for BLE stack to settle after scan cleanup before connecting
-            console.log(
-              "Waiting for BLE stack to settle after scan cleanup..."
-            );
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-
-            connectToLedger(device);
+            setDiscoveredDevices((prev) => {
+              // Avoid duplicates
+              if (prev.some((d) => d.id === device.id)) return prev;
+              return [...prev, device];
+            });
           }
         },
         error: (error) => {
@@ -2718,6 +2724,8 @@ function AppContent() {
     const MAX_RETRIES = 3;
     let transport = null;
 
+    console.log("connectToLedger called with:", typeof device, device);
+
     try {
       setLedgerConnecting(true);
 
@@ -2747,6 +2755,11 @@ function AppContent() {
         ? device.name || device.localName
         : "Ledger (stored)";
 
+      if (!deviceId) {
+        console.error("Invalid device ID from input:", device);
+        throw new Error("Invalid device ID. Please try scanning again.");
+      }
+
       console.log("Connecting to Ledger device:", deviceName);
       console.log("Device ID:", deviceId);
       console.log("Using full device descriptor:", isDeviceDescriptor);
@@ -2764,8 +2777,15 @@ function AppContent() {
       // Disconnect any existing connection to this device before attempting new connection
       try {
         console.log("Disconnecting any existing connection to device...");
-        await TransportBLE.disconnect(deviceId);
-        console.log("Previous connection disconnected");
+        // Attempt to disconnect using the device ID if supported
+        if (TransportBLE.disconnect) {
+          await TransportBLE.disconnect(deviceId);
+          console.log("Previous connection disconnected");
+        } else {
+          console.log(
+            "TransportBLE.disconnect not supported in this version, skipping"
+          );
+        }
         // Wait for BLE stack to settle after disconnect
         await new Promise((resolve) => setTimeout(resolve, 1000));
       } catch (disconnectError) {
@@ -2779,11 +2799,11 @@ function AppContent() {
 
       console.log("Opening BLE transport with timeout...");
 
-      // Open transport with timeout (8 seconds)
+      // Open transport with timeout (20 seconds)
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(
-          () => reject(new Error("Connection timeout after 8 seconds")),
-          8000
+          () => reject(new Error("Connection timeout after 20 seconds")),
+          20000
         )
       );
 
@@ -2922,6 +2942,13 @@ function AppContent() {
       ) {
         errorMessage +=
           "Pairing failed or was not accepted in time.\n\nPlease ensure you:\n• Accept the pairing request on your PHONE when it appears\n• Approve the connection on your LEDGER device\n• Have the Solana app open on the Ledger";
+      } else if (
+        error.message &&
+        (error.message.includes("Invalid tag") ||
+          error.message.includes("TransportError"))
+      ) {
+        errorMessage +=
+          "Communication error (Invalid Tag). Please update your Ledger firmware and Solana app, or try a different cable/connection.";
       } else if (error.message) {
         errorMessage += error.message;
       } else {
@@ -4909,7 +4936,7 @@ function AppContent() {
                 onPress={() => {
                   editWalletSheetRef.current?.dismiss();
                   setTimeout(() => {
-                    privateKeySheetRef.current?.present();
+                    setShowAuthForPrivateKey(true);
                   }, 100);
                 }}
               >
@@ -5194,60 +5221,102 @@ function AppContent() {
               </TouchableOpacity>
             </View>
 
-            {ledgerScanning ? (
-              <View style={styles.ledgerStatus}>
-                <Text style={styles.ledgerStatusText}>Scanning...</Text>
-                <Text style={styles.ledgerStatusSubtext}>
-                  Make sure Bluetooth is on and Solana app is open
-                </Text>
-              </View>
-            ) : ledgerConnecting ? (
-              <View style={styles.ledgerStatus}>
-                <Text style={styles.ledgerStatusText}>
-                  {ledgerDeviceName
-                    ? `Connecting to ${ledgerDeviceName}...`
-                    : "Connecting..."}
-                </Text>
-              </View>
-            ) : Array.isArray(ledgerAccounts) && ledgerAccounts.length > 0 ? (
-              <>
-                <Text style={styles.ledgerAccountsTitle}>
-                  Select an account:
-                </Text>
-                <ScrollView style={styles.ledgerAccountsList}>
-                  {ledgerAccounts.map((account) => (
+            {/* Discovered Devices List or Account Selection */}
+            <View style={styles.ledgerAccountsList}>
+              {ledgerAccounts.length > 0 ? (
+                // Account Selection UI
+                <>
+                  <Text style={styles.ledgerStatusText}>Select Account</Text>
+                  <Text style={styles.ledgerStatusSubtext}>
+                    Choose which account to import
+                  </Text>
+                  <FlatList
+                    data={ledgerAccounts}
+                    keyExtractor={(item) => item.index.toString()}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={styles.ledgerAccount}
+                        onPress={() => handleSelectLedgerAccount(item)}
+                      >
+                        <View style={styles.ledgerAccountLeft}>
+                          <View style={styles.ledgerAccountInfo}>
+                            <Text style={styles.ledgerAccountIndex}>
+                              Account {item.index + 1}
+                            </Text>
+                            <Text style={styles.ledgerAccountAddress}>
+                              {item.address}
+                            </Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    )}
+                  />
+                </>
+              ) : ledgerScanning && discoveredDevices.length === 0 ? (
+                // Scanning UI
+                <View style={styles.ledgerStatus}>
+                  <Text style={styles.ledgerStatusText}>
+                    Scanning for devices...
+                  </Text>
+                  <Text style={styles.ledgerStatusSubtext}>
+                    Please ensure your Ledger is unlocked and Bluetooth is on.
+                  </Text>
+                </View>
+              ) : (
+                // Device Discovery UI
+                <FlatList
+                  data={discoveredDevices}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
                     <TouchableOpacity
-                      key={`ledger-${account.index}`}
                       style={styles.ledgerAccount}
-                      onPress={() => handleSelectLedgerAccount(account)}
+                      onPress={async () => {
+                        // Stop scanning before connecting
+                        if (ledgerScanSubscriptionRef.current) {
+                          try {
+                            ledgerScanSubscriptionRef.current.unsubscribe();
+                            ledgerScanSubscriptionRef.current = null;
+                          } catch (e) {}
+                        }
+                        setLedgerScanning(false);
+
+                        // Store device name
+                        const deviceName =
+                          item.deviceName ||
+                          item.name ||
+                          item.localName ||
+                          "Ledger Device";
+                        setLedgerDeviceName(deviceName);
+
+                        // Connect
+                        connectToLedger(item);
+                      }}
                     >
                       <View style={styles.ledgerAccountLeft}>
-                        <Image
-                          source={currentNetwork.logo}
-                          style={styles.x1LogoLarge}
-                        />
                         <View style={styles.ledgerAccountInfo}>
                           <Text style={styles.ledgerAccountIndex}>
-                            Account {account.index + 1}
+                            {item.deviceName ||
+                              item.name ||
+                              item.localName ||
+                              "Unknown Device"}
                           </Text>
-                          <Text
-                            style={styles.ledgerAccountAddress}
-                            numberOfLines={1}
-                            ellipsizeMode="middle"
-                          >
-                            {account.address || "Unknown address"}
+                          <Text style={styles.ledgerAccountAddress}>
+                            ID: {item.id}
                           </Text>
                         </View>
                       </View>
                     </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </>
-            ) : (
-              <View style={styles.ledgerStatus}>
-                <Text style={styles.ledgerStatusText}>Scanning...</Text>
-              </View>
-            )}
+                  )}
+                  ListEmptyComponent={
+                    !ledgerScanning && (
+                      <Text style={styles.debugNoLogs}>
+                        No devices found. Pull to refresh or try again.
+                      </Text>
+                    )
+                  }
+                />
+              )}
+            </View>
           </View>
         </SimpleActionSheet>
 
@@ -6294,6 +6363,28 @@ function AppContent() {
               setSecurityAuthRequired(false);
               setSecurityAuthenticated(true);
               navigateToSettingsScreen("manageSecurity");
+            }}
+          />
+        </View>
+      )}
+
+      {showAuthForPrivateKey && (
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+          }}
+        >
+          <PinUnlock
+            onUnlock={() => {
+              setShowAuthForPrivateKey(false);
+              setTimeout(() => {
+                privateKeySheetRef.current?.present();
+              }, 100);
             }}
           />
         </View>

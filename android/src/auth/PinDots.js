@@ -18,16 +18,16 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 15,
-    marginVertical: 30,
+    marginVertical: 16,
   },
   dot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.3)",
+    borderColor: "#FFFFFF",
     backgroundColor: "transparent",
+    marginHorizontal: 8,
   },
   dotFilled: {
     backgroundColor: "#FFFFFF",

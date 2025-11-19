@@ -372,10 +372,15 @@ function AppContent() {
   const ledgerScanSubscriptionRef = useRef(null); // Store scan subscription for cleanup
   const ledgerCleaningRef = useRef(false); // Prevent concurrent cleanup
   const ledgerCleanedUpRef = useRef(false); // Track if cleanup has already been completed
+  const sendAddressInputRef = useRef(null); // Ref for send address TextInput
 
   // Send and Receive states
   const [sendAmount, setSendAmount] = useState("");
   const [sendAddress, setSendAddress] = useState("");
+  const [addressSelection, setAddressSelection] = useState({
+    start: 0,
+    end: 0,
+  });
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [showSendConfirm, setShowSendConfirm] = useState(false);
@@ -1289,6 +1294,12 @@ function AppContent() {
     if (result && result.data) {
       setShowQRScanner(false);
       setSendAddress(result.data);
+
+      // Delay setting selection to ensure text is rendered first
+      setTimeout(() => {
+        setAddressSelection({ start: 0, end: 0 });
+      }, 100);
+
       Toast.show({
         type: "success",
         text1: "QR Code Scanned",
@@ -4332,12 +4343,18 @@ function AppContent() {
                 </TouchableOpacity>
               </View>
               <TextInput
+                ref={sendAddressInputRef}
                 style={styles.sendInput}
                 placeholder="Enter address..."
                 placeholderTextColor="#666666"
                 value={sendAddress}
-                onChangeText={setSendAddress}
+                onChangeText={(text) => {
+                  setSendAddress(text);
+                  setAddressSelection(null); // Clear selection control when user types
+                }}
+                selection={addressSelection}
                 autoCapitalize="none"
+                textAlign="left"
               />
             </View>
 

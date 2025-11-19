@@ -3630,7 +3630,8 @@ function AppContent() {
                 testID="x1-network-button"
                 style={[
                   styles.quickSwitchButton,
-                  currentNetwork.id === "X1" && styles.quickSwitchButtonActive,
+                  currentNetwork.id === "X1" &&
+                    styles.quickSwitchButtonActiveX1,
                 ]}
                 onPress={() => {
                   triggerHaptic();
@@ -4044,7 +4045,12 @@ function AppContent() {
           ref={networkSheetRef}
           backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
+          <View
+            style={[
+              styles.bottomSheetContent,
+              { backgroundColor: easterEggMode ? "#111827" : "#000" },
+            ]}
+          >
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
               <TouchableOpacity
@@ -4177,7 +4183,10 @@ function AppContent() {
         >
           <ScrollView
             testID="wallet-list-sheet"
-            contentContainerStyle={[styles.bottomSheetScrollContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}
+            contentContainerStyle={[
+              styles.bottomSheetScrollContent,
+              { backgroundColor: easterEggMode ? "#111827" : "#000" },
+            ]}
             showsVerticalScrollIndicator={false}
           >
             {/* Header */}
@@ -4279,7 +4288,12 @@ function AppContent() {
           ref={accountSheetRef}
           backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
+          <View
+            style={[
+              styles.bottomSheetContent,
+              { backgroundColor: easterEggMode ? "#111827" : "#000" },
+            ]}
+          >
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
               <TouchableOpacity
@@ -4374,7 +4388,12 @@ function AppContent() {
           ref={receiveSheetRef}
           backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
+          <View
+            style={[
+              styles.bottomSheetContent,
+              { backgroundColor: easterEggMode ? "#111827" : "#000" },
+            ]}
+          >
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
               <Text style={styles.bottomSheetTitle}>
@@ -4434,7 +4453,12 @@ function AppContent() {
           ref={sendSheetRef}
           backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
+          <View
+            style={[
+              styles.bottomSheetContent,
+              { backgroundColor: easterEggMode ? "#111827" : "#000" },
+            ]}
+          >
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
               <TouchableOpacity onPress={() => sendSheetRef.current?.dismiss()}>
@@ -4519,7 +4543,12 @@ function AppContent() {
           ref={addressSheetRef}
           backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
+          <View
+            style={[
+              styles.bottomSheetContent,
+              { backgroundColor: easterEggMode ? "#111827" : "#000" },
+            ]}
+          >
             {/* Header */}
             <View style={styles.bottomSheetHeader}>
               <Text style={styles.bottomSheetTitle}>Select Address</Text>
@@ -4668,7 +4697,10 @@ function AppContent() {
             onPress={() => setShowAddWalletModal(false)}
           >
             <Pressable
-              style={[styles.settingsDrawerContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}
+              style={[
+                styles.settingsDrawerContent,
+                { backgroundColor: easterEggMode ? "#111827" : "#000" },
+              ]}
               onPress={(e) => e.stopPropagation()}
             >
               <View style={styles.settingsDrawerContentArea}>
@@ -4715,7 +4747,10 @@ function AppContent() {
             onPress={() => setShowCreateWalletModal(false)}
           >
             <Pressable
-              style={[styles.settingsDrawerContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}
+              style={[
+                styles.settingsDrawerContent,
+                { backgroundColor: easterEggMode ? "#111827" : "#000" },
+              ]}
               onPress={(e) => e.stopPropagation()}
             >
               <View style={styles.settingsDrawerContentArea}>
@@ -4781,7 +4816,10 @@ function AppContent() {
             onPress={() => setShowImportWalletModal(false)}
           >
             <Pressable
-              style={[styles.settingsDrawerContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}
+              style={[
+                styles.settingsDrawerContent,
+                { backgroundColor: easterEggMode ? "#111827" : "#000" },
+              ]}
               onPress={(e) => e.stopPropagation()}
             >
               <View style={styles.settingsDrawerContentArea}>
@@ -5038,7 +5076,10 @@ function AppContent() {
             }}
           >
             <Pressable
-              style={[styles.settingsDrawerContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}
+              style={[
+                styles.settingsDrawerContent,
+                { backgroundColor: easterEggMode ? "#111827" : "#000" },
+              ]}
               onPress={(e) => e.stopPropagation()}
             >
               <View style={styles.settingsDrawerContentArea}>
@@ -5111,14 +5152,18 @@ function AppContent() {
                   <TouchableOpacity
                     style={[
                       styles.changeNameConfirmButton,
-                      !editWalletName.trim() && styles.changeNameConfirmButtonDisabled,
+                      !editWalletName.trim() &&
+                        styles.changeNameConfirmButtonDisabled,
                     ]}
                     onPress={() => {
                       console.log("CONFIRM BUTTON PRESSED");
                       console.log("editingWallet:", editingWallet);
                       console.log("editWalletName:", editWalletName);
                       if (editingWallet && editWalletName.trim()) {
-                        console.log("Saving wallet name:", editWalletName.trim());
+                        console.log(
+                          "Saving wallet name:",
+                          editWalletName.trim()
+                        );
                         const updatedWallets = wallets.map((w) =>
                           w.id === editingWallet.id
                             ? { ...w, name: editWalletName.trim() }
@@ -5151,7 +5196,12 @@ function AppContent() {
           ref={privateKeySheetRef}
           backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
+          <View
+            style={[
+              styles.bottomSheetContent,
+              { backgroundColor: easterEggMode ? "#111827" : "#000" },
+            ]}
+          >
             <View style={styles.bottomSheetHeader}>
               <View style={{ width: 32 }} />
               <Text style={styles.bottomSheetTitle}>Private Key</Text>
@@ -5204,7 +5254,12 @@ function AppContent() {
           ref={seedPhraseSheetRef}
           backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
+          <View
+            style={[
+              styles.bottomSheetContent,
+              { backgroundColor: easterEggMode ? "#111827" : "#000" },
+            ]}
+          >
             <View style={styles.bottomSheetHeader}>
               <View style={{ width: 32 }} />
               <Text style={styles.bottomSheetTitle}>Seed Phrase</Text>
@@ -5272,8 +5327,18 @@ function AppContent() {
           ref={ledgerSheetRef}
           backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
-            <View style={[styles.bottomSheetHeader, { paddingTop: Math.max(insets.top, 8) }]}>
+          <View
+            style={[
+              styles.bottomSheetContent,
+              { backgroundColor: easterEggMode ? "#111827" : "#000" },
+            ]}
+          >
+            <View
+              style={[
+                styles.bottomSheetHeader,
+                { paddingTop: Math.max(insets.top, 8) },
+              ]}
+            >
               <View style={{ width: 32 }} />
               <Text style={styles.bottomSheetTitle}>Connect Ledger</Text>
               <TouchableOpacity
@@ -5543,7 +5608,12 @@ function AppContent() {
           snapPoints={["45%"]}
           backgroundColor={easterEggMode ? "#111827" : "#000"}
         >
-          <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
+          <View
+            style={[
+              styles.bottomSheetContent,
+              { backgroundColor: easterEggMode ? "#111827" : "#000" },
+            ]}
+          >
             <View style={styles.bottomSheetHeader}>
               <View style={{ width: 32 }} />
               <Text style={styles.bottomSheetTitle}>Confirm Transaction</Text>
@@ -5896,9 +5966,9 @@ function AppContent() {
           onRequestClose={() => setShowQRScanner(false)}
           statusBarTranslucent
         >
-          <SafeAreaViewContext 
+          <SafeAreaViewContext
             style={styles.qrScannerContainer}
-            edges={['top']}
+            edges={["top"]}
           >
             <CameraView
               onBarcodeScanned={handleQRCodeScanned}
@@ -6392,7 +6462,12 @@ function AppContent() {
                   settingsNavigationStack.length - 1
                 ] === "exportSeed" ? (
                 // Export Seed Phrase Screen
-                <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
+                <View
+                  style={[
+                    styles.bottomSheetContent,
+                    { backgroundColor: easterEggMode ? "#111827" : "#000" },
+                  ]}
+                >
                   {masterSeedPhrase ? (
                     <>
                       <Text style={styles.seedPhraseTitle}>
@@ -6429,7 +6504,12 @@ function AppContent() {
                 </View>
               ) : (
                 // Change Seed Phrase Screen
-                <View style={[styles.bottomSheetContent, { backgroundColor: easterEggMode ? "#111827" : "#000" }]}>
+                <View
+                  style={[
+                    styles.bottomSheetContent,
+                    { backgroundColor: easterEggMode ? "#111827" : "#000" },
+                  ]}
+                >
                   {/* Mode Selector */}
                   <View
                     style={{
@@ -6938,6 +7018,10 @@ const styles = StyleSheet.create({
     width: 21,
     height: 21,
     borderRadius: 10.5,
+  },
+  quickSwitchButtonActiveX1: {
+    borderColor: "#4A90E2",
+    borderWidth: 1.2,
   },
   topBarRightIcons: {
     position: "absolute",

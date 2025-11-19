@@ -6635,12 +6635,15 @@ const styles = StyleSheet.create({
   emptyStateScrollContent: {
     flexGrow: 1,
     justifyContent: "center",
-    padding: 16,
+    paddingTop: 60,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
   },
   emptyStateContainer: {
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 40,
+    paddingTop: 40,
+    paddingBottom: 40,
     paddingHorizontal: 32,
     minHeight: 200,
   },

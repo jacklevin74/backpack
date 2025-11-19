@@ -168,12 +168,12 @@ const SimpleActionSheet = forwardRef(
                 borderTopRightRadius: cornerRadius,
                 paddingBottom: 20 + insets.bottom,
                 transform: [{ translateY }],
-                // Shadow/glow effect
-                shadowColor: "#888888",
+                // Shadow/glow effect - more visible in both modes
+                shadowColor: backgroundColor === "#111827" ? "#888888" : "#AAAAAA",
                 shadowOffset: { width: 0, height: -4 },
-                shadowOpacity: 0.4,
-                shadowRadius: 12,
-                elevation: 16,
+                shadowOpacity: backgroundColor === "#111827" ? 0.4 : 0.6,
+                shadowRadius: 16,
+                elevation: 20,
               },
             ]}
           >

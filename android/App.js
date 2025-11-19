@@ -7876,7 +7876,6 @@ const styles = StyleSheet.create({
     color: "#4A90E2",
     fontWeight: "600",
   },
-<<<<<<< HEAD
   // Empty State Styles
   emptyStateContainer: {
     flex: 1,

@@ -368,8 +368,11 @@ function AppContent() {
   const [ledgerAccounts, setLedgerAccounts] = useState([]);
   const [discoveredDevices, setDiscoveredDevices] = useState([]); // List of found Bluetooth devices
   const [ledgerConnecting, setLedgerConnecting] = useState(false);
+  const [ledgerWalletProgress, setLedgerWalletProgress] = useState(0); // Track wallet discovery progress (0-5)
   const [ledgerDeviceName, setLedgerDeviceName] = useState(null);
   const [ledgerDeviceId, setLedgerDeviceId] = useState(null); // Store device ID to skip scanning
+  const [ledgerError, setLedgerError] = useState(""); // Error message displayed in Ledger modal
+  const ledgerErrorSlideAnim = useRef(new Animated.Value(100)).current; // Animation for toast slide-up
   const [ledgerDeviceInfo, setLedgerDeviceInfo] = useState(null); // Store device info (name, id)
   const [ledgerConnectionType, setLedgerConnectionType] = useState("usb"); // 'usb' or 'bluetooth'
   const ledgerTransportRef = useRef(null); // Store transport reference for cleanup
@@ -691,6 +694,32 @@ function AppContent() {
         });
     }
   }, [selectedWallet]);
+
+  // Auto-dismiss ledger error toast after 3 seconds with slide animation
+  useEffect(() => {
+    if (ledgerError) {
+      // Slide up animation
+      Animated.spring(ledgerErrorSlideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 65,
+        friction: 10,
+      }).start();
+
+      // Auto-dismiss after 3 seconds
+      const timer = setTimeout(() => {
+        // Slide down animation
+        Animated.timing(ledgerErrorSlideAnim, {
+          toValue: 100,
+          duration: 200,
+          useNativeDriver: true,
+        }).start(() => {
+          setLedgerError("");
+        });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [ledgerError]);
 
   // Check network connectivity after 5 seconds
   useEffect(() => {
@@ -2665,15 +2694,18 @@ function AppContent() {
           setLedgerScanning(false);
         },
         next: (e) => {
-          console.log("Ledger device event received!");
-          console.log("Event type:", e.type);
           if (e.type === "add") {
             const device = e.descriptor;
-            console.log("Found Ledger device:", device);
 
             setDiscoveredDevices((prev) => {
               // Avoid duplicates
               if (prev.some((d) => d.id === device.id)) return prev;
+              // Only log when a NEW device is found
+              console.log(
+                "Found new Ledger device:",
+                device.name || device.localName,
+                device.id
+              );
               return [...prev, device];
             });
           }
@@ -2697,17 +2729,15 @@ function AppContent() {
       ledgerScanSubscriptionRef.current = subscription;
       console.log("Scan subscription created and stored");
 
-      // Stop scanning after 30 seconds
+      // Stop scanning after 10 seconds
       setTimeout(() => {
         if (ledgerScanSubscriptionRef.current) {
           ledgerScanSubscriptionRef.current.unsubscribe();
           ledgerScanSubscriptionRef.current = null;
           setLedgerScanning(false);
-          console.log(
-            "Ledger scan timeout - no devices found after 30 seconds"
-          );
+          console.log("Ledger scan stopped after 10 seconds");
         }
-      }, 30000);
+      }, 10000);
     } catch (error) {
       setLedgerScanning(false);
       console.error("Error starting Ledger scan:", error);
@@ -2728,6 +2758,7 @@ function AppContent() {
 
     try {
       setLedgerConnecting(true);
+      setLedgerWalletProgress(0); // Reset progress
 
       // Clean up any existing transport first
       if (ledgerTransportRef.current) {
@@ -2850,11 +2881,17 @@ function AppContent() {
 
         console.log(`Address ${i}: ${addressString}`);
 
-        accounts.push({
+        const newAccount = {
           index: i,
           address: addressString,
           derivationPath,
-        });
+        };
+
+        accounts.push(newAccount);
+
+        // Update state immediately as each wallet is discovered
+        setLedgerAccounts([...accounts]);
+        setLedgerWalletProgress(i + 1);
       }
 
       // DON'T close transport immediately! Keep it alive.
@@ -2866,8 +2903,7 @@ function AppContent() {
       console.log("Keeping transport alive for account selection...");
       console.log("Successfully retrieved Ledger accounts!");
 
-      // Set accounts and update state - transport stays alive
-      setLedgerAccounts(accounts);
+      // Finish connecting state
       setLedgerConnecting(false);
       console.log(`Found ${accounts.length} accounts from Ledger`);
     } catch (error) {
@@ -3104,12 +3140,7 @@ function AppContent() {
     const isDuplicate = wallets.some((w) => w.publicKey === account.address);
 
     if (isDuplicate) {
-      Toast.show({
-        type: "error",
-        text1: "Duplicate Wallet",
-        text2: "This wallet has already been added.",
-        position: "bottom",
-      });
+      setLedgerError("This wallet has already been added.");
       return;
     }
 
@@ -5224,29 +5255,87 @@ function AppContent() {
             {/* Discovered Devices List or Account Selection */}
             <View style={styles.ledgerAccountsList}>
               {ledgerAccounts.length > 0 ? (
-                // Account Selection UI
+                // Account Selection UI - Prettier Design
                 <>
-                  <Text style={styles.ledgerStatusText}>Select Account</Text>
-                  <Text style={styles.ledgerStatusSubtext}>
-                    Choose which account to import
-                  </Text>
+                  <View style={{ paddingHorizontal: 20, paddingTop: 10 }}>
+                    <Text style={styles.ledgerStatusText}>Select Account</Text>
+                    <Text style={styles.ledgerStatusSubtext}>
+                      Choose which account to import
+                    </Text>
+                  </View>
                   <FlatList
                     data={ledgerAccounts}
                     keyExtractor={(item) => item.index.toString()}
+                    contentContainerStyle={{
+                      paddingHorizontal: 20,
+                      paddingTop: 16,
+                    }}
                     renderItem={({ item }) => (
                       <TouchableOpacity
-                        style={styles.ledgerAccount}
                         onPress={() => handleSelectLedgerAccount(item)}
+                        style={{
+                          backgroundColor: "#1a1a1a",
+                          borderRadius: 12,
+                          padding: 16,
+                          marginBottom: 12,
+                          borderWidth: 1,
+                          borderColor: "rgba(255, 255, 255, 0.1)",
+                        }}
                       >
-                        <View style={styles.ledgerAccountLeft}>
-                          <View style={styles.ledgerAccountInfo}>
-                            <Text style={styles.ledgerAccountIndex}>
-                              Account {item.index + 1}
-                            </Text>
-                            <Text style={styles.ledgerAccountAddress}>
-                              {item.address}
+                        <View
+                          style={{ flexDirection: "row", alignItems: "center" }}
+                        >
+                          {/* Account Icon */}
+                          <View
+                            style={{
+                              width: 40,
+                              height: 40,
+                              borderRadius: 20,
+                              backgroundColor: "#4A90E2",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              marginRight: 12,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: "#FFFFFF",
+                                fontSize: 16,
+                                fontWeight: "600",
+                              }}
+                            >
+                              {item.index + 1}
                             </Text>
                           </View>
+                          {/* Account Info */}
+                          <View style={{ flex: 1 }}>
+                            <Text
+                              style={{
+                                color: "#FFFFFF",
+                                fontSize: 16,
+                                fontWeight: "600",
+                                marginBottom: 4,
+                              }}
+                            >
+                              Account {item.index + 1}
+                            </Text>
+                            <Text
+                              style={{ color: "#999999", fontSize: 12 }}
+                              numberOfLines={1}
+                            >
+                              {item.address.slice(0, 8)}...
+                              {item.address.slice(-8)}
+                            </Text>
+                          </View>
+                          {/* Arrow */}
+                          <Text
+                            style={{
+                              color: "rgba(255, 255, 255, 0.4)",
+                              fontSize: 20,
+                            }}
+                          >
+                            ›
+                          </Text>
                         </View>
                       </TouchableOpacity>
                     )}
@@ -5267,6 +5356,65 @@ function AppContent() {
                 <FlatList
                   data={discoveredDevices}
                   keyExtractor={(item) => item.id}
+                  ListFooterComponent={
+                    ledgerConnecting ? (
+                      // Wallet Discovery Progress Indicator - Simple centered design
+                      <View
+                        style={{
+                          alignItems: "center",
+                          paddingVertical: 24,
+                          paddingHorizontal: 40,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: "rgba(255, 255, 255, 0.6)",
+                            fontSize: 13,
+                            marginBottom: 12,
+                            textAlign: "center",
+                          }}
+                        >
+                          {ledgerWalletProgress > 0
+                            ? `Discovering wallets ${ledgerWalletProgress}/5`
+                            : "Connecting to Ledger..."}
+                        </Text>
+                        {ledgerWalletProgress > 0 && (
+                          <>
+                            <View
+                              style={{
+                                width: "100%",
+                                height: 3,
+                                backgroundColor: "rgba(74, 144, 226, 0.15)",
+                                borderRadius: 1.5,
+                                overflow: "hidden",
+                                marginBottom: 12,
+                              }}
+                            >
+                              <View
+                                style={{
+                                  width: `${(ledgerWalletProgress / 5) * 100}%`,
+                                  height: "100%",
+                                  backgroundColor: "#4A90E2",
+                                }}
+                              />
+                            </View>
+                            <Text
+                              style={{
+                                color: "rgba(255, 255, 255, 0.4)",
+                                fontSize: 11,
+                                textAlign: "center",
+                              }}
+                            >
+                              {ledgerAccounts
+                                .slice(0, ledgerWalletProgress)
+                                .map((acc, i) => acc.address.slice(0, 4))
+                                .join(" • ")}
+                            </Text>
+                          </>
+                        )}
+                      </View>
+                    ) : null
+                  }
                   renderItem={({ item }) => (
                     <TouchableOpacity
                       style={styles.ledgerAccount}
@@ -5317,6 +5465,44 @@ function AppContent() {
                 />
               )}
             </View>
+
+            {/* Custom toast notification for Ledger errors */}
+            {ledgerError ? (
+              <Animated.View
+                style={{
+                  position: "absolute",
+                  bottom: 20,
+                  left: 20,
+                  right: 20,
+                  backgroundColor: "#1a1a1a",
+                  borderRadius: 8,
+                  padding: 16,
+                  borderLeftWidth: 4,
+                  borderLeftColor: "#4A90E2",
+                  minWidth: 300,
+                  transform: [{ translateY: ledgerErrorSlideAnim }],
+                }}
+              >
+                <Text
+                  style={{
+                    color: "#FFFFFF",
+                    fontWeight: "600",
+                    fontSize: 14,
+                  }}
+                >
+                  Duplicate Wallet
+                </Text>
+                <Text
+                  style={{
+                    color: "#999999",
+                    fontSize: 12,
+                    marginTop: 4,
+                  }}
+                >
+                  {ledgerError}
+                </Text>
+              </Animated.View>
+            ) : null}
           </View>
         </SimpleActionSheet>
 

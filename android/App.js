@@ -65,7 +65,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 // Replaced @gorhom/bottom-sheet with SimpleActionSheet
 import SimpleActionSheet from "./components/SimpleActionSheet";
-import TokenIcon from "./src/components/TokenIcon";
+import TokenIcon, { clearImageCache } from "./src/components/TokenIcon";
 import QRCode from "react-native-qrcode-svg";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import TransportBLE from "@ledgerhq/react-native-hw-transport-ble";
@@ -676,8 +676,11 @@ function AppContent() {
   }, []);
 
   // Load wallets and master seed phrase on mount
+  // Clear image cache on login to refresh token icons
   useEffect(() => {
     if (authState === "unlocked") {
+      // Clear image cache on login to refresh token icons
+      clearImageCache();
       loadWalletsFromStorage();
       loadMasterSeedPhrase();
       loadDerivationIndex();

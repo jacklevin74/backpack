@@ -8,6 +8,7 @@ import {
   Platform,
 } from "react-native";
 import type { ResponseTokenBalance } from "../apollo/types";
+import TokenIcon from "../src/components/TokenIcon";
 
 export type BalancesTableRowProps = {
   balance: ResponseTokenBalance;
@@ -70,35 +71,8 @@ export const BalancesTableRow = ({
   const logo = tokenListEntry?.logo;
   const apiPrice = marketData?.price ?? 0;
 
-  // Generate a color for the placeholder based on the first letter
-  const getPlaceholderColor = (symbol: string): string => {
-    const colors = [
-      "#6366F1", // Indigo
-      "#8B5CF6", // Violet
-      "#EC4899", // Pink
-      "#F59E0B", // Amber
-      "#10B981", // Emerald
-      "#06B6D4", // Cyan
-      "#F97316", // Orange
-      "#EF4444", // Red
-    ];
-    const charCode = symbol.charCodeAt(0) || 0;
-    return colors[charCode % colors.length];
-  };
-
-  // Get 2-3 letter abbreviation for placeholder
-  const getPlaceholderText = (symbol: string): string => {
-    // Remove dollar signs and other special characters
-    const cleanSymbol = symbol.replace(/[$]/g, '');
-    const text = cleanSymbol.length <= 3 ? cleanSymbol : cleanSymbol.substring(0, 3);
-    return text.toUpperCase();
-  };
-
   // State for real-time price (for SOL and other tokens with incorrect API price)
   const [realPrice, setRealPrice] = useState<number>(apiPrice);
-
-  // State to track if logo image failed to load
-  const [logoError, setLogoError] = useState<boolean>(false);
 
   // Fetch real SOL price from REST API if GraphQL price is $1 or less
   useEffect(() => {
@@ -164,21 +138,14 @@ export const BalancesTableRow = ({
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
     >
-      {/* Token Logo */}
+      {/* Token Logo - Using TokenIcon for performance logging */}
       <View style={styles.logoContainer}>
-        {logo && !logoError ? (
-          <Image
-            source={{ uri: logo, cache: 'force-cache' }}
-            style={styles.logo}
-            onError={() => setLogoError(true)}
-          />
-        ) : (
-          <View style={[styles.logoPlaceholder, { backgroundColor: getPlaceholderColor(symbol) }]}>
-            <Text style={styles.logoPlaceholderText}>
-              {getPlaceholderText(symbol)}
-            </Text>
-          </View>
-        )}
+        <TokenIcon
+          symbol={symbol}
+          logo={undefined}
+          logoUrl={logo}
+          size={40}
+        />
       </View>
 
       {/* Token Info */}
@@ -220,24 +187,6 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     marginRight: 12,
-  },
-  logo: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  logoPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  logoPlaceholderText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "700",
-    letterSpacing: -0.5,
   },
   infoContainer: {
     flex: 1,

@@ -86,7 +86,7 @@ import { BiometricSettings } from "./src/auth/BiometricSettings";
 import Toast from "react-native-toast-message";
 
 // Import native USB Ledger module (only on native platforms)
-const { LedgerUsb } = Platform.OS !== 'web' ? NativeModules : {};
+const { LedgerUsb } = Platform.OS !== "web" ? NativeModules : {};
 
 // Network configurations
 const API_SERVER = "https://mobile-api.x1.xyz";
@@ -341,6 +341,10 @@ function AppContent() {
   const [importPrivateKey, setImportPrivateKey] = useState("");
   const [importType, setImportType] = useState("mnemonic"); // "mnemonic" or "privateKey"
   const [importDerivationIndex, setImportDerivationIndex] = useState("0");
+  const [use24Words, setUse24Words] = useState(false);
+  const [phraseWords, setPhraseWords] = useState(Array(12).fill(""));
+  const [phraseDisclaimerAccepted, setPhraseDisclaimerAccepted] =
+    useState(false);
   const [editingWallet, setEditingWallet] = useState(null);
   const [editWalletName, setEditWalletName] = useState("");
   const [showPrivateKey, setShowPrivateKey] = useState(false);
@@ -401,9 +405,7 @@ function AppContent() {
   const [showAuthForPrivateKey, setShowAuthForPrivateKey] = useState(false);
 
   // Browser/WebView states
-  const [browserUrl, setBrowserUrl] = useState(
-    "https://mobile-api.x1.xyz/"
-  );
+  const [browserUrl, setBrowserUrl] = useState("https://mobile-api.x1.xyz/");
   const [browserInputUrl, setBrowserInputUrl] = useState(
     "https://mobile-api.x1.xyz/"
   );
@@ -477,7 +479,9 @@ function AppContent() {
           ToastAndroid.SHORT
         );
       } else {
-        console.log(newEasterEggMode ? "🎨 Easter Egg Mode ON" : "Easter Egg Mode OFF");
+        console.log(
+          newEasterEggMode ? "🎨 Easter Egg Mode ON" : "Easter Egg Mode OFF"
+        );
       }
     } else {
       // Reset tap count after 1 second of no taps
@@ -704,6 +708,35 @@ function AppContent() {
     }
   }, [selectedWallet]);
 
+  // Initialize phraseWords when import modal opens
+  useEffect(() => {
+    if (showImportWalletModal && importType === "mnemonic") {
+      if (
+        phraseWords.length === 0 ||
+        (phraseWords.length !== 12 && phraseWords.length !== 24)
+      ) {
+        setPhraseWords(Array(use24Words ? 24 : 12).fill(""));
+      }
+    }
+  }, [showImportWalletModal, importType, use24Words]);
+
+  // Sync phraseWords array when word count changes
+  useEffect(() => {
+    if (importType === "mnemonic" && showImportWalletModal) {
+      const targetLength = use24Words ? 24 : 12;
+      if (phraseWords.length !== targetLength) {
+        if (phraseWords.length < targetLength) {
+          setPhraseWords([
+            ...phraseWords,
+            ...Array(targetLength - phraseWords.length).fill(""),
+          ]);
+        } else {
+          setPhraseWords(phraseWords.slice(0, targetLength));
+        }
+      }
+    }
+  }, [use24Words, importType, showImportWalletModal]);
+
   // Auto-dismiss ledger error toast after 3 seconds with slide animation
   useEffect(() => {
     if (ledgerError) {
@@ -877,7 +910,9 @@ function AppContent() {
 
       // Handle other non-200 responses
       if (!response.ok) {
-        console.error(`Balance API error: ${response.status} ${response.statusText}`);
+        console.error(
+          `Balance API error: ${response.status} ${response.statusText}`
+        );
         // Don't update balance on error, keep existing values
         return;
       }
@@ -2210,20 +2245,85 @@ function AppContent() {
   const handleCreateNewWallet = async () => {
     setShowAddWalletModal(false);
 
-    // Always show seed phrase modal when creating wallet
-    // If master seed phrase already exists, use it; otherwise generate new one
-    if (masterSeedPhrase) {
-      console.log("Master seed phrase exists, showing it for backup");
-      setNewMnemonic(masterSeedPhrase);
-    } else {
-      // First wallet - generate master seed phrase and show it for backup
-      const newMasterSeed = bip39.generateMnemonic();
-      setMasterSeedPhrase(newMasterSeed);
-      await saveMasterSeedPhrase(newMasterSeed);
-      setNewMnemonic(newMasterSeed);
-      console.log("Generated and saved new master seed phrase");
+    // Check if master seed phrase exists
+    if (!masterSeedPhrase) {
+      Toast.show({
+        type: "error",
+        text1: "No Master Seed Phrase",
+        text2:
+          "Please set a master seed phrase in Manage Security settings first",
+        position: "bottom",
+      });
+      return;
     }
-    setShowCreateWalletModal(true);
+
+    // Master seed phrase exists - directly create wallet without showing seed phrase modal
+    console.log("Creating new wallet from master seed phrase");
+
+    try {
+      const seed = await bip39.mnemonicToSeed(masterSeedPhrase);
+
+      // Derive wallet using BIP44 path: m/44'/501'/<index>'/0'
+      const path = `m/44'/501'/${walletDerivationIndex}'/0'`;
+      console.log(`Deriving wallet at path: ${path}`);
+
+      const hdkey = slip10.fromMasterSeed(seed);
+      const derivedKey = hdkey.derive(path);
+      const keypair = Keypair.fromSeed(derivedKey.privateKey);
+
+      // Check for duplicate wallet
+      const publicKeyStr = keypair.publicKey.toString();
+      const isDuplicate = wallets.some((w) => w.publicKey === publicKeyStr);
+
+      if (isDuplicate) {
+        Toast.show({
+          type: "error",
+          text1: "Duplicate Wallet",
+          text2: "This wallet has already been added.",
+          position: "bottom",
+        });
+        return;
+      }
+
+      const newWallet = {
+        id: String(wallets.length + 1),
+        name: `Wallet ${wallets.length + 1}`,
+        address: publicKeyStr,
+        publicKey: publicKeyStr,
+        selected: false,
+        secretKey: Array.from(keypair.secretKey), // Store as array for JSON serialization
+        keypair: keypair, // Keep in memory for immediate use
+        derivationPath: path,
+        hideZeroBalanceTokens: false,
+      };
+
+      const updatedWallets = [...wallets, newWallet];
+      setWallets(updatedWallets);
+      await saveWalletsToStorage(updatedWallets);
+
+      // Increment derivation index for next wallet
+      const nextIndex = walletDerivationIndex + 1;
+      setWalletDerivationIndex(nextIndex);
+      await saveDerivationIndex(nextIndex);
+
+      Toast.show({
+        type: "success",
+        text1: "Wallet Created",
+        text2: `${newWallet.name} has been added`,
+        position: "bottom",
+      });
+
+      // Register the wallet with the transaction indexer
+      await registerWalletWithIndexer(publicKeyStr, currentNetwork.providerId);
+    } catch (error) {
+      console.error("Error creating wallet:", error);
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Failed to create wallet: " + error.message,
+        position: "bottom",
+      });
+    }
   };
 
   const handleShowImportWallet = () => {
@@ -2232,6 +2332,9 @@ function AppContent() {
     setImportMnemonic("");
     setImportPrivateKey("");
     setImportDerivationIndex("0");
+    setPhraseWords(Array(12).fill(""));
+    setPhraseDisclaimerAccepted(false);
+    setUse24Words(false);
     setShowImportWalletModal(true);
   };
 
@@ -2258,7 +2361,14 @@ function AppContent() {
       let keypair;
       let derivationPath = null;
       let mnemonicForWallet = null;
-      const normalizedMnemonic = importMnemonic
+
+      // Use phraseWords if available, otherwise fall back to importMnemonic
+      const mnemonicToUse =
+        phraseWords.filter((w) => w).length > 0
+          ? phraseWords.filter((w) => w).join(" ")
+          : importMnemonic;
+
+      const normalizedMnemonic = mnemonicToUse
         .trim()
         .toLowerCase()
         .replace(/\s+/g, " ");
@@ -2274,7 +2384,8 @@ function AppContent() {
           return;
         }
 
-        const parsedIndex = parseInt(importDerivationIndex, 10);
+        // Use derivation index 0 by default for phrase import (can be extended later to find multiple wallets)
+        const parsedIndex = parseInt(importDerivationIndex || "0", 10);
         if (Number.isNaN(parsedIndex) || parsedIndex < 0) {
           Toast.show({
             type: "error",
@@ -2370,6 +2481,9 @@ function AppContent() {
       setImportMnemonic("");
       setImportPrivateKey("");
       setImportDerivationIndex("0");
+      setPhraseWords(Array(12).fill(""));
+      setPhraseDisclaimerAccepted(false);
+      setUse24Words(false);
       setShowImportWalletModal(false);
 
       // Register the wallet with the transaction indexer
@@ -2386,9 +2500,18 @@ function AppContent() {
 
   const handleConfirmCreateWallet = async () => {
     try {
-      // Use master seed phrase for derivation
-      const seedPhraseToUse = masterSeedPhrase || newMnemonic;
-      const seed = await bip39.mnemonicToSeed(seedPhraseToUse);
+      // Always use master seed phrase for derivation (should always exist at this point)
+      if (!masterSeedPhrase) {
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "Master seed phrase not found",
+          position: "bottom",
+        });
+        return;
+      }
+
+      const seed = await bip39.mnemonicToSeed(masterSeedPhrase);
 
       // Derive wallet using BIP44 path: m/44'/501'/<index>'/0'
       const path = `m/44'/501'/${walletDerivationIndex}'/0'`;
@@ -4871,7 +4994,12 @@ function AppContent() {
         >
           <Pressable
             style={styles.settingsDrawerOverlay}
-            onPress={() => setShowImportWalletModal(false)}
+            onPress={() => {
+              setShowImportWalletModal(false);
+              setPhraseWords(Array(12).fill(""));
+              setPhraseDisclaimerAccepted(false);
+              setUse24Words(false);
+            }}
           >
             <Pressable
               style={[
@@ -4881,107 +5009,293 @@ function AppContent() {
               onPress={(e) => e.stopPropagation()}
             >
               <View style={styles.settingsDrawerContentArea}>
-                <View style={styles.settingsDrawerHeader}>
-                  <View style={{ width: 32 }} />
-                  <Text style={styles.settingsDrawerTitle}>Import Wallet</Text>
-                  <TouchableOpacity
-                    onPress={() => setShowImportWalletModal(false)}
-                  >
-                    <Text style={styles.settingsDrawerClose}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.importTypeToggle}>
-                  <TouchableOpacity
-                    style={[
-                      styles.importTypeButton,
-                      importType === "mnemonic" &&
-                        styles.importTypeButtonActive,
-                    ]}
-                    onPress={() => setImportType("mnemonic")}
-                  >
-                    <Text
-                      style={[
-                        styles.importTypeButtonText,
-                        importType === "mnemonic" &&
-                          styles.importTypeButtonTextActive,
-                      ]}
-                    >
-                      Recovery Phrase
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.importTypeButton,
-                      importType === "privateKey" &&
-                        styles.importTypeButtonActive,
-                    ]}
-                    onPress={() => setImportType("privateKey")}
-                  >
-                    <Text
-                      style={[
-                        styles.importTypeButtonText,
-                        importType === "privateKey" &&
-                          styles.importTypeButtonTextActive,
-                      ]}
-                    >
-                      Private Key
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
                 {importType === "mnemonic" ? (
                   <>
+                    <TouchableOpacity
+                      style={styles.backButton}
+                      onPress={() => {
+                        setShowImportWalletModal(false);
+                        setPhraseWords(Array(12).fill(""));
+                        setPhraseDisclaimerAccepted(false);
+                        setUse24Words(false);
+                      }}
+                    >
+                      <Text style={styles.backButtonText}>←</Text>
+                    </TouchableOpacity>
+                    <ScrollView
+                      style={{ flex: 1 }}
+                      showsVerticalScrollIndicator={false}
+                    >
+                      {/* Title */}
+                      <Text style={styles.deriveTitle}>
+                        Derive private key from phrase
+                      </Text>
+
+                      {/* Instructions */}
+                      <Text style={styles.deriveInstructions}>
+                        Enter or paste your phrase.
+                      </Text>
+
+                      {/* Word count toggle and Paste button */}
+                      <View style={styles.phraseControls}>
+                        <TouchableOpacity
+                          style={[
+                            styles.wordCountButton,
+                            use24Words && styles.wordCountButtonActive,
+                          ]}
+                          onPress={() => {
+                            setUse24Words(true);
+                            if (phraseWords.length < 24) {
+                              setPhraseWords([
+                                ...phraseWords,
+                                ...Array(24 - phraseWords.length).fill(""),
+                              ]);
+                            }
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.wordCountButtonText,
+                              use24Words && styles.wordCountButtonTextActive,
+                            ]}
+                          >
+                            Use 24 words
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.pasteButton}
+                          onPress={async () => {
+                            try {
+                              const clipboardText = await Clipboard.getString();
+                              const words = clipboardText
+                                .trim()
+                                .toLowerCase()
+                                .split(/\s+/)
+                                .filter((w) => w.length > 0);
+
+                              if (words.length === 12 || words.length === 24) {
+                                // Auto-adjust word count based on pasted phrase
+                                if (words.length === 24) {
+                                  setUse24Words(true);
+                                  setPhraseWords(words);
+                                  setImportMnemonic(words.join(" "));
+                                } else if (words.length === 12) {
+                                  setUse24Words(false);
+                                  setPhraseWords(words);
+                                  setImportMnemonic(words.join(" "));
+                                }
+                              } else {
+                                Toast.show({
+                                  type: "error",
+                                  text1: "Invalid phrase",
+                                  text2: "Phrase must be 12 or 24 words",
+                                  position: "bottom",
+                                });
+                              }
+                            } catch (error) {
+                              console.error("Failed to paste:", error);
+                              Toast.show({
+                                type: "error",
+                                text1: "Error",
+                                text2: "Failed to paste from clipboard",
+                                position: "bottom",
+                              });
+                            }
+                          }}
+                        >
+                          <Text style={styles.pasteButtonText}>📋 Paste</Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Phrase input fields grid */}
+                      <View style={styles.phraseGrid}>
+                        {phraseWords
+                          .slice(0, use24Words ? 24 : 12)
+                          .map((word, index) => (
+                            <View
+                              key={index}
+                              style={styles.phraseWordContainer}
+                            >
+                              <Text style={styles.phraseWordNumber}>
+                                {index + 1}
+                              </Text>
+                              <TextInput
+                                style={styles.phraseWordInput}
+                                value={word}
+                                onChangeText={(text) => {
+                                  const newWords = [...phraseWords];
+                                  newWords[index] = text.toLowerCase().trim();
+                                  setPhraseWords(newWords);
+                                  setImportMnemonic(
+                                    newWords.filter((w) => w).join(" ")
+                                  );
+                                }}
+                                placeholder=""
+                                placeholderTextColor="#666666"
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                                returnKeyType={
+                                  index < (use24Words ? 23 : 11)
+                                    ? "next"
+                                    : "done"
+                                }
+                                onSubmitEditing={() => {
+                                  // Focus next input
+                                  if (index < (use24Words ? 23 : 11)) {
+                                    // This would require refs, but we'll skip for now
+                                  }
+                                }}
+                              />
+                            </View>
+                          ))}
+                      </View>
+
+                      {/* Disclaimer checkbox */}
+                      <View style={styles.disclaimerContainer}>
+                        <TouchableOpacity
+                          style={styles.checkbox}
+                          onPress={() =>
+                            setPhraseDisclaimerAccepted(
+                              !phraseDisclaimerAccepted
+                            )
+                          }
+                        >
+                          {phraseDisclaimerAccepted && (
+                            <Text style={styles.checkboxCheck}>✓</Text>
+                          )}
+                        </TouchableOpacity>
+                        <Text style={styles.disclaimerText}>
+                          I understand that the phrase above will not be stored
+                          in app. Only private keys will be imported and
+                          securely stored.
+                        </Text>
+                      </View>
+
+                      {/* Find wallets button */}
+                      <TouchableOpacity
+                        style={[
+                          styles.findWalletsButton,
+                          (!phraseDisclaimerAccepted ||
+                            phraseWords
+                              .slice(0, use24Words ? 24 : 12)
+                              .some((w) => !w) ||
+                            !bip39.validateMnemonic(
+                              phraseWords
+                                .slice(0, use24Words ? 24 : 12)
+                                .join(" ")
+                            )) &&
+                            styles.findWalletsButtonDisabled,
+                        ]}
+                        onPress={handleImportWallet}
+                        disabled={
+                          !phraseDisclaimerAccepted ||
+                          phraseWords
+                            .slice(0, use24Words ? 24 : 12)
+                            .some((w) => !w) ||
+                          !bip39.validateMnemonic(
+                            phraseWords.slice(0, use24Words ? 24 : 12).join(" ")
+                          )
+                        }
+                      >
+                        <Text
+                          style={[
+                            styles.findWalletsButtonText,
+                            (!phraseDisclaimerAccepted ||
+                              phraseWords
+                                .slice(0, use24Words ? 24 : 12)
+                                .some((w) => !w) ||
+                              !bip39.validateMnemonic(
+                                phraseWords
+                                  .slice(0, use24Words ? 24 : 12)
+                                  .join(" ")
+                              )) &&
+                              styles.findWalletsButtonTextDisabled,
+                          ]}
+                        >
+                          Find wallets
+                        </Text>
+                      </TouchableOpacity>
+                    </ScrollView>
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.settingsDrawerHeader}>
+                      <View style={{ width: 32 }} />
+                      <Text style={styles.settingsDrawerTitle}>
+                        Import Wallet
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setShowImportWalletModal(false);
+                          setPhraseWords(Array(12).fill(""));
+                          setPhraseDisclaimerAccepted(false);
+                          setUse24Words(false);
+                        }}
+                      >
+                        <Text style={styles.settingsDrawerClose}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.importTypeToggle}>
+                      <TouchableOpacity
+                        style={[
+                          styles.importTypeButton,
+                          importType === "mnemonic" &&
+                            styles.importTypeButtonActive,
+                        ]}
+                        onPress={() => setImportType("mnemonic")}
+                      >
+                        <Text
+                          style={[
+                            styles.importTypeButtonText,
+                            importType === "mnemonic" &&
+                              styles.importTypeButtonTextActive,
+                          ]}
+                        >
+                          Recovery Phrase
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.importTypeButton,
+                          importType === "privateKey" &&
+                            styles.importTypeButtonActive,
+                        ]}
+                        onPress={() => setImportType("privateKey")}
+                      >
+                        <Text
+                          style={[
+                            styles.importTypeButtonText,
+                            importType === "privateKey" &&
+                              styles.importTypeButtonTextActive,
+                          ]}
+                        >
+                          Private Key
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
                     <TextInput
                       style={styles.importInput}
-                      placeholder="Enter your 12-word recovery phrase"
+                      placeholder="Enter your private key (bs58 or JSON array)"
                       placeholderTextColor="#666666"
-                      value={importMnemonic}
-                      onChangeText={setImportMnemonic}
+                      value={importPrivateKey}
+                      onChangeText={setImportPrivateKey}
                       multiline
                       numberOfLines={4}
                       autoCapitalize="none"
                       autoCorrect={false}
                     />
-                    <Text style={styles.importLabel}>
-                      Derivation Index (m/44'/501'/index'/0')
-                    </Text>
-                    <TextInput
-                      style={styles.importDerivationInput}
-                      placeholder="0"
-                      placeholderTextColor="#666666"
-                      keyboardType="number-pad"
-                      value={importDerivationIndex}
-                      onChangeText={(text) =>
-                        setImportDerivationIndex(text.replace(/[^0-9]/g, ""))
-                      }
-                    />
-                    <Text style={styles.importHelperText}>
-                      Use 0 to recover the first wallet, or increase the index
-                      to restore additional accounts derived from the same seed
-                      phrase.
-                    </Text>
+                    <TouchableOpacity
+                      style={styles.confirmButton}
+                      onPress={handleImportWallet}
+                    >
+                      <Text style={styles.confirmButtonText}>
+                        Import Wallet
+                      </Text>
+                    </TouchableOpacity>
                   </>
-                ) : (
-                  <TextInput
-                    style={styles.importInput}
-                    placeholder="Enter your private key (bs58 or JSON array)"
-                    placeholderTextColor="#666666"
-                    value={importPrivateKey}
-                    onChangeText={setImportPrivateKey}
-                    multiline
-                    numberOfLines={4}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
                 )}
-
-                <TouchableOpacity
-                  style={styles.confirmButton}
-                  onPress={handleImportWallet}
-                >
-                  <Text style={styles.confirmButtonText}>Import Wallet</Text>
-                </TouchableOpacity>
               </View>
             </Pressable>
           </Pressable>
@@ -8252,6 +8566,156 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     marginBottom: 24,
+  },
+  // New phrase import styles
+  deriveTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    textAlign: "center",
+    marginBottom: 8,
+    marginTop: 8,
+  },
+  deriveInstructions: {
+    fontSize: 14,
+    color: "#888888",
+    textAlign: "center",
+    marginBottom: 24,
+  },
+  phraseControls: {
+    flexDirection: "row",
+    marginBottom: 20,
+    gap: 8,
+    alignItems: "center",
+  },
+  wordCountButton: {
+    flex: 1,
+    backgroundColor: "#1a1a1a",
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: "#333333",
+    alignItems: "center",
+  },
+  wordCountButtonActive: {
+    backgroundColor: "#2a2a2a",
+    borderColor: "#4A90E2",
+  },
+  wordCountButtonText: {
+    color: "#888888",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  wordCountButtonTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+  pasteButton: {
+    backgroundColor: "#4A90E2",
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  pasteButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  phraseGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginBottom: 24,
+    gap: 8,
+  },
+  phraseWordContainer: {
+    width: "48%",
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  phraseWordNumber: {
+    color: "#888888",
+    fontSize: 12,
+    fontWeight: "600",
+    width: 24,
+    marginRight: 8,
+  },
+  phraseWordInput: {
+    flex: 1,
+    backgroundColor: "#1a1a1a",
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    color: "#FFFFFF",
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: "#333333",
+  },
+  disclaimerContainer: {
+    flexDirection: "row",
+    marginBottom: 24,
+    alignItems: "flex-start",
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderColor: "#4A90E2",
+    borderRadius: 4,
+    marginRight: 12,
+    marginTop: 2,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "transparent",
+  },
+  checkboxCheck: {
+    color: "#4A90E2",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  disclaimerText: {
+    flex: 1,
+    color: "#888888",
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  findWalletsButton: {
+    backgroundColor: "#4A90E2",
+    borderRadius: 12,
+    padding: 16,
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  findWalletsButtonDisabled: {
+    backgroundColor: "#333333",
+    opacity: 0.5,
+  },
+  findWalletsButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  findWalletsButtonTextDisabled: {
+    color: "#888888",
+  },
+  backButton: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  backButtonText: {
+    color: "#FFFFFF",
+    fontSize: 24,
+    fontWeight: "bold",
   },
   ledgerStatus: {
     padding: 32,

@@ -128,10 +128,25 @@ function PopupRouter() {
 function FullApp() {
   logger.debug("full app");
   const background = useBackgroundClient();
+  const allUsersStartTime = Date.now();
   const allUsers = useAllUsersNullable();
+  const allUsersLoadTime = Date.now() - allUsersStartTime;
   const [hasRedirected, setHasRedirected] = useState(false);
   const startTime = (window as any).__APP_START_TIME__ || Date.now();
   const hasLoggedUnlocked = useRef(false);
+
+  // Log when allUsers hook resolves
+  useEffect(() => {
+    if (allUsers !== null) {
+      console.log(
+        `[PERF] allUsers loaded (${allUsers.length} users): ${Date.now() - startTime}ms (hook took ${allUsersLoadTime}ms)`
+      );
+    } else {
+      console.log(
+        `[PERF] allUsers is null (still loading): ${Date.now() - startTime}ms`
+      );
+    }
+  }, [allUsers, startTime, allUsersLoadTime]);
 
   useEffect(() => {
     // Refresh feature gates in background without blocking UI render

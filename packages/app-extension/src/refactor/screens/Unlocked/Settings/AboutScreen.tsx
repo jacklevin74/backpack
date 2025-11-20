@@ -1,21 +1,7 @@
-import {
-  BACKPACK_CONFIG_VERSION,
-  BACKPACK_GITHUB_LINK,
-  BACKPACK_HELP_AND_SUPPORT,
-  BACKPACK_LINK,
-  BACKPACK_TERMS_OF_SERVICE,
-  DISCORD_INVITE_LINK,
-  TWITTER_LINK,
-} from "@coral-xyz/common";
+import { BACKPACK_CONFIG_VERSION, Blockchain } from "@coral-xyz/common";
 import { useTranslation } from "@coral-xyz/i18n";
-import {
-  BackpackTextLogo,
-  DiscordIcon,
-  List,
-  ListItem,
-  RedBackpack,
-  XTwitterIcon,
-} from "@coral-xyz/react-common";
+import { List, ListItem, XTwitterIcon } from "@coral-xyz/react-common";
+import { getBlockchainLogo } from "@coral-xyz/recoil";
 import {
   temporarilyMakeStylesForBrowserExtension,
   useTheme,
@@ -50,15 +36,11 @@ function Container(_props: SettingsScreenProps<Routes.AboutScreen>) {
   const menuItems = [
     {
       label: t("help_ampersand_support"),
-      url: BACKPACK_HELP_AND_SUPPORT,
+      url: "https://x1.xyz",
     },
     {
       label: t("website"),
-      url: BACKPACK_LINK,
-    },
-    {
-      label: t("terms_of_service"),
-      url: BACKPACK_TERMS_OF_SERVICE,
+      url: "https://x1.xyz",
     },
   ];
 
@@ -67,12 +49,16 @@ function Container(_props: SettingsScreenProps<Routes.AboutScreen>) {
   return (
     <YStack>
       <div style={{ marginBottom: "35px" }}>
-        <RedBackpack
+        <img
+          src={getBlockchainLogo(Blockchain.X1)}
+          alt="X1 Wallet"
           style={{
             display: "flex",
             justifyContent: "center",
             margin: "32px auto",
             marginBottom: 4,
+            width: "64px",
+            height: "64px",
           }}
         />
         <div
@@ -81,7 +67,15 @@ function Container(_props: SettingsScreenProps<Routes.AboutScreen>) {
             marginTop: 22,
           }}
         >
-          <BackpackTextLogo />
+          <Typography
+            style={{
+              fontWeight: 600,
+              fontSize: "24px",
+              color: theme.baseTextHighEmphasis.val,
+            }}
+          >
+            X1 Wallet
+          </Typography>
         </div>
 
         <Typography
@@ -128,17 +122,12 @@ function Container(_props: SettingsScreenProps<Routes.AboutScreen>) {
 const socialMediaItems = [
   {
     label: "X",
-    onClick: () => window.open(TWITTER_LINK, "_blank"),
+    onClick: () => window.open("https://x.com/mrjacklevin", "_blank"),
     icon: (props: any) => <XTwitterIcon {...props} />,
   },
   {
-    label: "Discord",
-    onClick: () => window.open(DISCORD_INVITE_LINK, "_blank"),
-    icon: (props: any) => <DiscordIcon {...props} />,
-  },
-  {
     label: "Github",
-    onClick: () => window.open(BACKPACK_GITHUB_LINK, "_blank"),
+    onClick: () => window.open("https://github.com/jacklevin74", "_blank"),
     icon: (props: any) => <GitHub {...props} />,
   },
 ];

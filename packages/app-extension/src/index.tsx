@@ -4,6 +4,15 @@ console.log(`[PERF] Popup script start: ${startTime}ms`);
 // Store start time globally for other components to access
 (window as any).__APP_START_TIME__ = startTime;
 
+// Log DOM ready state
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    console.log(`[PERF] DOMContentLoaded: ${Date.now() - startTime}ms`);
+  });
+} else {
+  console.log(`[PERF] DOM already ready: ${Date.now() - startTime}ms`);
+}
+
 // Suppress React Native BackHandler warning in web environment
 const originalConsoleWarn = console.warn;
 console.warn = (...args) => {
@@ -112,7 +121,13 @@ document.addEventListener("keydown", async function onKeyDown(event) {
 // Render the UI.
 // TOOD(react) createRoot is required: https://reactjs.org/blog/2022/03/08/react-18-upgrade-guide.html#updates-to-client-rendering-apis
 const container = document.getElementById("root");
+if (container) {
+  console.log(`[PERF] Root container found: ${Date.now() - startTime}ms`);
+} else {
+  console.error(`[PERF] Root container NOT found: ${Date.now() - startTime}ms`);
+}
 const root = createRoot(container!);
+console.log(`[PERF] React root created: ${Date.now() - startTime}ms`);
 console.log(`[PERF] Starting React render: ${Date.now() - startTime}ms`);
 root.render(
   <>

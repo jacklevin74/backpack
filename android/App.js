@@ -89,7 +89,7 @@ import Toast from "react-native-toast-message";
 const { LedgerUsb } = Platform.OS !== 'web' ? NativeModules : {};
 
 // Network configurations
-const API_SERVER = "https://mobile-api.x1.xyz/";
+const API_SERVER = "https://mobile-api.x1.xyz";
 const DEMO_WALLET_ADDRESS = "29dSqUTTH5okWAr3oLkQWrV968FQxgVqPCSqMqRLj8K2";
 
 // Mock wallets data
@@ -1316,6 +1316,16 @@ function AppContent() {
           enabled: true,
         }),
       });
+
+      // Check response status before parsing JSON
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(
+          `❌ Failed to register wallet: ${response.status} ${response.statusText}${errorText ? ` - ${errorText}` : ""}`
+        );
+        // Don't throw - wallet registration failure shouldn't break wallet creation
+        return;
+      }
 
       const data = await response.json();
 

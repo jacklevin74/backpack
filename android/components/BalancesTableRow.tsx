@@ -87,7 +87,7 @@ export const BalancesTableRow = ({
     const fetchRealPrice = async () => {
       try {
         const response = await fetch(
-          "http://162.250.126.66:4000/wallet/So11111111111111111111111111111111111111112?providerId=SOLANA-mainnet",
+          "https://mobile-api.x1.xyz/wallet/So11111111111111111111111111111111111111112?providerId=SOLANA-mainnet",
           { signal: abortController.signal }
         );
         const data = await response.json();

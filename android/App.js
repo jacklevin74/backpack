@@ -85,11 +85,11 @@ import { BiometricSettings } from "./src/auth/BiometricSettings";
 // Import Toast notifications
 import Toast from "react-native-toast-message";
 
-// Import native USB Ledger module
-const { LedgerUsb } = NativeModules;
+// Import native USB Ledger module (only on native platforms)
+const { LedgerUsb } = Platform.OS !== 'web' ? NativeModules : {};
 
 // Network configurations
-const API_SERVER = "http://162.250.126.66:4000";
+const API_SERVER = "https://mobile-api.x1.xyz/";
 const DEMO_WALLET_ADDRESS = "29dSqUTTH5okWAr3oLkQWrV968FQxgVqPCSqMqRLj8K2";
 
 // Mock wallets data
@@ -402,10 +402,10 @@ function AppContent() {
 
   // Browser/WebView states
   const [browserUrl, setBrowserUrl] = useState(
-    "http://162.250.126.66:4000/test"
+    "https://mobile-api.x1.xyz/"
   );
   const [browserInputUrl, setBrowserInputUrl] = useState(
-    "http://162.250.126.66:4000/test"
+    "https://mobile-api.x1.xyz/"
   );
   const [showTestBrowser, setShowTestBrowser] = useState(false);
   const webViewRef = useRef(null);
@@ -471,10 +471,14 @@ function AppContent() {
       if (Platform.OS === "android") {
         Vibration.vibrate([0, 50, 50, 50]); // Pattern: wait, vibrate, wait, vibrate
       }
-      ToastAndroid.show(
-        newEasterEggMode ? "🎨 Easter Egg Mode ON" : "Easter Egg Mode OFF",
-        ToastAndroid.SHORT
-      );
+      if (Platform.OS === "android") {
+        ToastAndroid.show(
+          newEasterEggMode ? "🎨 Easter Egg Mode ON" : "Easter Egg Mode OFF",
+          ToastAndroid.SHORT
+        );
+      } else {
+        console.log(newEasterEggMode ? "🎨 Easter Egg Mode ON" : "Easter Egg Mode OFF");
+      }
     } else {
       // Reset tap count after 1 second of no taps
       tapTimerRef.current = setTimeout(() => {
@@ -850,6 +854,34 @@ function AppContent() {
       console.log(
         `Balance API Response: ${response.status} ${response.statusText}`
       );
+
+      // Handle 404 - wallet not found, set balance to 0
+      if (response.status === 404) {
+        console.log("Wallet not found (404), setting balance to 0");
+        setBalance("0.00");
+        setBalanceUSD("$0.00");
+        setTokens([]);
+        // Update cache with zero balance
+        setBalanceCache((prev) => ({
+          ...prev,
+          [cacheKey]: {
+            balance: "0.00",
+            balanceUSD: "$0.00",
+            tokens: [],
+            tokenPrice: 0,
+            timestamp: Date.now(),
+          },
+        }));
+        return;
+      }
+
+      // Handle other non-200 responses
+      if (!response.ok) {
+        console.error(`Balance API error: ${response.status} ${response.statusText}`);
+        // Don't update balance on error, keep existing values
+        return;
+      }
+
       const data = await response.json();
 
       if (data.balance !== undefined) {
@@ -1133,8 +1165,9 @@ function AppContent() {
     setChangeSeedPhraseMode("enter");
   };
 
-  // Handle hardware back button
+  // Handle hardware back button (Android only)
   useEffect(() => {
+    if (Platform.OS !== "android") return () => {};
     const backHandler = BackHandler.addEventListener(
       "hardwareBackPress",
       () => {
@@ -2194,12 +2227,20 @@ function AppContent() {
 
   const copySeedPhrase = () => {
     Clipboard.setString(newMnemonic);
-    ToastAndroid.show("Copied to clipboard", ToastAndroid.SHORT);
+    if (Platform.OS === "android") {
+      ToastAndroid.show("Copied to clipboard", ToastAndroid.SHORT);
+    } else {
+      console.log("Copied to clipboard");
+    }
   };
 
   const copyGeneratedSeedPhrase = () => {
     Clipboard.setString(generatedNewSeed);
-    ToastAndroid.show("Copied to clipboard", ToastAndroid.SHORT);
+    if (Platform.OS === "android") {
+      ToastAndroid.show("Copied to clipboard", ToastAndroid.SHORT);
+    } else {
+      console.log("Copied to clipboard");
+    }
   };
 
   const handleImportWallet = async () => {
@@ -2410,7 +2451,11 @@ function AppContent() {
     const newSeed = bip39.generateMnemonic();
     setGeneratedNewSeed(newSeed);
     setChangeSeedPhraseMode("generate");
-    ToastAndroid.show("New seed phrase generated", ToastAndroid.SHORT);
+    if (Platform.OS === "android") {
+      ToastAndroid.show("New seed phrase generated", ToastAndroid.SHORT);
+    } else {
+      console.log("New seed phrase generated");
+    }
   };
 
   const handleConfirmChangeSeedPhrase = async () => {
@@ -6678,15 +6723,14 @@ function AppContent() {
       )}
 
       {showAuthForPrivateKey && (
-        <View
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 9999,
+        <Modal
+          transparent={false}
+          visible={showAuthForPrivateKey}
+          animationType="fade"
+          onRequestClose={() => {
+            setShowAuthForPrivateKey(false);
           }}
+          statusBarTranslucent
         >
           <PinUnlock
             onUnlock={() => {
@@ -6696,7 +6740,7 @@ function AppContent() {
               }, 100);
             }}
           />
-        </View>
+        </Modal>
       )}
 
       {/* Toast notifications */}

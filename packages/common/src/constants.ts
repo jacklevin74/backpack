@@ -371,8 +371,8 @@ export const BACKGROUND_SERVICE_WORKER_READY = "service-worker-ready";
 
 export const POST_MESSAGE_ORIGIN = "*";
 
-export const EXTENSION_WIDTH = 375;
-export const EXTENSION_HEIGHT = 600;
+export const EXTENSION_WIDTH = 395; // 375 + 20
+export const EXTENSION_HEIGHT = 620; // 600 + 20
 
 //
 // UI View Model Constants.

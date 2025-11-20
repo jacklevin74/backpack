@@ -210,7 +210,7 @@ export async function openPopupWindow(
 
   const popupWindow = await BrowserRuntimeExtension._openWindow({
     url: `${url}`,
-    type: "popup",
+    type: "popup", // Always use popup type to match extension icon popup size
     width: width + EXTRA_WIDTH,
     height: height + EXTRA_HEIGHT,
     top: fullscreen ? 0 : lastWindow.top,
@@ -220,6 +220,16 @@ export async function openPopupWindow(
         ((lastWindow.width ?? 0) - width - EXTRA_WIDTH),
     focused: true,
   });
+
+  // Ensure the window maintains correct size after opening
+  // This handles cases where the window might resize incorrectly
+  if (popupWindow.id) {
+    chrome.windows.update(popupWindow.id, {
+      width: width + EXTRA_WIDTH,
+      height: height + EXTRA_HEIGHT,
+    });
+  }
+
   return popupWindow;
 }
 
@@ -282,9 +292,8 @@ export function resizeExtensionWindow(options?: {
 
 export function openLedgerPermissions() {
   const url = `${EXPANDED_HTML}?${QUERY_LEDGER_PERMISSIONS}`;
-  void BrowserRuntimeExtension.openTab({
-    url: globalThis.chrome?.runtime?.getURL(url),
-  });
+  // Open as popup window with correct dimensions instead of tab
+  return openPopupWindow(url);
 }
 
 export function openOnboarding() {
@@ -295,13 +304,11 @@ export function openOnboarding() {
 
 export function openAddUserAccount() {
   const url = `${EXPANDED_HTML}?${QUERY_ADD_USER_ACCOUNT}`;
-  void BrowserRuntimeExtension.openTab({
-    url: globalThis.chrome?.runtime?.getURL(url),
-  });
+  // Open as popup window with correct dimensions instead of tab
+  return openPopupWindow(url);
 }
 export function openConnectHardware() {
   const url = `${EXPANDED_HTML}?${QUERY_CONNECT_HARDWARE}`;
-  void BrowserRuntimeExtension.openTab({
-    url: globalThis.chrome?.runtime?.getURL(url),
-  });
+  // Open as popup window with correct dimensions instead of tab
+  return openPopupWindow(url);
 }

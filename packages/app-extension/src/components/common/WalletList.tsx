@@ -1112,6 +1112,26 @@ function NetworkIcon({
   blockchain: Blockchain;
   style?: React.CSSProperties;
 }) {
-  const blockchainLogo = getBlockchainLogo(blockchain);
+  // Get the connection URL for the blockchain to determine current network
+  const connectionUrl = useRecoilValue(blockchainConnectionUrl(blockchain));
+
+  // Determine which logo to show based on connection URL
+  // When on Solana networks, show Solana logo; otherwise show X1 logo
+  const blockchainLogo = (() => {
+    // Check if URL is Solana-related (including localnet)
+    const isSolanaUrl =
+      connectionUrl?.includes("solana.com") ||
+      connectionUrl?.includes("solana-mainnet.quiknode.pro") ||
+      connectionUrl?.includes("solana-devnet") ||
+      connectionUrl?.includes("solana-testnet") ||
+      connectionUrl === "http://127.0.0.1:8899" ||
+      connectionUrl === "http://localhost:8899";
+
+    if (isSolanaUrl) {
+      return getBlockchainLogo(Blockchain.SOLANA);
+    }
+    return getBlockchainLogo(Blockchain.X1);
+  })();
+
   return <img src={blockchainLogo} style={style} />;
 }

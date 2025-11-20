@@ -339,7 +339,7 @@ function AppContent() {
   const [newMnemonic, setNewMnemonic] = useState("");
   const [importMnemonic, setImportMnemonic] = useState("");
   const [importPrivateKey, setImportPrivateKey] = useState("");
-  const [importType, setImportType] = useState("mnemonic"); // "mnemonic" or "privateKey"
+  const [importType, setImportType] = useState("privateKey"); // Only "privateKey" - seed phrase import removed
   const [importDerivationIndex, setImportDerivationIndex] = useState("0");
   const [use24Words, setUse24Words] = useState(false);
   const [phraseWords, setPhraseWords] = useState(Array(12).fill(""));
@@ -2328,7 +2328,7 @@ function AppContent() {
 
   const handleShowImportWallet = () => {
     setShowAddWalletModal(false);
-    setImportType("mnemonic");
+    setImportType("privateKey");
     setImportMnemonic("");
     setImportPrivateKey("");
     setImportDerivationIndex("0");
@@ -2358,85 +2358,37 @@ function AppContent() {
 
   const handleImportWallet = async () => {
     try {
+      // Only support private key import (seed phrase import removed)
+      if (!importPrivateKey || !importPrivateKey.trim()) {
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "Please enter a private key",
+          position: "bottom",
+        });
+        return;
+      }
+
       let keypair;
-      let derivationPath = null;
-      let mnemonicForWallet = null;
+      const trimmedKey = importPrivateKey.trim();
 
-      // Use phraseWords if available, otherwise fall back to importMnemonic
-      const mnemonicToUse =
-        phraseWords.filter((w) => w).length > 0
-          ? phraseWords.filter((w) => w).join(" ")
-          : importMnemonic;
-
-      const normalizedMnemonic = mnemonicToUse
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, " ");
-
-      if (importType === "mnemonic") {
-        if (!bip39.validateMnemonic(normalizedMnemonic)) {
-          Toast.show({
-            type: "error",
-            text1: "Error",
-            text2: "Invalid recovery phrase",
-            position: "bottom",
-          });
-          return;
-        }
-
-        // Use derivation index 0 by default for phrase import (can be extended later to find multiple wallets)
-        const parsedIndex = parseInt(importDerivationIndex || "0", 10);
-        if (Number.isNaN(parsedIndex) || parsedIndex < 0) {
-          Toast.show({
-            type: "error",
-            text1: "Error",
-            text2: "Derivation index must be a non-negative number",
-            position: "bottom",
-          });
-          return;
-        }
-
-        requestedDerivationIndex = parsedIndex;
-        const seed = await bip39.mnemonicToSeed(normalizedMnemonic);
-        derivationPath = `m/44'/501'/${parsedIndex}'/0'`;
-
-        const hdkey = slip10.fromMasterSeed(seed);
-        const derivedKey = hdkey.derive(derivationPath);
-        keypair = Keypair.fromSeed(derivedKey.privateKey);
-        mnemonicForWallet = normalizedMnemonic;
-
-        if (!masterSeedPhrase) {
-          setMasterSeedPhrase(normalizedMnemonic);
-          await saveMasterSeedPhrase(normalizedMnemonic);
-        }
-
-        if (walletDerivationIndex <= parsedIndex) {
-          const nextIndex = parsedIndex + 1;
-          setWalletDerivationIndex(nextIndex);
-          await saveDerivationIndex(nextIndex);
-        }
-      } else {
-        // Import from private key (try bs58 first, then JSON array)
-        const trimmedKey = importPrivateKey.trim();
+      try {
+        // Try bs58 format first
+        const decoded = bs58.decode(trimmedKey);
+        keypair = Keypair.fromSecretKey(decoded);
+      } catch {
+        // If bs58 fails, try JSON array format
         try {
-          // Try bs58 format first
-          const decoded = bs58.decode(trimmedKey);
-          keypair = Keypair.fromSecretKey(decoded);
+          const privateKeyArray = JSON.parse(trimmedKey);
+          keypair = Keypair.fromSecretKey(new Uint8Array(privateKeyArray));
         } catch {
-          // If bs58 fails, try JSON array format
-          try {
-            const privateKeyArray = JSON.parse(trimmedKey);
-            keypair = Keypair.fromSecretKey(new Uint8Array(privateKeyArray));
-          } catch {
-            Toast.show({
-              type: "error",
-              text1: "Error",
-              text2:
-                "Invalid private key format. Use bs58 or JSON array format.",
-              position: "bottom",
-            });
-            return;
-          }
+          Toast.show({
+            type: "error",
+            text1: "Error",
+            text2: "Invalid private key format. Use bs58 or JSON array format.",
+            position: "bottom",
+          });
+          return;
         }
       }
 
@@ -2462,7 +2414,7 @@ function AppContent() {
         selected: false,
         secretKey: Array.from(keypair.secretKey), // Store as array for JSON serialization
         keypair: keypair, // Keep in memory for immediate use
-        derivationPath,
+        derivationPath: null, // No derivation path for imported private keys
         hideZeroBalanceTokens: false, // User preference for hiding zero balance tokens
       };
 
@@ -2470,20 +2422,8 @@ function AppContent() {
       setWallets(updatedWallets);
       await saveWalletsToStorage(updatedWallets);
 
-      if (
-        mnemonicForWallet &&
-        masterSeedPhrase &&
-        masterSeedPhrase !== mnemonicForWallet
-      ) {
-        await saveWalletMnemonicSecurely(newWallet.id, mnemonicForWallet);
-      }
-
-      setImportMnemonic("");
+      // Clear import form
       setImportPrivateKey("");
-      setImportDerivationIndex("0");
-      setPhraseWords(Array(12).fill(""));
-      setPhraseDisclaimerAccepted(false);
-      setUse24Words(false);
       setShowImportWalletModal(false);
 
       // Register the wallet with the transaction indexer
@@ -5009,293 +4949,36 @@ function AppContent() {
               onPress={(e) => e.stopPropagation()}
             >
               <View style={styles.settingsDrawerContentArea}>
-                {importType === "mnemonic" ? (
-                  <>
-                    <TouchableOpacity
-                      style={styles.backButton}
-                      onPress={() => {
-                        setShowImportWalletModal(false);
-                        setPhraseWords(Array(12).fill(""));
-                        setPhraseDisclaimerAccepted(false);
-                        setUse24Words(false);
-                      }}
-                    >
-                      <Text style={styles.backButtonText}>←</Text>
-                    </TouchableOpacity>
-                    <ScrollView
-                      style={{ flex: 1 }}
-                      showsVerticalScrollIndicator={false}
-                    >
-                      {/* Title */}
-                      <Text style={styles.deriveTitle}>
-                        Derive private key from phrase
-                      </Text>
+                <View style={styles.settingsDrawerHeader}>
+                  <View style={{ width: 32 }} />
+                  <Text style={styles.settingsDrawerTitle}>Import Wallet</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowImportWalletModal(false);
+                      setImportPrivateKey("");
+                    }}
+                  >
+                    <Text style={styles.settingsDrawerClose}>✕</Text>
+                  </TouchableOpacity>
+                </View>
 
-                      {/* Instructions */}
-                      <Text style={styles.deriveInstructions}>
-                        Enter or paste your phrase.
-                      </Text>
-
-                      {/* Word count toggle and Paste button */}
-                      <View style={styles.phraseControls}>
-                        <TouchableOpacity
-                          style={[
-                            styles.wordCountButton,
-                            use24Words && styles.wordCountButtonActive,
-                          ]}
-                          onPress={() => {
-                            setUse24Words(true);
-                            if (phraseWords.length < 24) {
-                              setPhraseWords([
-                                ...phraseWords,
-                                ...Array(24 - phraseWords.length).fill(""),
-                              ]);
-                            }
-                          }}
-                        >
-                          <Text
-                            style={[
-                              styles.wordCountButtonText,
-                              use24Words && styles.wordCountButtonTextActive,
-                            ]}
-                          >
-                            Use 24 words
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.pasteButton}
-                          onPress={async () => {
-                            try {
-                              const clipboardText = await Clipboard.getString();
-                              const words = clipboardText
-                                .trim()
-                                .toLowerCase()
-                                .split(/\s+/)
-                                .filter((w) => w.length > 0);
-
-                              if (words.length === 12 || words.length === 24) {
-                                // Auto-adjust word count based on pasted phrase
-                                if (words.length === 24) {
-                                  setUse24Words(true);
-                                  setPhraseWords(words);
-                                  setImportMnemonic(words.join(" "));
-                                } else if (words.length === 12) {
-                                  setUse24Words(false);
-                                  setPhraseWords(words);
-                                  setImportMnemonic(words.join(" "));
-                                }
-                              } else {
-                                Toast.show({
-                                  type: "error",
-                                  text1: "Invalid phrase",
-                                  text2: "Phrase must be 12 or 24 words",
-                                  position: "bottom",
-                                });
-                              }
-                            } catch (error) {
-                              console.error("Failed to paste:", error);
-                              Toast.show({
-                                type: "error",
-                                text1: "Error",
-                                text2: "Failed to paste from clipboard",
-                                position: "bottom",
-                              });
-                            }
-                          }}
-                        >
-                          <Text style={styles.pasteButtonText}>📋 Paste</Text>
-                        </TouchableOpacity>
-                      </View>
-
-                      {/* Phrase input fields grid */}
-                      <View style={styles.phraseGrid}>
-                        {phraseWords
-                          .slice(0, use24Words ? 24 : 12)
-                          .map((word, index) => (
-                            <View
-                              key={index}
-                              style={styles.phraseWordContainer}
-                            >
-                              <Text style={styles.phraseWordNumber}>
-                                {index + 1}
-                              </Text>
-                              <TextInput
-                                style={styles.phraseWordInput}
-                                value={word}
-                                onChangeText={(text) => {
-                                  const newWords = [...phraseWords];
-                                  newWords[index] = text.toLowerCase().trim();
-                                  setPhraseWords(newWords);
-                                  setImportMnemonic(
-                                    newWords.filter((w) => w).join(" ")
-                                  );
-                                }}
-                                placeholder=""
-                                placeholderTextColor="#666666"
-                                autoCapitalize="none"
-                                autoCorrect={false}
-                                returnKeyType={
-                                  index < (use24Words ? 23 : 11)
-                                    ? "next"
-                                    : "done"
-                                }
-                                onSubmitEditing={() => {
-                                  // Focus next input
-                                  if (index < (use24Words ? 23 : 11)) {
-                                    // This would require refs, but we'll skip for now
-                                  }
-                                }}
-                              />
-                            </View>
-                          ))}
-                      </View>
-
-                      {/* Disclaimer checkbox */}
-                      <View style={styles.disclaimerContainer}>
-                        <TouchableOpacity
-                          style={styles.checkbox}
-                          onPress={() =>
-                            setPhraseDisclaimerAccepted(
-                              !phraseDisclaimerAccepted
-                            )
-                          }
-                        >
-                          {phraseDisclaimerAccepted && (
-                            <Text style={styles.checkboxCheck}>✓</Text>
-                          )}
-                        </TouchableOpacity>
-                        <Text style={styles.disclaimerText}>
-                          I understand that the phrase above will not be stored
-                          in app. Only private keys will be imported and
-                          securely stored.
-                        </Text>
-                      </View>
-
-                      {/* Find wallets button */}
-                      <TouchableOpacity
-                        style={[
-                          styles.findWalletsButton,
-                          (!phraseDisclaimerAccepted ||
-                            phraseWords
-                              .slice(0, use24Words ? 24 : 12)
-                              .some((w) => !w) ||
-                            !bip39.validateMnemonic(
-                              phraseWords
-                                .slice(0, use24Words ? 24 : 12)
-                                .join(" ")
-                            )) &&
-                            styles.findWalletsButtonDisabled,
-                        ]}
-                        onPress={handleImportWallet}
-                        disabled={
-                          !phraseDisclaimerAccepted ||
-                          phraseWords
-                            .slice(0, use24Words ? 24 : 12)
-                            .some((w) => !w) ||
-                          !bip39.validateMnemonic(
-                            phraseWords.slice(0, use24Words ? 24 : 12).join(" ")
-                          )
-                        }
-                      >
-                        <Text
-                          style={[
-                            styles.findWalletsButtonText,
-                            (!phraseDisclaimerAccepted ||
-                              phraseWords
-                                .slice(0, use24Words ? 24 : 12)
-                                .some((w) => !w) ||
-                              !bip39.validateMnemonic(
-                                phraseWords
-                                  .slice(0, use24Words ? 24 : 12)
-                                  .join(" ")
-                              )) &&
-                              styles.findWalletsButtonTextDisabled,
-                          ]}
-                        >
-                          Find wallets
-                        </Text>
-                      </TouchableOpacity>
-                    </ScrollView>
-                  </>
-                ) : (
-                  <>
-                    <View style={styles.settingsDrawerHeader}>
-                      <View style={{ width: 32 }} />
-                      <Text style={styles.settingsDrawerTitle}>
-                        Import Wallet
-                      </Text>
-                      <TouchableOpacity
-                        onPress={() => {
-                          setShowImportWalletModal(false);
-                          setPhraseWords(Array(12).fill(""));
-                          setPhraseDisclaimerAccepted(false);
-                          setUse24Words(false);
-                        }}
-                      >
-                        <Text style={styles.settingsDrawerClose}>✕</Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.importTypeToggle}>
-                      <TouchableOpacity
-                        style={[
-                          styles.importTypeButton,
-                          importType === "mnemonic" &&
-                            styles.importTypeButtonActive,
-                        ]}
-                        onPress={() => setImportType("mnemonic")}
-                      >
-                        <Text
-                          style={[
-                            styles.importTypeButtonText,
-                            importType === "mnemonic" &&
-                              styles.importTypeButtonTextActive,
-                          ]}
-                        >
-                          Recovery Phrase
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[
-                          styles.importTypeButton,
-                          importType === "privateKey" &&
-                            styles.importTypeButtonActive,
-                        ]}
-                        onPress={() => setImportType("privateKey")}
-                      >
-                        <Text
-                          style={[
-                            styles.importTypeButtonText,
-                            importType === "privateKey" &&
-                              styles.importTypeButtonTextActive,
-                          ]}
-                        >
-                          Private Key
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    <TextInput
-                      style={styles.importInput}
-                      placeholder="Enter your private key (bs58 or JSON array)"
-                      placeholderTextColor="#666666"
-                      value={importPrivateKey}
-                      onChangeText={setImportPrivateKey}
-                      multiline
-                      numberOfLines={4}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                    />
-                    <TouchableOpacity
-                      style={styles.confirmButton}
-                      onPress={handleImportWallet}
-                    >
-                      <Text style={styles.confirmButtonText}>
-                        Import Wallet
-                      </Text>
-                    </TouchableOpacity>
-                  </>
-                )}
+                <TextInput
+                  style={styles.importInput}
+                  placeholder="Enter your private key (bs58 or JSON array)"
+                  placeholderTextColor="#666666"
+                  value={importPrivateKey}
+                  onChangeText={setImportPrivateKey}
+                  multiline
+                  numberOfLines={4}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <TouchableOpacity
+                  style={styles.confirmButton}
+                  onPress={handleImportWallet}
+                >
+                  <Text style={styles.confirmButtonText}>Import Wallet</Text>
+                </TouchableOpacity>
               </View>
             </Pressable>
           </Pressable>
@@ -7840,7 +7523,7 @@ const styles = StyleSheet.create({
   },
   bottomSheetScrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 30,
+    paddingTop: 15,
     paddingBottom: 20,
   },
   bottomSheetHeader: {
@@ -7848,7 +7531,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 20,
-    paddingTop: 8,
+    paddingTop: 4,
   },
   bottomSheetClose: {
     fontSize: 24,

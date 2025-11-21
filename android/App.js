@@ -409,9 +409,11 @@ function AppContent() {
   const [showAuthForPrivateKey, setShowAuthForPrivateKey] = useState(false);
 
   // Browser/WebView states
-  const [browserUrl, setBrowserUrl] = useState("https://mobile-api.x1.xyz/");
+  const [browserUrl, setBrowserUrl] = useState(
+    "https://mobile-api.x1.xyz/test"
+  );
   const [browserInputUrl, setBrowserInputUrl] = useState(
-    "https://mobile-api.x1.xyz/"
+    "https://mobile-api.x1.xyz/test"
   );
   const [showTestBrowser, setShowTestBrowser] = useState(false);
   const webViewRef = useRef(null);
@@ -3515,7 +3517,10 @@ function AppContent() {
           />
           <TouchableOpacity
             onPress={() => {
-              let url = browserInputUrl.trim();
+              Keyboard.dismiss();
+              let url = browserInputUrl.trim().replace(/\s/g, "");
+              if (url.length === 0) return;
+
               if (!url.startsWith("http://") && !url.startsWith("https://")) {
                 url = "http://" + url;
               }

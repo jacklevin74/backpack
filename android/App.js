@@ -335,6 +335,7 @@ function AppContent() {
   const [debugLogs, setDebugLogs] = useState([]);
   const [showBluetoothDrawer, setShowBluetoothDrawer] = useState(false);
   const [pairedDevices, setPairedDevices] = useState([]);
+  const [lastX1TapTime, setLastX1TapTime] = useState(0);
 
   // Wallet management states
   const [showAddWalletModal, setShowAddWalletModal] = useState(false);
@@ -1014,6 +1015,15 @@ function AppContent() {
       }
     } catch (error) {
       console.error("Error checking balance:", error);
+
+      // Show user-friendly error message for network issues
+      if (
+        error.message === "Network request failed" ||
+        error.message.includes("fetch")
+      ) {
+        console.log("Network error - device may be offline or API unavailable");
+        // Keep existing balance displayed, don't clear it
+      }
     }
   };
 
@@ -1182,6 +1192,52 @@ function AppContent() {
     // Use cache for instant switch, then fetch fresh data in background
     checkBalance(network, true);
     networkSheetRef.current?.dismiss();
+  };
+
+  // Handle double tap on X1 button to toggle between mainnet and testnet
+  const handleX1NetworkPress = () => {
+    const currentTime = Date.now();
+    const timeSinceLastTap = currentTime - lastX1TapTime;
+
+    // Double tap detected (within 300ms)
+    if (timeSinceLastTap < 300 && timeSinceLastTap > 0) {
+      triggerHaptic();
+
+      // Toggle between X1 Mainnet and X1 Testnet
+      if (currentNetwork.id === "X1") {
+        // Switch to X1 Testnet
+        const testnet = NETWORKS.find((n) => n.id === "X1_TESTNET");
+        if (testnet) {
+          switchNetwork(testnet);
+          Toast.show({
+            type: "info",
+            text1: "Switched to X1 Testnet",
+            position: "bottom",
+            visibilityTime: 2000,
+          });
+        }
+      } else if (currentNetwork.id === "X1_TESTNET") {
+        // Switch to X1 Mainnet
+        const mainnet = NETWORKS.find((n) => n.id === "X1");
+        if (mainnet) {
+          switchNetwork(mainnet);
+          Toast.show({
+            type: "info",
+            text1: "Switched to X1 Mainnet",
+            position: "bottom",
+            visibilityTime: 2000,
+          });
+        }
+      }
+
+      // Reset the tap time
+      setLastX1TapTime(0);
+    } else {
+      // Single tap - switch to X1 Mainnet (default behavior)
+      triggerHaptic();
+      switchNetwork(NETWORKS.find((n) => n.id === "X1"));
+      setLastX1TapTime(currentTime);
+    }
   };
 
   const selectWallet = (wallet) => {
@@ -4069,13 +4125,11 @@ function AppContent() {
                 testID="x1-network-button"
                 style={[
                   styles.quickSwitchButton,
-                  currentNetwork.id === "X1" &&
+                  (currentNetwork.id === "X1" ||
+                    currentNetwork.id === "X1_TESTNET") &&
                     styles.quickSwitchButtonActiveX1,
                 ]}
-                onPress={() => {
-                  triggerHaptic();
-                  switchNetwork(NETWORKS.find((n) => n.id === "X1"));
-                }}
+                onPress={handleX1NetworkPress}
               >
                 <Image
                   source={require("./assets/x1.png")}

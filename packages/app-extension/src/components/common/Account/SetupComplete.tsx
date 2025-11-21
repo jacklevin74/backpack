@@ -1,12 +1,7 @@
 import type { ReactNode } from "react";
-import { DISCORD_INVITE_LINK, TWITTER_LINK } from "@coral-xyz/common";
+import { TWITTER_LINK } from "@coral-xyz/common";
 import { Trans, useTranslation } from "@coral-xyz/i18n";
-import {
-  DiscordIcon,
-  ExtensionIcon,
-  PinIcon,
-  XTwitterIcon,
-} from "@coral-xyz/react-common";
+import { ExtensionIcon, PinIcon, XTwitterIcon } from "@coral-xyz/react-common";
 import {
   BpPrimaryButton,
   StyledText,
@@ -62,16 +57,6 @@ export function SetupComplete() {
             icon={<XTwitterIcon style={{ height: 24 }} />}
             title="@mrjacklevin"
             onClick={() => window.open(TWITTER_LINK, "_blank")}
-          />
-          <_CallToAction
-            icon={
-              <DiscordIcon
-                style={{ height: 24, marginLeft: 4 }}
-                fill="#5865F2"
-              />
-            }
-            title={t("discord")}
-            onClick={() => window.open(DISCORD_INVITE_LINK, "_blank")}
           />
         </XStack>
       </YStack>

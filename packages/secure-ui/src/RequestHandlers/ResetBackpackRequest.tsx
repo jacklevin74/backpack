@@ -1,4 +1,5 @@
 import { getEnv } from "@coral-xyz/common";
+import { useTranslation } from "@coral-xyz/i18n";
 import { userClientAtom } from "@coral-xyz/recoil";
 import { safeClientResponse } from "@coral-xyz/secure-clients";
 import {
@@ -20,6 +21,7 @@ export function ResetBackpackRequest({
 }: {
   currentRequest: QueuedUiRequest<"SECURE_USER_RESET_BACKPACK">;
 }) {
+  const { t } = useTranslation();
   const userClient = useRecoilValue(userClientAtom);
   const [password, setPassword] = useState("");
   const [hasError, setHasError] = useState(false);
@@ -67,7 +69,7 @@ export function ResetBackpackRequest({
       onDeny={onDeny}
       rightButton={
         <DangerButton
-          label="Reset Backpack"
+          label={t("reset_backpack")}
           onPress={onApprove}
           disabled={!password.trim()}
         />
@@ -79,7 +81,7 @@ export function ResetBackpackRequest({
         </Stack>
         <Stack padding="$2" space="$4">
           <StyledText fontSize="$2xl" fontWeight="$medium" lineHeight="$2xl">
-            Reset Backpack?
+            {t("reset_backpack")}?
           </StyledText>
           <StyledText
             fontSize="$md"
@@ -87,9 +89,7 @@ export function ResetBackpackRequest({
             lineHeight="$md"
             color="$baseTextMedEmphasis"
           >
-            This will permanently remove all user accounts, wallets, and data.
-            Make sure you have your secret recovery phrases and private keys
-            saved.
+            {t("reset_backpack_subtitle")}
           </StyledText>
           <Stack space="$2">
             <StyledText fontSize="$sm" fontWeight="$medium" color="$redText">

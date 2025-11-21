@@ -57,7 +57,7 @@ export const solanaPublicKeyHasGas = selectorFamily<
   get:
     (request) =>
     async ({ get }) => {
-      // TODO: Get balance from http://162.250.126.66:4000 API to check for gas
+      // TODO: Get balance from https://mobile-api.x1.xyz API to check for gas
       // For now, assume wallet has gas
       return true;
     },

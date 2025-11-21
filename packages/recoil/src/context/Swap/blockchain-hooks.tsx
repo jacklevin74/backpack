@@ -43,7 +43,7 @@ import { useSolanaCtx } from "../../hooks";
 const { Zero } = ethers.constants;
 
 const DEFAULT_SLIPPAGE_PERCENT = 1;
-const JUPITER_BASE_URL = "http://162.250.126.66:4000/jupiter/v6/";
+const JUPITER_BASE_URL = "https://mobile-api.x1.xyz/jupiter/v6/";
 
 //
 // Quote response from different data sources.
@@ -606,7 +606,7 @@ async function estimateFeesSolana({
         if ([SOL_NATIVE_MINT, WSOL_MINT].includes(to?.mint)) {
           return 0;
         }
-        // TODO: Check if token account exists via http://162.250.126.66:4000 API
+        // TODO: Check if token account exists via https://mobile-api.x1.xyz API
         // For now, assume account creation fee is needed
         return TOKEN_ACCOUNT_RENT_EXEMPTION_LAMPORTS;
       } catch (err) {

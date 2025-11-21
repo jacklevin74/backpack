@@ -309,7 +309,7 @@ export class Solana {
       }
     ): Promise<string> {
       const { walletPublicKey, connection, commitment, blockhash } = ctx;
-      // TODO: Get stake account balance from http://162.250.126.66:4000 API
+      // TODO: Get stake account balance from https://mobile-api.x1.xyz API
       const tx = StakeProgram.withdraw({
         stakePubkey: req.stakeAccount,
         authorizedPubkey: walletPublicKey,

@@ -55,12 +55,12 @@ export function SetupComplete() {
             }
             title={t("support")}
             onClick={() => {
-              window.open("https://support.backpack.exchange", "_blank");
+              window.open("https://x1.xyz", "_blank");
             }}
           />
           <_CallToAction
             icon={<XTwitterIcon style={{ height: 24 }} />}
-            title="@X1Wallet"
+            title="@mrjacklevin"
             onClick={() => window.open(TWITTER_LINK, "_blank")}
           />
           <_CallToAction

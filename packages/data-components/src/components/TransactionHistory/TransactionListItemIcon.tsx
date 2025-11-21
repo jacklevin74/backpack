@@ -76,7 +76,7 @@ export const TransactionListItemIconNft = ({
   <ListItemIconCore
     image={
       mint
-        ? `http://162.250.126.66:4000/nft-data/metaplex-nft/${mint}/image`
+        ? `https://mobile-api.x1.xyz/nft-data/metaplex-nft/${mint}/image`
         : UNKNOWN_NFT_ICON_SRC
     }
     radius={8}

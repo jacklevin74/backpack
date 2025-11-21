@@ -17,7 +17,7 @@ export const x1BlockchainConfig: BlockchainConfig<Blockchain.X1> = {
   caip2Reference: "TBD_X1_GENESIS_HASH",
 
   defaultRpcUrl: X1Cluster.MAINNET,
-  blowfishUrl: "http://162.250.126.66:4000/solana/v0/mainnet/scan/transactions",
+  blowfishUrl: "https://mobile-api.x1.xyz/solana/v0/mainnet/scan/transactions",
   isTestnet: false,
 
   Enabled: true,

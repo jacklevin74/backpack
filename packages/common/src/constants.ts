@@ -424,7 +424,7 @@ export const NATIVE_ACCOUNT_RENT_EXEMPTION_LAMPORTS = 890880 as const;
 export const TOKEN_ACCOUNT_RENT_EXEMPTION_LAMPORTS = 2039280 as const;
 
 export const DISCORD_INVITE_LINK = "https://discord.gg/RhKxgS8SaD";
-export const TWITTER_LINK = "https://twitter.com/backpack";
+export const TWITTER_LINK = "https://x.com/mrjacklevin";
 export const BACKPACK_LINK = "https://backpack.app";
 export const BACKPACK_TERMS_OF_SERVICE =
   "https://support.backpack.exchange/en/categories/264513-backpack-wallet-terms";
@@ -436,11 +436,11 @@ export const EXCHANGE_TERMS_OF_SERVICE_URL =
 export const EXCHANGE_SUMSUB_DOCS_URL =
   "https://sumsub.com/supported-documents";
 
-export const AVATAR_BASE_URL = "http://162.250.126.66:4000/avatars";
-export const BACKEND_API_URL_PROD = "http://162.250.126.66:4000";
+export const AVATAR_BASE_URL = "https://mobile-api.x1.xyz/avatars";
+export const BACKEND_API_URL_PROD = "https://mobile-api.x1.xyz";
 export const BACKEND_API_URL_DEV = "http://localhost:4000";
 export const BACKEND_API_URL = BACKEND_API_URL_PROD; // Default for build - use production
-export const X1_JSON_SERVER_URL = "http://162.250.126.66:4000";
+export const X1_JSON_SERVER_URL = "https://mobile-api.x1.xyz";
 export const X1_JSON_SERVER_URL_LOCAL = "http://localhost:4000";
 
 // GraphQL API Configuration

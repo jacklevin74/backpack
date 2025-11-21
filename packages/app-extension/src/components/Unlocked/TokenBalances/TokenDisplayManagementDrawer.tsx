@@ -15,7 +15,11 @@ import {
 } from "@coral-xyz/common";
 import type { ProviderId } from "@coral-xyz/data-components";
 import { useTranslation } from "@coral-xyz/i18n";
-import { hiddenTokenAddresses, useBackgroundClient, useBlockchainConnectionUrl } from "@coral-xyz/recoil";
+import {
+  hiddenTokenAddresses,
+  useBackgroundClient,
+  useBlockchainConnectionUrl,
+} from "@coral-xyz/recoil";
 import {
   ListItemCore,
   ListItemIconCore,
@@ -81,15 +85,15 @@ export function HiddenTokensList({
       try {
         // Determine the correct providerId for X1 blockchain
         let providerId = blockchain.toUpperCase();
-        if (blockchain === 'x1' && connectionUrl) {
-          if (connectionUrl.includes('testnet')) {
-            providerId = 'X1-testnet';
+        if (blockchain === "x1" && connectionUrl) {
+          if (connectionUrl.includes("testnet")) {
+            providerId = "X1-testnet";
           } else {
-            providerId = 'X1-mainnet';
+            providerId = "X1-mainnet";
           }
         }
 
-        const url = `http://162.250.126.66:4000/wallet/${address}?providerId=${providerId}`;
+        const url = `https://mobile-api.x1.xyz/wallet/${address}?providerId=${providerId}`;
         const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);

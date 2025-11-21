@@ -40,7 +40,7 @@ export function externalResourceUri(
     return uri.replace("ar://", "https://arweave.net/");
   }
   if (options.cached) {
-    return `http://162.250.126.66:4000/1min/${uri}`;
+    return `https://mobile-api.x1.xyz/1min/${uri}`;
   }
   return `${uri}`;
 }

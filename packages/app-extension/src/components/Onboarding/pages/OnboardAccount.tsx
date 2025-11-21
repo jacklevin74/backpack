@@ -72,9 +72,8 @@ export const OnboardAccount = ({
     <AccountName
       key="AccountName"
       onNext={(name) => {
-        if (name) {
-          setOnboardingData({ accountName: name });
-        }
+        // Set account name, or default to "Account 1" if skipped
+        setOnboardingData({ accountName: name || "Account 1" });
         nextStep();
       }}
     />,

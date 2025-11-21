@@ -3521,6 +3521,12 @@ function AppContent() {
               }
               console.log("Loading URL:", url);
               setBrowserUrl(url);
+              // Also force reload if WebView is already loaded
+              if (webViewRef.current) {
+                setTimeout(() => {
+                  webViewRef.current.reload();
+                }, 100);
+              }
             }}
             style={{
               backgroundColor: "#4a90e2",
@@ -3538,6 +3544,7 @@ function AppContent() {
         <View style={{ flex: 1 }}>
           <WebView
             ref={webViewRef}
+            key={browserUrl}
             source={{ uri: browserUrl }}
             style={{ flex: 1 }}
             javaScriptEnabled={true}
@@ -6028,6 +6035,13 @@ function AppContent() {
                   console.log("Sanitized URL:", url);
                   setBrowserUrl(url);
                   console.log("browserUrl state updated to:", url);
+
+                  // Force reload if WebView is already loaded
+                  if (webViewRef.current) {
+                    setTimeout(() => {
+                      webViewRef.current.reload();
+                    }, 100);
+                  }
                 }}
               >
                 <Text style={styles.goButtonText}>Go</Text>
@@ -6039,6 +6053,7 @@ function AppContent() {
               style={{ flex: 1, backgroundColor: "#FF0000", marginTop: 10 }}
             >
               <WebView
+                key={browserUrl}
                 source={{ uri: browserUrl }}
                 style={{ flex: 1, backgroundColor: "#00FF00" }}
                 javaScriptEnabled={true}

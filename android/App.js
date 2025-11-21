@@ -1913,39 +1913,38 @@ function AppContent() {
         networkName = currentNetwork.name || "X1 Testnet";
       }
 
-      const payload = {
+      // Build query parameters for GET request
+      const params = new URLSearchParams({
         network: networkName,
-        wallet: selectedWallet.publicKey,
         token_in: swapTokenIn,
         token_out: swapTokenOut,
-        token_in_amount: parseFloat(amount),
-        is_exact_amount_in: true,
-      };
+        token_in_amount: parseFloat(amount).toString(),
+        is_exact_amount_in: "true",
+      });
 
-      console.log("Getting swap estimate:", payload);
+      console.log("Getting swap quote:", params.toString());
 
       const response = await fetch(
-        "https://api.xdex.xyz/api/xendex/swap/prepare",
+        `https://api.xdex.xyz/api/xendex/swap/quote?${params.toString()}`,
         {
-          method: "POST",
+          method: "GET",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(payload),
         }
       );
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to get swap estimate");
+        throw new Error(data.error || "Failed to get swap quote");
       }
 
-      console.log("Swap estimate:", data);
+      console.log("Swap quote:", data);
       setSwapEstimate(data);
     } catch (error) {
-      console.error("Swap estimate error:", error);
-      setSwapError(error.message || "Failed to get swap estimate");
+      console.error("Swap quote error:", error);
+      setSwapError(error.message || "Failed to get swap quote");
     } finally {
       setSwapLoading(false);
     }
@@ -1981,11 +1980,56 @@ function AppContent() {
       // Create connection
       const connection = new Connection(currentNetwork.rpcUrl, "confirmed");
 
-      // Get transaction from nested data structure
+      // Determine network name for API
+      let networkName;
+      if (currentNetwork.providerId === "X1-testnet") {
+        networkName = "X1 Testnet";
+      } else if (currentNetwork.providerId === "X1-mainnet") {
+        networkName = "X1 Mainnet";
+      } else if (currentNetwork.providerId === "SOLANA-devnet") {
+        networkName = "Solana Devnet";
+      } else if (currentNetwork.providerId === "SOLANA-mainnet") {
+        networkName = "Solana Mainnet";
+      } else {
+        networkName = currentNetwork.name || "X1 Testnet";
+      }
+
+      // Fetch transaction from /prepare endpoint
+      const preparePayload = {
+        network: networkName,
+        wallet: selectedWallet.publicKey,
+        token_in: swapTokenIn,
+        token_out: swapTokenOut,
+        token_in_amount: parseFloat(swapAmount),
+        is_exact_amount_in: true,
+      };
+
+      console.log("Fetching swap transaction:", preparePayload);
+
+      const prepareResponse = await fetch(
+        "https://api.xdex.xyz/api/xendex/swap/prepare",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(preparePayload),
+        }
+      );
+
+      const prepareData = await prepareResponse.json();
+
+      if (!prepareResponse.ok) {
+        throw new Error(
+          prepareData.error || "Failed to prepare swap transaction"
+        );
+      }
+
+      // Get transaction from response
       const transactionData =
-        swapEstimate.data?.transaction || swapEstimate.transaction;
+        prepareData.data?.transaction || prepareData.transaction;
       if (!transactionData) {
-        throw new Error("No transaction data in swap estimate");
+        throw new Error("No transaction data in prepare response");
       }
 
       // Deserialize the transaction (handle both versioned and legacy)
@@ -6558,11 +6602,7 @@ function AppContent() {
                     ) : (
                       <Text style={styles.swapOutput}>
                         {swapEstimate
-                          ? (
-                              swapEstimate.data?.token_out_amount ||
-                              swapEstimate.token_out_amount ||
-                              0
-                            ).toFixed(6)
+                          ? (swapEstimate.data?.outputAmount || 0).toFixed(6)
                           : "0.0"}
                       </Text>
                     )}
@@ -6579,48 +6619,14 @@ function AppContent() {
                   <View style={styles.swapDetailRow}>
                     <Text style={styles.swapDetailLabel}>Rate</Text>
                     <Text style={styles.swapDetailValue}>
-                      1 XNT ≈{" "}
-                      {(
-                        (swapEstimate.data?.token_out_amount ||
-                          swapEstimate.token_out_amount ||
-                          0) / parseFloat(swapAmount)
-                      ).toFixed(6)}{" "}
-                      XNM
+                      1 XNT ≈ {(swapEstimate.data?.rate || 0).toFixed(6)} XNM
                     </Text>
                   </View>
-                  {(swapEstimate.data?.price_impact ||
-                    swapEstimate.price_impact) && (
+                  {swapEstimate.data?.priceImpactPct !== undefined && (
                     <View style={styles.swapDetailRow}>
                       <Text style={styles.swapDetailLabel}>Price Impact</Text>
                       <Text style={styles.swapDetailValue}>
-                        {(
-                          (swapEstimate.data?.price_impact ||
-                            swapEstimate.price_impact) * 100
-                        ).toFixed(2)}
-                        %
-                      </Text>
-                    </View>
-                  )}
-                  {(swapEstimate.data?.minimum_received ||
-                    swapEstimate.minimum_received) && (
-                    <View style={styles.swapDetailRow}>
-                      <Text style={styles.swapDetailLabel}>
-                        Minimum Received
-                      </Text>
-                      <Text style={styles.swapDetailValue}>
-                        {(
-                          swapEstimate.data?.minimum_received ||
-                          swapEstimate.minimum_received
-                        ).toFixed(6)}{" "}
-                        XNM
-                      </Text>
-                    </View>
-                  )}
-                  {(swapEstimate.data?.fee || swapEstimate.fee) && (
-                    <View style={styles.swapDetailRow}>
-                      <Text style={styles.swapDetailLabel}>Network Fee</Text>
-                      <Text style={styles.swapDetailValue}>
-                        ~{swapEstimate.data?.fee || swapEstimate.fee} SOL
+                        {(swapEstimate.data.priceImpactPct * 100).toFixed(2)}%
                       </Text>
                     </View>
                   )}

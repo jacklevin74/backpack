@@ -40,7 +40,7 @@ export const CreateOrImportWallet = ({
       <YStack gap={16} width={420}>
         <BpPrimaryButton
           label={t("create_new_wallet")}
-          onPress={() => onNext({ action: "create", keyringType: "mnemonic" })}
+          onPress={() => onNext({ action: "create" })}
         />
         <BpSecondaryButton
           label={t("import_wallet")}
@@ -58,12 +58,14 @@ export const CreateOrImportWallet = ({
           >
             {showAdvanced ? "▲" : "▼"} {t("advanced")}
           </StyledText>
-          {showAdvanced ? <BpSecondaryButton
-            label={t("with_secret_key.import")}
-            onPress={() =>
+          {showAdvanced ? (
+            <BpSecondaryButton
+              label={t("with_secret_key.import")}
+              onPress={() =>
                 onNext({ action: "import", keyringType: "mnemonic" })
               }
-            /> : null}
+            />
+          ) : null}
         </YStack>
       </YStack>
     </YStack>

@@ -6,10 +6,45 @@ import { Header, SubtextParagraph } from "../../common";
 
 export const KeyringTypeSelector = ({
   onNext,
+  mode = "import",
 }: {
   onNext: (keyringType: KeyringType) => void;
+  mode?: "create" | "import";
 }) => {
   const { t } = useTranslation();
+
+  if (mode === "create") {
+    return (
+      <YStack f={1}>
+        <YStack alignItems="center" justifyContent="center" mb={40}>
+          <Header text={t("create_new_wallet")} />
+          <SubtextParagraph>
+            Choose a method to create your wallet.
+          </SubtextParagraph>
+        </YStack>
+        <YStack alignItems="center" gap={12}>
+          <BpSecondaryButton
+            iconBefore={<_ListIcon />}
+            label={t("with_secret_key.create")}
+            justifyContent="flex-start"
+            mb={12}
+            onPress={() => onNext("mnemonic")}
+            textAlign="left"
+          />
+          <StyledText alignSelf="flex-start" color="$baseTextMedEmphasis">
+            {t("advanced")}
+          </StyledText>
+          <BpSecondaryButton
+            iconBefore={<_KeyIcon />}
+            label={t("with_private_key.create")}
+            justifyContent="flex-start"
+            onPress={() => onNext("private-key")}
+            textAlign="left"
+          />
+        </YStack>
+      </YStack>
+    );
+  }
 
   return (
     <YStack f={1}>
@@ -31,6 +66,14 @@ export const KeyringTypeSelector = ({
         <StyledText alignSelf="flex-start" color="$baseTextMedEmphasis">
           {t("advanced")}
         </StyledText>
+        <BpSecondaryButton
+          iconBefore={<_KeyIcon />}
+          label={t("with_private_key")}
+          justifyContent="flex-start"
+          mb={12}
+          onPress={() => onNext("private-key")}
+          textAlign="left"
+        />
         <BpSecondaryButton
           iconBefore={<_HardwareIcon />}
           label={t("have_hardware_wallet")}
@@ -54,6 +97,23 @@ function _ListIcon() {
     >
       <path
         d="M11.8333 9.33337H27.8333C28.5666 9.33337 29.1666 8.73337 29.1666 8.00004C29.1666 7.26671 28.5666 6.66671 27.8333 6.66671H11.8333C11.0999 6.66671 10.4999 7.26671 10.4999 8.00004C10.4999 8.73337 11.0999 9.33337 11.8333 9.33337ZM27.8333 22.6667H11.8333C11.0999 22.6667 10.4999 23.2667 10.4999 24C10.4999 24.7334 11.0999 25.3334 11.8333 25.3334H27.8333C28.5666 25.3334 29.1666 24.7334 29.1666 24C29.1666 23.2667 28.5666 22.6667 27.8333 22.6667ZM27.8333 14.6667H11.8333C11.0999 14.6667 10.4999 15.2667 10.4999 16C10.4999 16.7334 11.0999 17.3334 11.8333 17.3334H27.8333C28.5666 17.3334 29.1666 16.7334 29.1666 16C29.1666 15.2667 28.5666 14.6667 27.8333 14.6667ZM7.16658 21.3334H4.49992C4.12659 21.3334 3.83325 21.6267 3.83325 22C3.83325 22.3734 4.12659 22.6667 4.49992 22.6667H6.49992V23.3334H5.83325C5.45992 23.3334 5.16659 23.6267 5.16659 24C5.16659 24.3734 5.45992 24.6667 5.83325 24.6667H6.49992V25.3334H4.49992C4.12659 25.3334 3.83325 25.6267 3.83325 26C3.83325 26.3734 4.12659 26.6667 4.49992 26.6667H7.16658C7.53992 26.6667 7.83325 26.3734 7.83325 26V22C7.83325 21.6267 7.53992 21.3334 7.16658 21.3334ZM4.49992 6.66671H5.16659V10C5.16659 10.3734 5.45992 10.6667 5.83325 10.6667C6.20659 10.6667 6.49992 10.3734 6.49992 10V6.00004C6.49992 5.62671 6.20659 5.33337 5.83325 5.33337H4.49992C4.12659 5.33337 3.83325 5.62671 3.83325 6.00004C3.83325 6.37337 4.12659 6.66671 4.49992 6.66671ZM7.16658 13.3334H4.49992C4.12659 13.3334 3.83325 13.6267 3.83325 14C3.83325 14.3734 4.12659 14.6667 4.49992 14.6667H6.23325L3.99325 17.28C3.88659 17.4 3.83325 17.56 3.83325 17.7067V18C3.83325 18.3734 4.12659 18.6667 4.49992 18.6667H7.16658C7.53992 18.6667 7.83325 18.3734 7.83325 18C7.83325 17.6267 7.53992 17.3334 7.16658 17.3334H5.43325L7.67325 14.72C7.77992 14.6 7.83325 14.44 7.83325 14.2934V14C7.83325 13.6267 7.53992 13.3334 7.16658 13.3334Z"
+        fill="#75798A"
+      />
+    </svg>
+  );
+}
+
+function _KeyIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="33"
+      height="32"
+      viewBox="0 0 33 32"
+      fill="none"
+    >
+      <path
+        d="M22.1667 10.6667C22.1667 8.82572 20.674 7.33337 18.8333 7.33337C17.0001 7.33337 15.5 8.83337 15.5 10.6667C15.5 12.5 17.0001 14 18.8333 14C19.1667 14 19.5 13.9334 19.8333 13.8334L22.5 16.5H25.8333V19.8334H29.1667V16.5L25.1667 12.5C25.2667 12.1667 25.3333 11.8334 25.3333 11.5C25.3333 9.66671 23.8333 8.16671 22 8.16671C20.1667 8.16671 18.6667 9.66671 18.6667 11.5C18.6667 13.3334 20.1667 14.8334 22 14.8334C22.3333 14.8334 22.6667 14.7667 23 14.6667L25.8333 11.8334H22.1667V10.6667Z"
         fill="#75798A"
       />
     </svg>

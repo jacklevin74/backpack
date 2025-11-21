@@ -358,6 +358,7 @@ function AppContent() {
   const [newSeedPhraseInput, setNewSeedPhraseInput] = useState("");
   const [changeSeedPhraseMode, setChangeSeedPhraseMode] = useState("enter"); // "enter" or "generate"
   const [generatedNewSeed, setGeneratedNewSeed] = useState("");
+  const [isInitialSetup, setIsInitialSetup] = useState(false); // Track if we're setting up master seed phrase for the first time
   const [settingsNavigationStack, setSettingsNavigationStack] = useState([]); // Stack for settings navigation: ['manageSecurity', 'exportSeed', etc.]
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [currentBottomTab, setCurrentBottomTab] = useState("portfolio"); // "portfolio", "swap", "browser"
@@ -2247,13 +2248,14 @@ function AppContent() {
 
     // Check if master seed phrase exists
     if (!masterSeedPhrase) {
-      Toast.show({
-        type: "error",
-        text1: "No Master Seed Phrase",
-        text2:
-          "Please set a master seed phrase in Manage Security settings first",
-        position: "bottom",
-      });
+      // No master seed phrase - generate one and show it to user
+      console.log(
+        "No master seed phrase found, generating new one for initial setup"
+      );
+      const newSeed = bip39.generateMnemonic();
+      setNewMnemonic(newSeed);
+      setIsInitialSetup(true);
+      setShowCreateWalletModal(true);
       return;
     }
 
@@ -2440,8 +2442,46 @@ function AppContent() {
 
   const handleConfirmCreateWallet = async () => {
     try {
-      // Always use master seed phrase for derivation (should always exist at this point)
-      if (!masterSeedPhrase) {
+      let seedPhraseToUse = masterSeedPhrase;
+
+      // If this is initial setup, save the master seed phrase first
+      if (isInitialSetup) {
+        if (!newMnemonic || !newMnemonic.trim()) {
+          Toast.show({
+            type: "error",
+            text1: "Error",
+            text2: "Seed phrase not generated",
+            position: "bottom",
+          });
+          return;
+        }
+
+        // Validate the seed phrase
+        if (!bip39.validateMnemonic(newMnemonic)) {
+          Toast.show({
+            type: "error",
+            text1: "Error",
+            text2: "Invalid seed phrase",
+            position: "bottom",
+          });
+          return;
+        }
+
+        // Save the master seed phrase
+        seedPhraseToUse = newMnemonic;
+        setMasterSeedPhrase(seedPhraseToUse);
+        await saveMasterSeedPhrase(seedPhraseToUse);
+
+        // Reset derivation index to 0 for new seed phrase
+        setWalletDerivationIndex(0);
+        await saveDerivationIndex(0);
+
+        console.log("Master seed phrase saved successfully");
+        setIsInitialSetup(false);
+      }
+
+      // Ensure we have a seed phrase to use
+      if (!seedPhraseToUse) {
         Toast.show({
           type: "error",
           text1: "Error",
@@ -2451,7 +2491,7 @@ function AppContent() {
         return;
       }
 
-      const seed = await bip39.mnemonicToSeed(masterSeedPhrase);
+      const seed = await bip39.mnemonicToSeed(seedPhraseToUse);
 
       // Derive wallet using BIP44 path: m/44'/501'/<index>'/0'
       const path = `m/44'/501'/${walletDerivationIndex}'/0'`;
@@ -2497,8 +2537,19 @@ function AppContent() {
       await saveDerivationIndex(nextIndex);
       console.log(`Wallet created at ${path}, next index: ${nextIndex}`);
 
+      const wasInitialSetup = isInitialSetup;
       setNewMnemonic("");
+      setIsInitialSetup(false);
       setShowCreateWalletModal(false);
+
+      Toast.show({
+        type: "success",
+        text1: wasInitialSetup ? "Setup Complete" : "Wallet Created",
+        text2: wasInitialSetup
+          ? "Master seed phrase saved and wallet created"
+          : `${newWallet.name} has been added`,
+        position: "bottom",
+      });
     } catch (error) {
       Toast.show({
         type: "error",
@@ -4865,7 +4916,18 @@ function AppContent() {
         >
           <Pressable
             style={styles.settingsDrawerOverlay}
-            onPress={() => setShowCreateWalletModal(false)}
+            onPress={() => {
+              if (!isInitialSetup) {
+                setShowCreateWalletModal(false);
+              } else {
+                Toast.show({
+                  type: "error",
+                  text1: "Setup Required",
+                  text2: "Please save your master seed phrase to continue",
+                  position: "bottom",
+                });
+              }
+            }}
           >
             <Pressable
               style={[
@@ -4879,12 +4941,29 @@ function AppContent() {
                   <View style={{ width: 32 }} />
                   <Text style={styles.settingsDrawerTitle}>Create Wallet</Text>
                   <TouchableOpacity
-                    onPress={() => setShowCreateWalletModal(false)}
+                    onPress={() => {
+                      if (isInitialSetup) {
+                        // Don't allow closing during initial setup
+                        Toast.show({
+                          type: "error",
+                          text1: "Setup Required",
+                          text2:
+                            "Please save your master seed phrase to continue",
+                          position: "bottom",
+                        });
+                      } else {
+                        setShowCreateWalletModal(false);
+                      }
+                    }}
                   >
                     <Text style={styles.settingsDrawerClose}>✕</Text>
                   </TouchableOpacity>
                 </View>
-                <Text style={styles.seedPhraseTitle}>Your Seed Phrase</Text>
+                <Text style={styles.seedPhraseTitle}>
+                  {isInitialSetup
+                    ? "Your Master Seed Phrase"
+                    : "Your Seed Phrase"}
+                </Text>
                 <View style={styles.seedPhraseContainer}>
                   <TouchableOpacity
                     style={styles.seedPhraseCopyBtnInside}
@@ -4900,25 +4979,30 @@ function AppContent() {
                     </Text>
                   </TouchableOpacity>
                   <View style={styles.seedPhraseGrid}>
-                    {newMnemonic.split(" ").map((word, index) => (
-                      <View key={index} style={styles.seedPhraseWord}>
-                        <Text style={styles.seedPhraseText}>
-                          {index + 1}. {word}
-                        </Text>
-                      </View>
-                    ))}
+                    {newMnemonic && newMnemonic.trim()
+                      ? newMnemonic.split(" ").map((word, index) => (
+                          <View key={index} style={styles.seedPhraseWord}>
+                            <Text style={styles.seedPhraseText}>
+                              {index + 1}. {word}
+                            </Text>
+                          </View>
+                        ))
+                      : null}
                   </View>
                 </View>
                 <Text style={styles.seedPhraseWarning}>
-                  Save this seed phrase securely. You'll need it to recover your
-                  wallet.
+                  {isInitialSetup
+                    ? "This is your master seed phrase. Save it securely in a safe place. You'll need it to recover all your wallets. All future wallets will be derived from this seed phrase."
+                    : "Save this seed phrase securely. You'll need it to recover your wallet."}
                 </Text>
                 <TouchableOpacity
                   style={styles.confirmButton}
                   onPress={handleConfirmCreateWallet}
                 >
                   <Text style={styles.confirmButtonText}>
-                    I've Saved My Seed Phrase
+                    {isInitialSetup
+                      ? "I've Saved My Master Seed Phrase"
+                      : "I've Saved My Seed Phrase"}
                   </Text>
                 </TouchableOpacity>
               </View>

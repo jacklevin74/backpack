@@ -39,6 +39,7 @@ import {
   Switch,
   BackHandler,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import {
@@ -302,6 +303,8 @@ function AppContent() {
   const [password, setPassword] = useState(null);
   const [securityAuthRequired, setSecurityAuthRequired] = useState(false); // Require auth for security settings
   const [securityAuthenticated, setSecurityAuthenticated] = useState(false); // Track if authenticated for security
+  const [pendingAuthScreen, setPendingAuthScreen] = useState(null); // Track which screen to navigate to after auth
+  const [pendingResetWallet, setPendingResetWallet] = useState(false); // Track if we should show reset confirmation after auth
 
   const [wallets, setWallets] = useState([]);
   const [walletsLoaded, setWalletsLoaded] = useState(false);
@@ -1172,6 +1175,75 @@ function AppContent() {
   // Settings navigation helpers
   const navigateToSettingsScreen = (screen) => {
     setSettingsNavigationStack([...settingsNavigationStack, screen]);
+  };
+
+  // Reset wallet confirmation handler
+  const handleResetWalletConfirmation = () => {
+    Alert.alert(
+      "Reset Wallet",
+      "This will permanently delete all wallets, seed phrases, and app data. You will need to set up a new PIN and create new wallets. This action cannot be undone.\n\nAre you sure you want to continue?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Reset",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              Toast.show({
+                type: "info",
+                text1: "Resetting Wallet",
+                text2: "Clearing all data...",
+                position: "bottom",
+              });
+              setShowSettingsModal(false);
+
+              // Clear AsyncStorage
+              await AsyncStorage.clear();
+
+              // Clear SecureStore - use AuthManager to clear all security data
+              await AuthManager.clearSecurityState();
+
+              // Reset all state variables
+              setMasterSeedPhrase(null);
+              setWallets([]);
+              setSelectedWallet(null);
+              setEditingWallet(null);
+              setEditWalletName("");
+              setShowAddWalletModal(false);
+              setShowChangeNameModal(false);
+              setShowViewPrivateKeyModal(false);
+              setShowViewSeedPhraseModal(false);
+              setShowExportSeedPhraseModal(false);
+              setShowChangeSeedPhraseModal(false);
+              setSecurityAuthenticated(false);
+              setSecurityAuthRequired(false);
+              setWalletDerivationIndex(0);
+
+              // Generate a random password for PIN setup (same as initial app load)
+              const randomPassword = Array.from(randomBytes(32))
+                .map((byte) => byte.toString(16).padStart(2, "0"))
+                .join("");
+              setPassword(randomPassword);
+
+              // Go directly to PIN setup screen
+              setAuthState("setup");
+            } catch (error) {
+              console.error("Error resetting wallet:", error);
+              Toast.show({
+                type: "error",
+                text1: "Error",
+                text2: "Failed to reset wallet. Please try again.",
+                position: "bottom",
+              });
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   const navigateBackInSettings = () => {
@@ -6191,9 +6263,13 @@ function AppContent() {
                     ? "Manage Security"
                     : settingsNavigationStack[
                           settingsNavigationStack.length - 1
-                        ] === "exportSeed"
-                      ? "Export Seed Phrase"
-                      : "Change Seed Phrase"}
+                        ] === "preferences"
+                      ? "Preferences"
+                      : settingsNavigationStack[
+                            settingsNavigationStack.length - 1
+                          ] === "exportSeed"
+                        ? "Export Seed Phrase"
+                        : "Change Seed Phrase"}
               </Text>
               <TouchableOpacity
                 onPress={
@@ -6274,13 +6350,7 @@ function AppContent() {
                   <TouchableOpacity
                     style={styles.settingsMenuItem}
                     onPress={() => {
-                      setShowSettingsModal(false);
-                      Toast.show({
-                        type: "info",
-                        text1: "Preferences",
-                        text2: "Preferences would open here",
-                        position: "bottom",
-                      });
+                      navigateToSettingsScreen("preferences");
                     }}
                   >
                     <Text style={styles.settingsMenuItemText}>Preferences</Text>
@@ -6292,6 +6362,7 @@ function AppContent() {
                     onPress={() => {
                       // Require PIN/biometric authentication before accessing security settings
                       if (!securityAuthenticated) {
+                        setPendingAuthScreen("manageSecurity");
                         setSecurityAuthRequired(true);
                       } else {
                         navigateToSettingsScreen("manageSecurity");
@@ -6348,78 +6419,6 @@ function AppContent() {
                   >
                     <Text style={styles.settingsMenuItemText}>Debug</Text>
                     <Text style={styles.settingsMenuItemArrow}>›</Text>
-                  </TouchableOpacity>
-
-                  {/* Reset Wallet Button */}
-                  <TouchableOpacity
-                    style={[
-                      styles.settingsMenuItem,
-                      {
-                        marginTop: 20,
-                        borderTopWidth: 1,
-                        borderTopColor: "rgba(255, 255, 255, 0.1)",
-                      },
-                    ]}
-                    onPress={async () => {
-                      try {
-                        Toast.show({
-                          type: "info",
-                          text1: "Resetting Wallet",
-                          text2: "Clearing all data...",
-                          position: "bottom",
-                        });
-                        setShowSettingsModal(false);
-
-                        // Clear AsyncStorage
-                        await AsyncStorage.clear();
-
-                        // Clear SecureStore - use AuthManager to clear all security data
-                        await AuthManager.clearSecurityState();
-
-                        // Reset all state variables
-                        setMasterSeedPhrase(null);
-                        setWallets([]);
-                        setSelectedWallet(null);
-                        setEditingWallet(null);
-                        setEditWalletName("");
-                        setShowAddWalletModal(false);
-                        setShowChangeNameModal(false);
-                        setShowViewPrivateKeyModal(false);
-                        setShowViewSeedPhraseModal(false);
-                        setShowExportSeedPhraseModal(false);
-                        setShowChangeSeedPhraseModal(false);
-                        setSecurityAuthenticated(false);
-                        setSecurityAuthRequired(false);
-                        setWalletDerivationIndex(0);
-
-                        // Generate a random password for PIN setup (same as initial app load)
-                        const randomPassword = Array.from(randomBytes(32))
-                          .map((byte) => byte.toString(16).padStart(2, "0"))
-                          .join("");
-                        setPassword(randomPassword);
-
-                        // Go directly to PIN setup screen
-                        setAuthState("setup");
-                      } catch (error) {
-                        console.error("Error resetting wallet:", error);
-                        Toast.show({
-                          type: "error",
-                          text1: "Error",
-                          text2: "Failed to reset wallet. Please try again.",
-                          position: "bottom",
-                        });
-                      }
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.settingsMenuItemText,
-                        { color: "#EF4444" },
-                      ]}
-                    >
-                      Reset Wallet
-                    </Text>
-                    <Text style={styles.settingsMenuItemArrow}>⚠️</Text>
                   </TouchableOpacity>
 
                   {/* Lock App Button */}
@@ -6572,6 +6571,43 @@ function AppContent() {
                       Clear PIN & Biometrics
                     </Text>
                     <Text style={styles.settingsMenuItemArrow}>🗑️</Text>
+                  </TouchableOpacity>
+                </>
+              ) : settingsNavigationStack[
+                  settingsNavigationStack.length - 1
+                ] === "preferences" ? (
+                // Preferences Menu
+                <>
+                  <TouchableOpacity
+                    style={[
+                      styles.settingsMenuItem,
+                      {
+                        marginTop: 20,
+                        borderTopWidth: 1,
+                        borderTopColor: "rgba(255, 255, 255, 0.1)",
+                      },
+                    ]}
+                    onPress={() => {
+                      // Require PIN/biometric authentication before resetting wallet
+                      if (!securityAuthenticated) {
+                        setPendingAuthScreen("preferences");
+                        setPendingResetWallet(true);
+                        setSecurityAuthRequired(true);
+                      } else {
+                        // Show confirmation dialog
+                        handleResetWalletConfirmation();
+                      }
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.settingsMenuItemText,
+                        { color: "#EF4444" },
+                      ]}
+                    >
+                      Reset Wallet
+                    </Text>
+                    <Text style={styles.settingsMenuItemArrow}>⚠️</Text>
                   </TouchableOpacity>
                 </>
               ) : settingsNavigationStack[
@@ -6807,7 +6843,29 @@ function AppContent() {
             onUnlock={(recoveredPassword) => {
               setSecurityAuthRequired(false);
               setSecurityAuthenticated(true);
-              navigateToSettingsScreen("manageSecurity");
+              const targetScreen = pendingAuthScreen || "manageSecurity";
+              const shouldResetWallet = pendingResetWallet;
+              setPendingAuthScreen(null);
+              setPendingResetWallet(false);
+
+              if (targetScreen === "preferences") {
+                // Navigate to preferences if not already there
+                if (
+                  settingsNavigationStack[
+                    settingsNavigationStack.length - 1
+                  ] !== "preferences"
+                ) {
+                  navigateToSettingsScreen("preferences");
+                }
+                // Auto-trigger reset confirmation if pending
+                if (shouldResetWallet) {
+                  setTimeout(() => {
+                    handleResetWalletConfirmation();
+                  }, 300);
+                }
+              } else {
+                navigateToSettingsScreen(targetScreen);
+              }
             }}
           />
         </View>

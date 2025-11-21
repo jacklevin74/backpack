@@ -15,6 +15,7 @@ import { PreferencesBlockchainRpcConnectionScreen } from "../screens/Unlocked/Se
 import { PreferencesBlockchainScreen } from "../screens/Unlocked/Settings/PreferencesBlockchainScreen";
 import { PreferencesHiddenTokensScreen } from "../screens/Unlocked/Settings/PreferencesHiddenTokenScreen";
 import { PreferencesLanguageScreen } from "../screens/Unlocked/Settings/PreferencesLanguageScreen";
+import { PreferencesResetWalletScreen } from "../screens/Unlocked/Settings/PreferencesResetWalletScreen";
 import { PreferencesScreen } from "../screens/Unlocked/Settings/PreferencesScreen";
 import { PreferencesTrustedSitesScreen } from "../screens/Unlocked/Settings/PreferencesTrustedSitesScreen";
 import { SettingsScreen } from "../screens/Unlocked/Settings/SettingsScreen";
@@ -77,6 +78,7 @@ export enum Routes {
   PreferencesBlockchainCommitmentScreen = "PreferencesBlockchainCommitment",
   PreferencesBlockchainExplorerScreen = "PreferencesBlockchainExplorerer",
   PreferencesBlockchainRpcConnectionCustomScreen = "PreferencesBlockchainRpcConnectionCustomScreen",
+  PreferencesResetWalletScreen = "PreferencesResetWalletScreen",
 
   AboutScreen = "AboutScreen",
 }
@@ -145,6 +147,7 @@ type SettingsScreenStackNavigatorParamList = {
   [Routes.PreferencesTrustedSitesScreen]: undefined;
   [Routes.PreferencesLanguageScreen]: undefined;
   [Routes.PreferencesHiddenTokensScreen]: undefined;
+  [Routes.PreferencesResetWalletScreen]: undefined;
   [Routes.PreferencesBlockchainScreen]: {
     blockchain: Blockchain;
   };
@@ -470,6 +473,16 @@ export function SettingsNavigator({
         options={({ navigation }) => {
           return {
             title: t("hidden_tokens"),
+            ...maybeCloseButton(false, navigation),
+          };
+        }}
+      />
+      <Stack.Screen
+        name={Routes.PreferencesResetWalletScreen}
+        component={PreferencesResetWalletScreen}
+        options={({ navigation }) => {
+          return {
+            title: t("reset_backpack"),
             ...maybeCloseButton(false, navigation),
           };
         }}

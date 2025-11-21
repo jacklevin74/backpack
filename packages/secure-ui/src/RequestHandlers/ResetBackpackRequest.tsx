@@ -1,13 +1,18 @@
-import type { QueuedUiRequest } from "../_atoms/requestAtoms";
-
 import { getEnv } from "@coral-xyz/common";
+import { userClientAtom } from "@coral-xyz/recoil";
+import { safeClientResponse } from "@coral-xyz/secure-clients";
 import {
   AlertOctagonIcon,
   DangerButton,
+  BpPasswordInput,
   Stack,
   StyledText,
+  useTheme,
 } from "@coral-xyz/tamagui";
+import { useState } from "react";
+import { useRecoilValue } from "recoil";
 
+import type { QueuedUiRequest } from "../_atoms/requestAtoms";
 import { RequestConfirmation } from "../_sharedComponents/RequestConfirmation";
 
 export function ResetBackpackRequest({
@@ -15,21 +20,43 @@ export function ResetBackpackRequest({
 }: {
   currentRequest: QueuedUiRequest<"SECURE_USER_RESET_BACKPACK">;
 }) {
-  const onApprove = () => {
-    currentRequest.respond({
-      confirmed: true,
-    });
+  const userClient = useRecoilValue(userClientAtom);
+  const [password, setPassword] = useState("");
+  const [hasError, setHasError] = useState(false);
+  const theme = useTheme();
 
-    const platform = getEnv();
-    const isMobile = platform.startsWith("mobile");
-    if (!isMobile) {
-      //
-      // On extension, we write copy to local storage of the UI so that
-      // we can use it without hitting the service worker on app load.
-      //
-      try {
-        window.localStorage.removeItem("secureUser");
-      } catch {}
+  const onApprove = async () => {
+    if (!password.trim()) {
+      return;
+    }
+
+    // Validate password before proceeding
+    try {
+      await safeClientResponse(
+        userClient.checkPassword({
+          password,
+        })
+      );
+
+      // Password is correct, proceed with reset
+      currentRequest.respond({
+        confirmed: true,
+      });
+
+      const platform = getEnv();
+      const isMobile = platform.startsWith("mobile");
+      if (!isMobile) {
+        //
+        // On extension, we write copy to local storage of the UI so that
+        // we can use it without hitting the service worker on app load.
+        //
+        try {
+          window.localStorage.removeItem("secureUser");
+        } catch {}
+      }
+    } catch (e) {
+      // Password is incorrect
+      setHasError(true);
     }
   };
 
@@ -38,13 +65,19 @@ export function ResetBackpackRequest({
   return (
     <RequestConfirmation
       onDeny={onDeny}
-      rightButton={<DangerButton label="Approve" onPress={onApprove} />}
+      rightButton={
+        <DangerButton
+          label="Reset Backpack"
+          onPress={onApprove}
+          disabled={!password.trim()}
+        />
+      }
     >
       <Stack>
         <Stack alignItems="center" paddingVertical="$6">
-          <AlertOctagonIcon color="$baseIcon" size={56} />
+          <AlertOctagonIcon color="$redIcon" size={56} />
         </Stack>
-        <Stack padding="$2" space="$2">
+        <Stack padding="$2" space="$4">
           <StyledText fontSize="$2xl" fontWeight="$medium" lineHeight="$2xl">
             Reset Backpack?
           </StyledText>
@@ -54,10 +87,30 @@ export function ResetBackpackRequest({
             lineHeight="$md"
             color="$baseTextMedEmphasis"
           >
-            This will remove all the user accounts you have created or imported.
-            Make sure you have your existing secret recovery phrase and private
-            keys saved.{" "}
+            This will permanently remove all user accounts, wallets, and data.
+            Make sure you have your secret recovery phrases and private keys
+            saved.
           </StyledText>
+          <Stack space="$2">
+            <StyledText fontSize="$sm" fontWeight="$medium" color="$redText">
+              Enter your password to confirm:
+            </StyledText>
+            <BpPasswordInput
+              placeholder="Password"
+              value={password}
+              onChangeText={(text: string) => {
+                setPassword(text);
+                setHasError(false);
+              }}
+              hasError={hasError}
+              autoFocus
+            />
+            {hasError && (
+              <StyledText fontSize="$xs" color="$redText" mt="$1">
+                Incorrect password. Please try again.
+              </StyledText>
+            )}
+          </Stack>
         </Stack>
       </Stack>
     </RequestConfirmation>

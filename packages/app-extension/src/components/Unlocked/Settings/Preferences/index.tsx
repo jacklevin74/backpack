@@ -15,7 +15,7 @@ import {
   userClientAtom,
 } from "@coral-xyz/recoil";
 import { temporarilyMakeStylesForBrowserExtension } from "@coral-xyz/tamagui";
-import { Switch } from "@mui/material";
+import { Switch, Typography } from "@mui/material";
 import { useNavigation } from "@react-navigation/native";
 import { useRecoilValue } from "recoil";
 
@@ -114,6 +114,16 @@ export function Preferences() {
       navigation.push(Routes.PreferencesBlockchainExplorerScreen, {
         blockchain,
       }),
+  };
+
+  // Add reset wallet option (destructive action)
+  menuItems[t("reset_backpack")] = {
+    onClick: () => navigation.push(Routes.PreferencesResetWalletScreen),
+    label: (
+      <Typography style={{ fontWeight: 500, color: "#EF4444" }}>
+        {t("reset_backpack")}
+      </Typography>
+    ),
   };
 
   // if (BACKPACK_FEATURE_LIGHT_MODE) {

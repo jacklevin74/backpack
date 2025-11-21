@@ -6,45 +6,10 @@ import { Header, SubtextParagraph } from "../../common";
 
 export const KeyringTypeSelector = ({
   onNext,
-  mode = "import",
 }: {
   onNext: (keyringType: KeyringType) => void;
-  mode?: "create" | "import";
 }) => {
   const { t } = useTranslation();
-
-  if (mode === "create") {
-    return (
-      <YStack f={1}>
-        <YStack alignItems="center" justifyContent="center" mb={40}>
-          <Header text={t("create_new_wallet")} />
-          <SubtextParagraph>
-            Choose a method to create your wallet.
-          </SubtextParagraph>
-        </YStack>
-        <YStack alignItems="center" gap={12}>
-          <BpSecondaryButton
-            iconBefore={<_ListIcon />}
-            label={t("with_secret_key.create")}
-            justifyContent="flex-start"
-            mb={12}
-            onPress={() => onNext("mnemonic")}
-            textAlign="left"
-          />
-          <StyledText alignSelf="flex-start" color="$baseTextMedEmphasis">
-            {t("advanced")}
-          </StyledText>
-          <BpSecondaryButton
-            iconBefore={<_KeyIcon />}
-            label={t("with_private_key.create")}
-            justifyContent="flex-start"
-            onPress={() => onNext("private-key")}
-            textAlign="left"
-          />
-        </YStack>
-      </YStack>
-    );
-  }
 
   return (
     <YStack f={1}>
@@ -68,7 +33,7 @@ export const KeyringTypeSelector = ({
         </StyledText>
         <BpSecondaryButton
           iconBefore={<_KeyIcon />}
-          label={t("with_private_key")}
+          label={t("with_private_key.import")}
           justifyContent="flex-start"
           mb={12}
           onPress={() => onNext("private-key")}

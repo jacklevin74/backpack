@@ -92,19 +92,6 @@ export const OnboardAccount = ({
       ? [
         <KeyringTypeSelector
           key="KeyringTypeSelector"
-          mode="import"
-          onNext={(keyringType: KeyringType) => {
-              setOnboardingData({ keyringType });
-              nextStep();
-            }}
-          />,
-        ]
-      : []),
-    ...(action === "create" && !keyringType
-      ? [
-        <KeyringTypeSelector
-          key="CreateKeyringTypeSelector"
-          mode="create"
           onNext={(keyringType: KeyringType) => {
               setOnboardingData({ keyringType });
               nextStep();

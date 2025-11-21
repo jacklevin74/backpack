@@ -67,6 +67,7 @@ export function ResetBackpackRequest({
   return (
     <RequestConfirmation
       onDeny={onDeny}
+      leftButton="Cancel"
       rightButton={
         <DangerButton
           label={t("reset_backpack")}

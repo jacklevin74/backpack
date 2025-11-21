@@ -225,7 +225,7 @@ export function OnboardingProvider({
   );
 
   const getBlockchainWalletInits = useCallback(
-    (data: KeyringData): BlockchainWalletInit[] => {
+    (data: OnboardData): BlockchainWalletInit[] => {
       if (data.keyringType === "private-key") {
         data.privateKeyKeyringInit;
         return [
@@ -244,6 +244,7 @@ export function OnboardingProvider({
         return data.signedWalletDescriptors!.map((descriptor) => ({
           type: BlockchainWalletInitType.MNEMONIC,
           mnemonic: data.mnemonic,
+          name: data.accountName,
           ...descriptor,
         }));
       }

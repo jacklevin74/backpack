@@ -113,7 +113,7 @@ export class ProviderSolanaInjection
     const rpcUrl =
       blockchain === Blockchain.X1 ? DEFAULT_X1_CLUSTER : defaultRpcUrl;
     console.log(
-      `[ProviderSolanaInjection.constructor] ext:0.10.62 Creating SolanaClient for ${blockchain} with initial RPC URL: ${rpcUrl}`
+      `[ProviderSolanaInjection.constructor] ext:0.10.64 Creating SolanaClient for ${blockchain} with initial RPC URL: ${rpcUrl}`
     );
 
     this.#secureSolanaClient = new SolanaClient(
@@ -302,7 +302,7 @@ export class ProviderSolanaInjection
     blockchain?: Blockchain;
   }) {
     console.log(
-      "[ProviderSolanaInjection.connect] ext:0.10.58 Called with options:",
+      "[ProviderSolanaInjection.connect] ext:0.10.64 Called with options:",
       options
     );
     if (this.#publicKey && !options?.reconnect) {
@@ -311,7 +311,7 @@ export class ProviderSolanaInjection
     // Use the blockchain from options, or fallback to the instance's blockchain
     const blockchainToUse = options?.blockchain || this.#blockchain;
     console.log(
-      "[ProviderSolanaInjection.connect] ext:0.10.58 Using blockchain:",
+      "[ProviderSolanaInjection.connect] ext:0.10.64 Using blockchain:",
       blockchainToUse
     );
     const result = await this.#secureSolanaClient.wallet.connect({
@@ -320,7 +320,7 @@ export class ProviderSolanaInjection
     });
     this.#connect(result.publicKey, result.connectionUrl);
     console.log(
-      `[ProviderSolanaInjection.connect] ext:0.10.58 Connected to ${blockchainToUse} network: ${result.connectionUrl}`
+      `[ProviderSolanaInjection.connect] ext:0.10.64 Connected to ${blockchainToUse} network: ${result.connectionUrl}`
     );
     return { publicKey: new PublicKey(result.publicKey) };
   }
@@ -362,7 +362,7 @@ export class ProviderSolanaInjection
   ): Promise<{ signature: TransactionSignature }> {
     if (!this.#publicKey) {
       console.log(
-        "[ProviderSolanaInjection.sendAndConfirm] ext:0.10.58 Auto-connecting with blockchain:",
+        "[ProviderSolanaInjection.sendAndConfirm] ext:0.10.64 Auto-connecting with blockchain:",
         this.#blockchain
       );
       await this.connect({ blockchain: this.#blockchain });
@@ -371,7 +371,7 @@ export class ProviderSolanaInjection
       throw new Error("wallet not connected");
     }
     console.log(
-      `[ProviderSolanaInjection.sendAndConfirm] ext:0.10.58 Sending transaction on ${this.#blockchain} network`
+      `[ProviderSolanaInjection.sendAndConfirm] ext:0.10.64 Sending transaction on ${this.#blockchain} network`
     );
     const solanaResponse = await this.#secureSolanaClient.wallet.sendAndConfirm(
       {
@@ -384,7 +384,7 @@ export class ProviderSolanaInjection
       }
     );
     console.log(
-      `[ProviderSolanaInjection.sendAndConfirm] ext:0.10.58 Transaction sent: ${solanaResponse}`
+      `[ProviderSolanaInjection.sendAndConfirm] ext:0.10.64 Transaction sent: ${solanaResponse}`
     );
     return { signature: solanaResponse };
   }
@@ -405,7 +405,7 @@ export class ProviderSolanaInjection
   ): Promise<TransactionSignature> {
     if (!this.#publicKey) {
       console.log(
-        "[ProviderSolanaInjection.send] ext:0.10.58 Auto-connecting with blockchain:",
+        "[ProviderSolanaInjection.send] ext:0.10.64 Auto-connecting with blockchain:",
         this.#blockchain
       );
       await this.connect({ blockchain: this.#blockchain });
@@ -444,7 +444,7 @@ export class ProviderSolanaInjection
   ): Promise<SimulatedTransactionResponse> {
     if (!this.#publicKey) {
       console.log(
-        "[ProviderSolanaInjection.simulate] ext:0.10.58 Auto-connecting with blockchain:",
+        "[ProviderSolanaInjection.simulate] ext:0.10.64 Auto-connecting with blockchain:",
         this.#blockchain
       );
       await this.connect({ blockchain: this.#blockchain });
@@ -473,7 +473,7 @@ export class ProviderSolanaInjection
   ): Promise<T> {
     if (!this.#publicKey) {
       console.log(
-        "[ProviderSolanaInjection.signTransaction] ext:0.10.58 Auto-connecting with blockchain:",
+        "[ProviderSolanaInjection.signTransaction] ext:0.10.64 Auto-connecting with blockchain:",
         this.#blockchain
       );
       await this.connect({ blockchain: this.#blockchain });
@@ -500,7 +500,7 @@ export class ProviderSolanaInjection
   ): Promise<Array<T>> {
     if (!this.#publicKey) {
       console.log(
-        "[ProviderSolanaInjection.signAllTransactions] ext:0.10.58 Auto-connecting with blockchain:",
+        "[ProviderSolanaInjection.signAllTransactions] ext:0.10.64 Auto-connecting with blockchain:",
         this.#blockchain
       );
       await this.connect({ blockchain: this.#blockchain });
@@ -537,7 +537,7 @@ export class ProviderSolanaInjection
   ): Promise<{ signature: Uint8Array }> {
     if (!this.#publicKey) {
       console.log(
-        "[ProviderSolanaInjection.signMessage] ext:0.10.58 Auto-connecting with blockchain:",
+        "[ProviderSolanaInjection.signMessage] ext:0.10.64 Auto-connecting with blockchain:",
         this.#blockchain
       );
       await this.connect({ blockchain: this.#blockchain });

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "X1 Wallet",
   "description": "Designed for the Chains That Win",
-  "version": "0.10.63",
+  "version": "0.10.64",
   "action": {
     "default_popup": "popup.html"
   },

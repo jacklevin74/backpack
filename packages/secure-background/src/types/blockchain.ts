@@ -85,6 +85,7 @@ export type BlockchainWalletInit<
       mnemonic?: string;
       publicKey: string;
       derivationPath: string;
+      name?: string;
     }
   : T extends BlockchainWalletInitType.PRIVATEKEY_DERIVED
     ? {

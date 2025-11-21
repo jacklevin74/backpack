@@ -55,7 +55,7 @@ export class BackpackSolanaWallet {
     connectionUrl: string;
   }> {
     console.log(
-      "[BackpackSolanaWallet.connect] ext:0.10.62 Called with blockchain:",
+      "[BackpackSolanaWallet.connect] ext:0.10.64 Called with blockchain:",
       blockchain
     );
     const connected = await this.secureSvmClient.connect({
@@ -70,7 +70,7 @@ export class BackpackSolanaWallet {
     // Update the blockchain for subsequent operations
     this.blockchain = blockchain;
     console.log(
-      "[BackpackSolanaWallet.connect] ext:0.10.62 Updated this.blockchain to:",
+      "[BackpackSolanaWallet.connect] ext:0.10.64 Updated this.blockchain to:",
       this.blockchain
     );
 
@@ -221,11 +221,11 @@ export class BackpackSolanaWallet {
     // Get stack trace to see where this is being called from
     const stack = new Error().stack;
     console.log(
-      "[BackpackSolanaWallet.signTransaction] ext:0.10.62 this.blockchain =",
+      "[BackpackSolanaWallet.signTransaction] ext:0.10.64 this.blockchain =",
       this.blockchain
     );
     console.log(
-      "[BackpackSolanaWallet.signTransaction] ext:0.10.62 Call stack:",
+      "[BackpackSolanaWallet.signTransaction] ext:0.10.64 Call stack:",
       stack
     );
     const publicKey = request.publicKey;
@@ -233,7 +233,7 @@ export class BackpackSolanaWallet {
     const txStr = encode(preparedTx.serialize({ requireAllSignatures: false }));
 
     console.log(
-      "[BackpackSolanaWallet.signTransaction] ext:0.10.58 Calling secureSvmClient.signTransaction with blockchain:",
+      "[BackpackSolanaWallet.signTransaction] ext:0.10.64 Calling secureSvmClient.signTransaction with blockchain:",
       this.blockchain
     );
     const signature = await this.secureSvmClient.signTransaction(

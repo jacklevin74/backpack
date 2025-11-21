@@ -143,7 +143,8 @@ export class UserKeyring {
           ...(await this.addDerivationPath(
             blockchain,
             blockchainWalletInit.derivationPath,
-            blockchainWalletInit.publicKey
+            blockchainWalletInit.publicKey,
+            blockchainWalletInit.name
           )),
           blockchain,
         };
@@ -213,7 +214,8 @@ export class UserKeyring {
   private async addDerivationPath(
     blockchain: Blockchain,
     derivationPath: string,
-    publicKey: string
+    publicKey: string,
+    name?: string
   ): Promise<{ publicKey: string; name: string }> {
     let blockchainKeyring = this.blockchains.get(blockchain);
     if (!blockchainKeyring) {
@@ -224,12 +226,13 @@ export class UserKeyring {
       if (!this.mnemonic) {
         throw new Error("hd keyring not initialised");
       }
-      await blockchainKeyring.initHdKeyring(this.uuid, this.mnemonic, []);
+      await blockchainKeyring.initHdKeyring(this.uuid, this.mnemonic, [], name);
     }
     return blockchainKeyring.addDerivationPath(
       this.uuid,
       derivationPath,
-      publicKey
+      publicKey,
+      name
     );
   }
 

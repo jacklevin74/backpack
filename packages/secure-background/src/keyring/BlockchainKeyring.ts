@@ -89,7 +89,8 @@ export class BlockchainKeyring {
   public async initHdKeyring(
     uuid: string,
     mnemonic: string,
-    derivationPaths: Array<string>
+    derivationPaths: Array<string>,
+    walletName?: string
   ): Promise<Array<[string, string]>> {
     // Initialize keyrings.
     this.hdKeyring = this.hdKeyringFactory.init(mnemonic, derivationPaths);
@@ -97,7 +98,10 @@ export class BlockchainKeyring {
     // Persist a given name for this wallet.
     const newAccounts: Array<[string, string]> = [];
     for (const [index, publicKey] of this.hdKeyring.publicKeys().entries()) {
-      const name = this.store.defaultKeyname.defaultDerived(index + 1);
+      const name =
+        index === 0 && walletName
+          ? walletName
+          : this.store.defaultKeyname.defaultDerived(index + 1);
       await this.store.setUserPublicKey(uuid, this.blockchain, publicKey, {
         name,
         isCold: false,
@@ -132,7 +136,8 @@ export class BlockchainKeyring {
   public async addDerivationPath(
     uuid: string,
     derivationPath: string,
-    publicKey: string
+    publicKey: string,
+    walletName?: string
   ): Promise<{ publicKey: string; name: string }> {
     if (!this.hdKeyring) {
       throw new Error("hd keyring not initialised");
@@ -140,9 +145,11 @@ export class BlockchainKeyring {
     this.hdKeyring.addDerivationPath(derivationPath, publicKey);
 
     // Save a default name.
-    const name = this.store.defaultKeyname.defaultDerived(
-      this.hdKeyring.publicKeys().length
-    );
+    const name =
+      walletName ||
+      this.store.defaultKeyname.defaultDerived(
+        this.hdKeyring.publicKeys().length
+      );
     await this.store.setUserPublicKey(uuid, this.blockchain, publicKey, {
       name,
       isCold: false,

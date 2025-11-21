@@ -336,6 +336,7 @@ function AppContent() {
   const [showBluetoothDrawer, setShowBluetoothDrawer] = useState(false);
   const [pairedDevices, setPairedDevices] = useState([]);
   const [lastX1TapTime, setLastX1TapTime] = useState(0);
+  const [lastNetworkError, setLastNetworkError] = useState(0);
 
   // Wallet management states
   const [showAddWalletModal, setShowAddWalletModal] = useState(false);
@@ -1014,15 +1015,20 @@ function AppContent() {
         );
       }
     } catch (error) {
-      console.error("Error checking balance:", error);
-
-      // Show user-friendly error message for network issues
+      // Only log network errors once every 30 seconds to reduce console spam
+      const now = Date.now();
       if (
         error.message === "Network request failed" ||
         error.message.includes("fetch")
       ) {
-        console.log("Network error - device may be offline or API unavailable");
+        if (now - lastNetworkError > 30000) {
+          console.error("Network error - API unavailable or device offline");
+          setLastNetworkError(now);
+        }
         // Keep existing balance displayed, don't clear it
+      } else {
+        // Log non-network errors normally
+        console.error("Error checking balance:", error);
       }
     }
   };

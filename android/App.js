@@ -48,6 +48,7 @@ import {
   clusterApiUrl,
   PublicKey,
   Transaction,
+  VersionedTransaction,
   TransactionInstruction,
   SystemProgram,
   LAMPORTS_PER_SOL,
@@ -407,6 +408,21 @@ function AppContent() {
   const [pendingTransaction, setPendingTransaction] = useState(null);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [showAuthForPrivateKey, setShowAuthForPrivateKey] = useState(false);
+
+  // Swap states
+  const [showSwapScreen, setShowSwapScreen] = useState(false);
+  const [swapTokenIn, setSwapTokenIn] = useState(
+    "So11111111111111111111111111111111111111112"
+  ); // XNT (Native SOL)
+  const [swapTokenOut, setSwapTokenOut] = useState(
+    "AvNDf423kEmWNP6AZHFV7DkNG4YRgt6qbdyyryjaa4PQ"
+  ); // XNM
+  const [swapAmount, setSwapAmount] = useState("");
+  const [swapEstimate, setSwapEstimate] = useState(null);
+  const [swapLoading, setSwapLoading] = useState(false);
+  const [swapError, setSwapError] = useState("");
+  const [swapConfirming, setSwapConfirming] = useState(false);
+  const [swapSignature, setSwapSignature] = useState("");
 
   // Browser/WebView states
   const [browserUrl, setBrowserUrl] = useState(
@@ -1803,12 +1819,179 @@ function AppContent() {
   };
 
   const handleSwap = () => {
-    Toast.show({
-      type: "info",
-      text1: "Swap",
-      text2: "Swap functionality would open here",
-      position: "bottom",
-    });
+    setShowSwapScreen(true);
+    setSwapAmount("");
+    setSwapEstimate(null);
+    setSwapError("");
+    setSwapSignature("");
+  };
+
+  // Get swap estimate
+  const getSwapEstimate = async (amount) => {
+    if (!amount || parseFloat(amount) <= 0) {
+      setSwapEstimate(null);
+      return;
+    }
+
+    setSwapLoading(true);
+    setSwapError("");
+
+    try {
+      // Determine network name for API
+      let networkName;
+      if (currentNetwork.providerId === "X1-testnet") {
+        networkName = "X1 Testnet";
+      } else if (currentNetwork.providerId === "X1-mainnet") {
+        networkName = "X1 Mainnet";
+      } else if (currentNetwork.providerId === "SOLANA-devnet") {
+        networkName = "Solana Devnet";
+      } else if (currentNetwork.providerId === "SOLANA-mainnet") {
+        networkName = "Solana Mainnet";
+      } else {
+        networkName = currentNetwork.name || "X1 Testnet";
+      }
+
+      const payload = {
+        network: networkName,
+        wallet: selectedWallet.publicKey,
+        token_in: swapTokenIn,
+        token_out: swapTokenOut,
+        token_in_amount: parseFloat(amount),
+        is_exact_amount_in: true,
+      };
+
+      console.log("Getting swap estimate:", payload);
+
+      const response = await fetch(
+        "https://api.xdex.xyz/api/xendex/swap/prepare",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to get swap estimate");
+      }
+
+      console.log("Swap estimate:", data);
+      setSwapEstimate(data);
+    } catch (error) {
+      console.error("Swap estimate error:", error);
+      setSwapError(error.message || "Failed to get swap estimate");
+    } finally {
+      setSwapLoading(false);
+    }
+  };
+
+  // Execute swap
+  const executeSwap = async () => {
+    if (!swapEstimate) {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "No swap estimate available",
+        position: "bottom",
+      });
+      return;
+    }
+
+    setSwapConfirming(true);
+    setSwapError("");
+
+    try {
+      // Get the selected wallet's keypair
+      const selectedWalletData = wallets.find(
+        (w) => w.publicKey === selectedWallet.publicKey
+      );
+
+      if (!selectedWalletData || !selectedWalletData.keypair) {
+        throw new Error("Wallet keypair not found");
+      }
+
+      const keypair = selectedWalletData.keypair;
+
+      // Create connection
+      const connection = new Connection(currentNetwork.rpcUrl, "confirmed");
+
+      // Get transaction from nested data structure
+      const transactionData =
+        swapEstimate.data?.transaction || swapEstimate.transaction;
+      if (!transactionData) {
+        throw new Error("No transaction data in swap estimate");
+      }
+
+      // Deserialize the transaction (handle both versioned and legacy)
+      const transactionBuffer = Buffer.from(transactionData, "base64");
+
+      let transaction;
+      try {
+        // Try versioned transaction first (v0 transactions)
+        transaction = VersionedTransaction.deserialize(transactionBuffer);
+        console.log("Deserialized as VersionedTransaction");
+
+        // Sign the versioned transaction
+        transaction.sign([keypair]);
+      } catch (versionedError) {
+        console.log("Not a versioned transaction, trying legacy format...");
+        // Fall back to legacy transaction
+        transaction = Transaction.from(transactionBuffer);
+        console.log("Deserialized as legacy Transaction");
+
+        // Get recent blockhash for legacy transaction
+        const { blockhash } = await connection.getLatestBlockhash();
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = keypair.publicKey;
+
+        // Sign legacy transaction
+        transaction.sign(keypair);
+      }
+
+      // Send transaction
+      const signature = await connection.sendRawTransaction(
+        transaction.serialize()
+      );
+
+      console.log("Swap transaction sent! Signature:", signature);
+      setSwapSignature(signature);
+
+      // Wait for confirmation
+      await connection.confirmTransaction(signature, "confirmed");
+
+      console.log("Swap transaction confirmed!");
+      setSwapConfirming(false);
+
+      // Build explorer URL
+      const explorerUrl = `${currentNetwork.explorerUrl}/tx/${signature}`;
+
+      Toast.show({
+        type: "success",
+        text1: "Swap Successful",
+        text2: "Tap to view transaction",
+        position: "bottom",
+        visibilityTime: 5000,
+        onPress: () => {
+          Linking.openURL(explorerUrl).catch((err) =>
+            console.error("Failed to open explorer:", err)
+          );
+        },
+      });
+
+      // Close swap screen and refresh balance
+      setTimeout(() => {
+        setShowSwapScreen(false);
+        checkBalance(currentNetwork, false);
+      }, 2000);
+    } catch (error) {
+      console.error("Swap execution error:", error);
+      setSwapConfirming(false);
+      setSwapError(error.message || "Swap failed");
+    }
   };
 
   const handleStake = () => {
@@ -6248,6 +6431,205 @@ function AppContent() {
         </Modal>
       )}
 
+      {/* Swap Modal */}
+      {showSwapScreen && (
+        <Modal
+          visible={showSwapScreen}
+          animationType="slide"
+          onRequestClose={() => setShowSwapScreen(false)}
+          statusBarTranslucent
+        >
+          <SafeAreaViewContext
+            style={[styles.swapContainer, { paddingTop: insets.top }]}
+            edges={["top"]}
+          >
+            {/* Header */}
+            <View style={styles.swapHeader}>
+              <TouchableOpacity onPress={() => setShowSwapScreen(false)}>
+                <Text style={styles.swapBackButton}>‹ Back</Text>
+              </TouchableOpacity>
+              <Text style={styles.swapTitle}>Swap Tokens</Text>
+              <View style={{ width: 60 }} />
+            </View>
+
+            <ScrollView style={styles.swapContent}>
+              {/* Token From */}
+              <View style={styles.swapSection}>
+                <Text style={styles.swapLabel}>From (XNT)</Text>
+                <View style={styles.swapInputContainer}>
+                  <TextInput
+                    style={styles.swapInput}
+                    placeholder="0.0"
+                    placeholderTextColor="#666"
+                    keyboardType="decimal-pad"
+                    value={swapAmount}
+                    onChangeText={(text) => {
+                      setSwapAmount(text);
+                      if (text && parseFloat(text) > 0) {
+                        getSwapEstimate(text);
+                      } else {
+                        setSwapEstimate(null);
+                      }
+                    }}
+                  />
+                  <View style={styles.swapTokenInfo}>
+                    <Text style={styles.swapTokenSymbol}>XNT</Text>
+                    <Text style={styles.swapBalance}>
+                      Balance: {balance} XNT
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Swap Icon */}
+              <View style={styles.swapArrowContainer}>
+                <View style={styles.swapArrowCircle}>
+                  <Text style={styles.swapArrowIcon}>⇅</Text>
+                </View>
+              </View>
+
+              {/* Token To */}
+              <View style={styles.swapSection}>
+                <Text style={styles.swapLabel}>To (XNM)</Text>
+                <View style={styles.swapInputContainer}>
+                  <View style={styles.swapOutputContainer}>
+                    {swapLoading ? (
+                      <ActivityIndicator size="small" color="#4A90E2" />
+                    ) : (
+                      <Text style={styles.swapOutput}>
+                        {swapEstimate
+                          ? (
+                              swapEstimate.data?.token_out_amount ||
+                              swapEstimate.token_out_amount ||
+                              0
+                            ).toFixed(6)
+                          : "0.0"}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.swapTokenInfo}>
+                    <Text style={styles.swapTokenSymbol}>XNM</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Swap Details */}
+              {swapEstimate && (
+                <View style={styles.swapDetails}>
+                  <View style={styles.swapDetailRow}>
+                    <Text style={styles.swapDetailLabel}>Rate</Text>
+                    <Text style={styles.swapDetailValue}>
+                      1 XNT ≈{" "}
+                      {(
+                        (swapEstimate.data?.token_out_amount ||
+                          swapEstimate.token_out_amount ||
+                          0) / parseFloat(swapAmount)
+                      ).toFixed(6)}{" "}
+                      XNM
+                    </Text>
+                  </View>
+                  {(swapEstimate.data?.price_impact ||
+                    swapEstimate.price_impact) && (
+                    <View style={styles.swapDetailRow}>
+                      <Text style={styles.swapDetailLabel}>Price Impact</Text>
+                      <Text style={styles.swapDetailValue}>
+                        {(
+                          (swapEstimate.data?.price_impact ||
+                            swapEstimate.price_impact) * 100
+                        ).toFixed(2)}
+                        %
+                      </Text>
+                    </View>
+                  )}
+                  {(swapEstimate.data?.minimum_received ||
+                    swapEstimate.minimum_received) && (
+                    <View style={styles.swapDetailRow}>
+                      <Text style={styles.swapDetailLabel}>
+                        Minimum Received
+                      </Text>
+                      <Text style={styles.swapDetailValue}>
+                        {(
+                          swapEstimate.data?.minimum_received ||
+                          swapEstimate.minimum_received
+                        ).toFixed(6)}{" "}
+                        XNM
+                      </Text>
+                    </View>
+                  )}
+                  {(swapEstimate.data?.fee || swapEstimate.fee) && (
+                    <View style={styles.swapDetailRow}>
+                      <Text style={styles.swapDetailLabel}>Network Fee</Text>
+                      <Text style={styles.swapDetailValue}>
+                        ~{swapEstimate.data?.fee || swapEstimate.fee} SOL
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* Error Message */}
+              {swapError && (
+                <View style={styles.swapErrorContainer}>
+                  <Text style={styles.swapErrorText}>{swapError}</Text>
+                </View>
+              )}
+
+              {/* Success Message */}
+              {swapSignature && (
+                <View style={styles.swapSuccessContainer}>
+                  <Text style={styles.swapSuccessText}>✓ Swap Successful!</Text>
+                  <Text style={styles.swapSignatureText}>
+                    Signature: {swapSignature.slice(0, 8)}...
+                    {swapSignature.slice(-8)}
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.swapViewExplorerButton}
+                    onPress={() => {
+                      const explorerUrl = `${currentNetwork.explorerUrl}/tx/${swapSignature}`;
+                      Linking.openURL(explorerUrl).catch((err) =>
+                        console.error("Failed to open explorer:", err)
+                      );
+                    }}
+                  >
+                    <Text style={styles.swapViewExplorerText}>
+                      View in Explorer →
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </ScrollView>
+
+            {/* Swap Button */}
+            <View
+              style={[
+                styles.swapButtonContainer,
+                { paddingBottom: insets.bottom + 16 },
+              ]}
+            >
+              <TouchableOpacity
+                style={[
+                  styles.swapButton,
+                  (!swapEstimate || swapConfirming || swapSignature) &&
+                    styles.swapButtonDisabled,
+                ]}
+                onPress={executeSwap}
+                disabled={Boolean(
+                  !swapEstimate || swapConfirming || swapSignature
+                )}
+              >
+                {swapConfirming ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.swapButtonText}>
+                    {swapSignature ? "Swap Complete" : "Swap"}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </SafeAreaViewContext>
+        </Modal>
+      )}
+
       {/* Settings - Full Page - Outside GestureHandler */}
       {showSettingsModal && (
         <View
@@ -8929,6 +9311,191 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "rgba(0, 0, 0, 0.3)",
+  },
+  // Swap Styles
+  swapContainer: {
+    flex: 1,
+    backgroundColor: "#000",
+  },
+  swapHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#222",
+  },
+  swapBackButton: {
+    fontSize: 18,
+    color: "#4A90E2",
+    fontWeight: "600",
+  },
+  swapTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  swapContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+  },
+  swapSection: {
+    marginBottom: 16,
+  },
+  swapLabel: {
+    fontSize: 14,
+    color: "#888",
+    marginBottom: 8,
+    fontWeight: "500",
+  },
+  swapInputContainer: {
+    backgroundColor: "#111",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#333",
+  },
+  swapInput: {
+    fontSize: 32,
+    color: "#fff",
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  swapOutputContainer: {
+    minHeight: 48,
+    justifyContent: "center",
+  },
+  swapOutput: {
+    fontSize: 32,
+    color: "#fff",
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  swapTokenInfo: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  swapTokenSymbol: {
+    fontSize: 16,
+    color: "#4A90E2",
+    fontWeight: "600",
+  },
+  swapBalance: {
+    fontSize: 14,
+    color: "#666",
+  },
+  swapArrowContainer: {
+    alignItems: "center",
+    marginVertical: 8,
+  },
+  swapArrowCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#1a1a1a",
+    borderWidth: 2,
+    borderColor: "#333",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  swapArrowIcon: {
+    fontSize: 20,
+    color: "#4A90E2",
+    fontWeight: "bold",
+  },
+  swapDetails: {
+    backgroundColor: "#111",
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: "#333",
+  },
+  swapDetailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+  },
+  swapDetailLabel: {
+    fontSize: 14,
+    color: "#888",
+  },
+  swapDetailValue: {
+    fontSize: 14,
+    color: "#fff",
+    fontWeight: "500",
+  },
+  swapErrorContainer: {
+    backgroundColor: "#2a1111",
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: "#ff4444",
+  },
+  swapErrorText: {
+    fontSize: 14,
+    color: "#ff6666",
+    textAlign: "center",
+  },
+  swapSuccessContainer: {
+    backgroundColor: "#112a11",
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: "#44ff44",
+  },
+  swapSuccessText: {
+    fontSize: 16,
+    color: "#66ff66",
+    textAlign: "center",
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  swapSignatureText: {
+    fontSize: 12,
+    color: "#88ff88",
+    textAlign: "center",
+    fontFamily: "monospace",
+    marginBottom: 12,
+  },
+  swapViewExplorerButton: {
+    backgroundColor: "#1a4d1a",
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  swapViewExplorerText: {
+    fontSize: 14,
+    color: "#66ff66",
+    fontWeight: "600",
+  },
+  swapButtonContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#222",
+  },
+  swapButton: {
+    backgroundColor: "#4A90E2",
+    borderRadius: 12,
+    padding: 18,
+    alignItems: "center",
+  },
+  swapButtonDisabled: {
+    backgroundColor: "#333",
+    opacity: 0.5,
+  },
+  swapButtonText: {
+    fontSize: 18,
+    color: "#fff",
+    fontWeight: "600",
   },
 });
 

@@ -579,20 +579,66 @@ async function getWalletData(address, network = "mainnet", blockchain = "x1") {
         ? "So11111111111111111111111111111111111111112" // SOL native mint
         : "XNT111111111111111111111111111111111111111"; // XNT native mint
 
+    // Build tokens array starting with native token
+    const tokens = [
+      {
+        mint: nativeMint,
+        decimals: 9,
+        balance: balance,
+        logo: logo,
+        name: tokenName,
+        symbol: tokenSymbol,
+        price: price,
+        valueUSD: balance * price,
+      },
+    ];
+
+    // For X1 blockchain, also fetch XNM token balance
+    // Using getTokenAccountsByOwner (non-Parsed version) which X1 RPC supports
+    if (blockchain === "x1") {
+      try {
+        console.log(`  Fetching XNM token balance for ${address}...`);
+        const tokenAccounts = await getTokenAccounts(address, rpcUrl);
+        const XNM_MINT = "AvNDf423kEmWNP6AZHFV7DkNG4YRgt6qbdyyryjaa4PQ";
+
+        console.log(`  Total token accounts found: ${tokenAccounts.length}`);
+
+        for (const account of tokenAccounts) {
+          const accountData = account.account.data.parsed.info;
+          const mint = accountData.mint;
+          const tokenAmount = accountData.tokenAmount;
+
+          console.log(
+            `  Token account - Mint: ${mint}, Balance: ${tokenAmount.uiAmount}, Pubkey: ${account.pubkey}`
+          );
+
+          if (mint === XNM_MINT && tokenAmount.uiAmount > 0) {
+            tokens.push({
+              mint: XNM_MINT,
+              decimals: tokenAmount.decimals,
+              balance: tokenAmount.uiAmount,
+              logo: "./xnm.png",
+              logoUrl: null,
+              name: "XNM",
+              symbol: "XNM",
+              price: 0, // No price data yet
+              valueUSD: 0,
+            });
+            console.log(`  ✅ Added XNM token: ${tokenAmount.uiAmount} XNM`);
+            break;
+          }
+        }
+      } catch (tokenError) {
+        console.error(
+          `  ❌ Error fetching XNM token balance: ${tokenError.message}`
+        );
+        // Continue without XNM token
+      }
+    }
+
     return {
       balance: balance,
-      tokens: [
-        {
-          mint: nativeMint,
-          decimals: 9,
-          balance: balance,
-          logo: logo,
-          name: tokenName,
-          symbol: tokenSymbol,
-          price: price,
-          valueUSD: balance * price,
-        },
-      ],
+      tokens: tokens,
     };
   } catch (error) {
     console.error(`  ❌ Error fetching balance: ${error.message}`);
@@ -613,6 +659,96 @@ async function getWalletData(address, network = "mainnet", blockchain = "x1") {
       ],
     };
   }
+}
+
+// Fetch token accounts for a wallet address (both SPL Token and Token-2022)
+async function getTokenAccounts(address, rpcUrl) {
+  // Fetch from both SPL Token and Token-2022 programs
+  const splTokenPromise = fetchTokenAccountsForProgram(
+    address,
+    rpcUrl,
+    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+  );
+  const token2022Promise = fetchTokenAccountsForProgram(
+    address,
+    rpcUrl,
+    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+  );
+
+  try {
+    const [splAccounts, token2022Accounts] = await Promise.all([
+      splTokenPromise,
+      token2022Promise,
+    ]);
+    return [...splAccounts, ...token2022Accounts];
+  } catch (error) {
+    // If one fails, return what we have
+    try {
+      const splAccounts = await splTokenPromise;
+      return splAccounts;
+    } catch {
+      return [];
+    }
+  }
+}
+
+// Fetch token accounts for a specific program
+function fetchTokenAccountsForProgram(address, rpcUrl, programId) {
+  return new Promise((resolve, reject) => {
+    const postData = JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "getTokenAccountsByOwner",
+      params: [
+        address,
+        {
+          programId: programId,
+        },
+        {
+          encoding: "jsonParsed",
+        },
+      ],
+    });
+
+    const options = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(postData),
+      },
+    };
+
+    const protocol = rpcUrl.startsWith("https://") ? https : http;
+    const req = protocol.request(rpcUrl, options, (res) => {
+      let data = "";
+
+      res.on("data", (chunk) => {
+        data += chunk;
+      });
+
+      res.on("end", () => {
+        try {
+          const response = JSON.parse(data);
+          if (response.result && response.result.value !== undefined) {
+            resolve(response.result.value);
+          } else if (response.error) {
+            reject(new Error(`RPC Error: ${response.error.message}`));
+          } else {
+            reject(new Error("Invalid RPC response for token accounts"));
+          }
+        } catch (error) {
+          reject(error);
+        }
+      });
+    });
+
+    req.on("error", (error) => {
+      reject(error);
+    });
+
+    req.write(postData);
+    req.end();
+  });
 }
 
 const server = http.createServer((req, res) => {

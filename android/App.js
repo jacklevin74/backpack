@@ -977,20 +977,40 @@ function AppContent() {
           }
         }
 
-        const formattedTokens = data.tokens.map((token, idx) => ({
-          id: String(idx + 1),
-          name: token.symbol,
-          balance: token.balance.toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 5,
-          }),
-          usdValue: `${token.valueUSD.toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}`,
-          icon:
-            token.symbol === "XNT" ? "💎" : token.symbol === "SOL" ? "◎" : "🪙",
-        }));
+        const formattedTokens = data.tokens.map((token, idx) => {
+          // Map logo string to actual asset
+          let logoAsset = null;
+          if (token.logo === "./x1.png") {
+            logoAsset = require("./assets/x1.png");
+          } else if (token.logo === "./xnm.png") {
+            logoAsset = require("./assets/xnm.png");
+          } else if (token.logo === "./solana.png") {
+            logoAsset = require("./assets/solana.png");
+          }
+
+          return {
+            id: String(idx + 1),
+            symbol: token.symbol,
+            name: token.name || token.symbol,
+            balance: token.balance.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 5,
+            }),
+            usdValue: token.valueUSD.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }),
+            price: token.price || 0,
+            logo: logoAsset,
+            logoUrl: token.logoUrl || null,
+            icon:
+              token.symbol === "XNT"
+                ? "💎"
+                : token.symbol === "SOL"
+                  ? "◎"
+                  : "🪙",
+          };
+        });
 
         setBalance(balanceStr);
         setBalanceUSD(usdStr);
@@ -1888,6 +1908,50 @@ function AppContent() {
     setSwapSignature("");
   };
 
+  // Helper to get token symbol from mint address
+  const getTokenSymbol = (mintAddress) => {
+    if (mintAddress === "AvNDf423kEmWNP6AZHFV7DkNG4YRgt6qbdyyryjaa4PQ") {
+      return "XNM";
+    } else if (
+      mintAddress === "So11111111111111111111111111111111111111112" ||
+      mintAddress === "XNT111111111111111111111111111111111111111"
+    ) {
+      return "XNT";
+    }
+    return "TOKEN";
+  };
+
+  // Helper to get token balance from mint address
+  const getTokenBalance = (mintAddress) => {
+    if (mintAddress === "AvNDf423kEmWNP6AZHFV7DkNG4YRgt6qbdyyryjaa4PQ") {
+      // XNM token - find it in the tokens array
+      const xnmToken = tokens.find(
+        (t) => t.symbol === "XNM" || t.name === "XNM"
+      );
+      return xnmToken ? xnmToken.balance : "0.00";
+    } else if (
+      mintAddress === "So11111111111111111111111111111111111111112" ||
+      mintAddress === "XNT111111111111111111111111111111111111111"
+    ) {
+      // XNT native token
+      return balance;
+    }
+    return "0.00";
+  };
+
+  // Reverse swap tokens (swap input and output)
+  const reverseSwapTokens = () => {
+    // Swap the tokens
+    const tempTokenIn = swapTokenIn;
+    setSwapTokenIn(swapTokenOut);
+    setSwapTokenOut(tempTokenIn);
+
+    // Clear amount and estimate
+    setSwapAmount("");
+    setSwapEstimate(null);
+    setSwapError("");
+  };
+
   // Get swap estimate
   const getSwapEstimate = async (amount) => {
     if (!amount || parseFloat(amount) <= 0) {
@@ -2072,27 +2136,11 @@ function AppContent() {
       console.log("Swap transaction confirmed!");
       setSwapConfirming(false);
 
-      // Build explorer URL
-      const explorerUrl = `${currentNetwork.explorerUrl}/tx/${signature}`;
-
-      Toast.show({
-        type: "success",
-        text1: "Swap Successful",
-        text2: "Tap to view transaction",
-        position: "bottom",
-        visibilityTime: 5000,
-        onPress: () => {
-          Linking.openURL(explorerUrl).catch((err) =>
-            console.error("Failed to open explorer:", err)
-          );
-        },
-      });
-
-      // Close swap screen and refresh balance
+      // Close swap screen and refresh balance after showing success message
       setTimeout(() => {
         setShowSwapScreen(false);
         checkBalance(currentNetwork, false);
-      }, 2000);
+      }, 1500);
     } catch (error) {
       console.error("Swap execution error:", error);
       setSwapConfirming(false);
@@ -4459,7 +4507,6 @@ function AppContent() {
               ) : (
                 <View style={styles.tokenSection}>
                   {tokens.map((token) => {
-                    const nativeToken = getNativeTokenInfo();
                     return (
                       <View
                         key={token.id}
@@ -4470,18 +4517,18 @@ function AppContent() {
                       >
                         <View style={styles.tokenLeft}>
                           <TokenIcon
-                            symbol={nativeToken.symbol}
-                            logo={nativeToken.logo}
-                            logoUrl={nativeToken.logoUrl}
+                            symbol={token.symbol || token.name}
+                            logo={token.logo}
+                            logoUrl={token.logoUrl}
                             size={50}
                             imageStyle={styles.x1LogoLarge}
                           />
                           <View style={styles.tokenInfo}>
                             <Text style={styles.tokenNameLarge}>
-                              {nativeToken.name}
+                              {token.name}
                             </Text>
                             <Text style={styles.tokenBalanceSmall}>
-                              {token.balance} {nativeToken.symbol}
+                              {token.balance} {token.symbol || token.name}
                             </Text>
                           </View>
                         </View>
@@ -6559,7 +6606,9 @@ function AppContent() {
             <ScrollView style={styles.swapContent}>
               {/* Token From */}
               <View style={styles.swapSection}>
-                <Text style={styles.swapLabel}>From (XNT)</Text>
+                <Text style={styles.swapLabel}>
+                  From ({getTokenSymbol(swapTokenIn)})
+                </Text>
                 <View style={styles.swapInputContainer}>
                   <TextInput
                     style={styles.swapInput}
@@ -6577,9 +6626,12 @@ function AppContent() {
                     }}
                   />
                   <View style={styles.swapTokenInfo}>
-                    <Text style={styles.swapTokenSymbol}>XNT</Text>
+                    <Text style={styles.swapTokenSymbol}>
+                      {getTokenSymbol(swapTokenIn)}
+                    </Text>
                     <Text style={styles.swapBalance}>
-                      Balance: {balance} XNT
+                      Balance: {getTokenBalance(swapTokenIn)}{" "}
+                      {getTokenSymbol(swapTokenIn)}
                     </Text>
                   </View>
                 </View>
@@ -6587,14 +6639,20 @@ function AppContent() {
 
               {/* Swap Icon */}
               <View style={styles.swapArrowContainer}>
-                <View style={styles.swapArrowCircle}>
+                <TouchableOpacity
+                  style={styles.swapArrowCircle}
+                  onPress={reverseSwapTokens}
+                  activeOpacity={0.7}
+                >
                   <Text style={styles.swapArrowIcon}>⇅</Text>
-                </View>
+                </TouchableOpacity>
               </View>
 
               {/* Token To */}
               <View style={styles.swapSection}>
-                <Text style={styles.swapLabel}>To (XNM)</Text>
+                <Text style={styles.swapLabel}>
+                  To ({getTokenSymbol(swapTokenOut)})
+                </Text>
                 <View style={styles.swapInputContainer}>
                   <View style={styles.swapOutputContainer}>
                     {swapLoading ? (
@@ -6608,7 +6666,13 @@ function AppContent() {
                     )}
                   </View>
                   <View style={styles.swapTokenInfo}>
-                    <Text style={styles.swapTokenSymbol}>XNM</Text>
+                    <Text style={styles.swapTokenSymbol}>
+                      {getTokenSymbol(swapTokenOut)}
+                    </Text>
+                    <Text style={styles.swapBalance}>
+                      Balance: {getTokenBalance(swapTokenOut)}{" "}
+                      {getTokenSymbol(swapTokenOut)}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -6901,7 +6965,10 @@ function AppContent() {
                     ]}
                     onPress={() => {
                       setShowSettingsModal(false);
-                      setAuthState("locked");
+                      // Add delay to ensure modal closes before locking
+                      setTimeout(() => {
+                        setAuthState("locked");
+                      }, 300);
                     }}
                   >
                     <Text style={styles.settingsMenuItemText}>Lock</Text>

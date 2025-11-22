@@ -3296,6 +3296,151 @@ function AppContent() {
     }
   };
 
+  // Check BLE Status - Comprehensive diagnostic report
+  const checkBLEStatus = async () => {
+    console.log("");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("📊 BLUETOOTH STATUS REPORT");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("");
+
+    try {
+      // Initialize BLE Manager if not already done
+      if (!bleManagerRef.current) {
+        bleManagerRef.current = new BleManager();
+        console.log("  ℹ️  BLE Manager initialized for status check");
+      }
+
+      const manager = bleManagerRef.current;
+
+      // 1. Bluetooth Adapter State
+      console.log("1️⃣  BLUETOOTH ADAPTER STATE:");
+      const state = await manager.state();
+      console.log(`   State: ${state}`);
+      console.log(
+        `   ${state === "PoweredOn" ? "✅" : "❌"} Adapter is ${state === "PoweredOn" ? "POWERED ON" : "NOT powered on"}`
+      );
+      console.log("");
+
+      // 2. App Bluetooth Permissions
+      console.log("2️⃣  BLUETOOTH PERMISSIONS:");
+      try {
+        const scanGranted = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN
+        );
+        const connectGranted = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT
+        );
+        console.log(
+          `   BLUETOOTH_SCAN: ${scanGranted ? "✅ GRANTED" : "❌ DENIED"}`
+        );
+        console.log(
+          `   BLUETOOTH_CONNECT: ${connectGranted ? "✅ GRANTED" : "❌ DENIED"}`
+        );
+      } catch (permErr) {
+        console.log(`   ⚠️  Could not check permissions: ${permErr.message}`);
+      }
+      console.log("");
+
+      // 3. Connected Devices
+      console.log("3️⃣  CONNECTED DEVICES:");
+      try {
+        const connectedDevices = await manager.connectedDevices([]);
+        if (connectedDevices.length > 0) {
+          console.log(
+            `   Found ${connectedDevices.length} connected device(s):`
+          );
+          connectedDevices.forEach((device, index) => {
+            console.log(`   ${index + 1}. ${device.name || "Unknown"}`);
+            console.log(`      ID: ${device.id}`);
+            console.log(`      RSSI: ${device.rssi || "N/A"}`);
+          });
+        } else {
+          console.log("   ℹ️  No devices currently connected");
+        }
+      } catch (devErr) {
+        console.log(
+          `   ⚠️  Could not get connected devices: ${devErr.message}`
+        );
+      }
+      console.log("");
+
+      // 4. App BLE State
+      console.log("4️⃣  APP BLE STATE:");
+      console.log(
+        `   Transport Ref: ${ledgerTransportRef.current ? "✅ EXISTS" : "❌ NULL"}`
+      );
+      if (ledgerTransportRef.current) {
+        try {
+          console.log(
+            `   Transport Device: ${ledgerTransportRef.current.device?.name || "Unknown"}`
+          );
+          console.log(
+            `   Transport ID: ${ledgerTransportRef.current.device?.id || "Unknown"}`
+          );
+        } catch (e) {
+          console.log("   Transport exists but error reading details");
+        }
+      }
+      console.log(
+        `   Scan Subscription: ${ledgerScanSubscriptionRef.current ? "✅ ACTIVE" : "❌ INACTIVE"}`
+      );
+      console.log(
+        `   Scanning Flag: ${ledgerScanning ? "✅ TRUE" : "❌ FALSE"}`
+      );
+      console.log(
+        `   Connecting Flag: ${ledgerConnecting ? "✅ TRUE" : "❌ FALSE"}`
+      );
+      console.log(
+        `   Cleanup In Progress: ${ledgerCleaningRef.current ? "✅ TRUE" : "❌ FALSE"}`
+      );
+      console.log(
+        `   Cleanup Completed: ${ledgerCleanedUpRef.current ? "✅ TRUE" : "❌ FALSE"}`
+      );
+      console.log("");
+
+      // 5. Stored Ledger Info
+      console.log("5️⃣  STORED LEDGER INFO:");
+      if (ledgerDeviceInfo) {
+        console.log(`   Device Name: ${ledgerDeviceInfo.name || "N/A"}`);
+        console.log(`   Device ID: ${ledgerDeviceInfo.id || "N/A"}`);
+      } else {
+        console.log("   ℹ️  No stored device info");
+      }
+      if (ledgerDeviceId) {
+        console.log(`   Stored Device ID: ${ledgerDeviceId}`);
+      } else {
+        console.log("   ℹ️  No stored device ID");
+      }
+      console.log(`   Connection Type: ${ledgerConnectionType || "N/A"}`);
+      console.log(`   Discovered Accounts: ${ledgerAccounts.length}`);
+      console.log("");
+
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("✅ STATUS REPORT COMPLETE");
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("");
+
+      Toast.show({
+        type: "success",
+        text1: "BLE Status Report",
+        text2: `Adapter: ${state} | Devices: ${(await manager.connectedDevices([])).length}`,
+        position: "bottom",
+      });
+    } catch (error) {
+      console.error("❌ Error generating BLE status report:", error);
+      console.error("  Error message:", error.message);
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+      Toast.show({
+        type: "error",
+        text1: "Status Check Failed",
+        text2: error.message || "Could not generate BLE status report",
+        position: "bottom",
+      });
+    }
+  };
+
   // Proper BLE cleanup function following best practices
   const cleanupLedgerBLE = async () => {
     // Prevent double cleanup - check if already cleaned up OR currently cleaning
@@ -6219,6 +6364,31 @@ function AppContent() {
                 onPress={() => ledgerSheetRef.current?.dismiss()}
               >
                 <Text style={styles.bottomSheetClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Check BLE Status Button */}
+            <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
+              <TouchableOpacity
+                onPress={checkBLEStatus}
+                style={{
+                  backgroundColor: "#2a2a2a",
+                  borderRadius: 8,
+                  padding: 12,
+                  borderWidth: 1,
+                  borderColor: "rgba(74, 144, 226, 0.3)",
+                }}
+              >
+                <Text
+                  style={{
+                    color: "#4A90E2",
+                    fontSize: 14,
+                    fontWeight: "600",
+                    textAlign: "center",
+                  }}
+                >
+                  📊 Check BLE Status
+                </Text>
               </TouchableOpacity>
             </View>
 

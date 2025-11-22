@@ -3177,8 +3177,27 @@ function AppContent() {
     setShowAddWalletModal(false);
     console.log("✓ Add wallet modal closed");
 
-    // Request Bluetooth permissions first
-    console.log("📋 Requesting Bluetooth permissions...");
+    // Power cycle Bluetooth FIRST (doesn't require permissions)
+    console.log("");
+    console.log(
+      "🔄 Step 1: Power cycling Bluetooth to clear stale connections..."
+    );
+    console.log(
+      "   (This happens BEFORE permission check - no permissions needed)"
+    );
+    const cycled = await powerCycleBluetooth();
+    if (cycled) {
+      console.log("✅ Bluetooth power cycled successfully");
+    } else {
+      console.log(
+        "⚠️ Bluetooth power cycle not available (Android 13+ or failed)"
+      );
+      console.log("   User should manually toggle Bluetooth if issues persist");
+    }
+    console.log("");
+
+    // Request Bluetooth permissions after power cycle
+    console.log("📋 Step 2: Requesting Bluetooth permissions...");
     const hasPermission = await requestBluetoothPermissions();
     if (!hasPermission) {
       console.log("❌ Bluetooth permissions denied");
@@ -3192,30 +3211,15 @@ function AppContent() {
       return;
     }
     console.log("✅ Bluetooth permissions granted");
-
-    // Power cycle Bluetooth to ensure clean state for connection
-    console.log("");
-    console.log(
-      "🔄 Step 1: Power cycling Bluetooth to clear stale connections..."
-    );
-    const cycled = await powerCycleBluetooth();
-    if (cycled) {
-      console.log("✅ Bluetooth power cycled successfully");
-    } else {
-      console.log(
-        "⚠️ Bluetooth power cycle not available (Android 13+ or failed)"
-      );
-      console.log("   User should manually toggle Bluetooth if issues persist");
-    }
     console.log("");
 
     // Always show sheet and scan to allow selection
-    console.log("🔵 Step 2: Opening Ledger connection sheet...");
+    console.log("🔵 Step 3: Opening Ledger connection sheet...");
     ledgerSheetRef.current?.present();
     console.log("✓ Ledger sheet opened");
 
     console.log("");
-    console.log("🔍 Step 3: Starting BLE scan for Ledger devices...");
+    console.log("🔍 Step 4: Starting BLE scan for Ledger devices...");
     scanForLedger();
     console.log("==============================================");
   };

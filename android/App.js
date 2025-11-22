@@ -3367,18 +3367,60 @@ function AppContent() {
             });
           }
         },
-        error: (error) => {
+        error: async (error) => {
           console.error("Ledger scan error:", error);
+          console.error("Error name:", error.name);
+          console.error("Error message:", error.message);
+          console.error("Error stack:", error.stack);
+
           setLedgerScanning(false);
           ledgerScanSubscriptionRef.current = null;
-          Toast.show({
-            type: "error",
-            text1: "Scan Error",
-            text2:
-              error.message ||
-              "Failed to scan for Ledger devices. Check Bluetooth and Solana app.",
-            position: "bottom",
-          });
+
+          // Check if this is the "Operation was cancelled" error
+          if (
+            error.message &&
+            error.message.includes("Operation was cancelled")
+          ) {
+            console.log(
+              "⚠️ BLE scan cancelled - performing complete BLE cleanup..."
+            );
+
+            // Perform complete BLE cleanup
+            try {
+              // Close any existing transport
+              if (ledgerTransportRef.current) {
+                await ledgerTransportRef.current.close();
+                ledgerTransportRef.current = null;
+                console.log("✓ Transport closed during scan error cleanup");
+              }
+
+              // Clear all BLE-related refs
+              ledgerScanSubscriptionRef.current = null;
+              ledgerCleaningRef.current = false;
+              ledgerCleanedUpRef.current = false;
+
+              console.log("✓ Complete BLE cleanup finished");
+
+              Toast.show({
+                type: "info",
+                text1: "Scan Cancelled",
+                text2: "BLE scan was cancelled. Please try again.",
+                position: "bottom",
+              });
+            } catch (cleanupError) {
+              console.error("Error during BLE cleanup:", cleanupError);
+            }
+          } else {
+            // Other errors - show generic error message
+            Toast.show({
+              type: "error",
+              text1: "Scan Error",
+              text2:
+                error.message ||
+                "Failed to scan for Ledger devices. Check Bluetooth and Solana app.",
+              position: "bottom",
+            });
+          }
         },
       });
 

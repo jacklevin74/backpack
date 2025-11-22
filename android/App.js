@@ -732,6 +732,14 @@ function AppContent() {
     }
   }, [selectedWallet]);
 
+  // Ensure first wallet is always selected when wallets exist but no wallet is selected
+  useEffect(() => {
+    if (!selectedWallet && wallets.length > 0) {
+      setSelectedWallet(wallets[0]);
+      console.log("Auto-selected first wallet:", wallets[0].name);
+    }
+  }, [wallets, selectedWallet]);
+
   // Initialize phraseWords when import modal opens
   useEffect(() => {
     if (showImportWalletModal && importType === "mnemonic") {
@@ -4208,7 +4216,11 @@ function AppContent() {
                     ? selectedWallet.name.length > 10
                       ? `${selectedWallet.name.slice(0, 10)}...`
                       : selectedWallet.name
-                    : "No wallet"}
+                    : wallets.length > 0
+                      ? wallets[0].name.length > 10
+                        ? `${wallets[0].name.slice(0, 10)}...`
+                        : wallets[0].name
+                      : "No wallet"}
                 </Text>
                 <Text style={styles.walletDropdownArrow}>▼</Text>
               </TouchableOpacity>

@@ -3170,11 +3170,18 @@ function AppContent() {
   };
 
   const handleShowLedger = async () => {
+    console.log("==============================================");
+    console.log("🔵 CONNECT LEDGER FLOW STARTED");
+    console.log("==============================================");
+
     setShowAddWalletModal(false);
+    console.log("✓ Add wallet modal closed");
 
     // Request Bluetooth permissions first
+    console.log("📋 Requesting Bluetooth permissions...");
     const hasPermission = await requestBluetoothPermissions();
     if (!hasPermission) {
+      console.log("❌ Bluetooth permissions denied");
       Toast.show({
         type: "error",
         text1: "Permissions Required",
@@ -3184,10 +3191,33 @@ function AppContent() {
       setShowAddWalletModal(true);
       return;
     }
+    console.log("✅ Bluetooth permissions granted");
+
+    // Power cycle Bluetooth to ensure clean state for connection
+    console.log("");
+    console.log(
+      "🔄 Step 1: Power cycling Bluetooth to clear stale connections..."
+    );
+    const cycled = await powerCycleBluetooth();
+    if (cycled) {
+      console.log("✅ Bluetooth power cycled successfully");
+    } else {
+      console.log(
+        "⚠️ Bluetooth power cycle not available (Android 13+ or failed)"
+      );
+      console.log("   User should manually toggle Bluetooth if issues persist");
+    }
+    console.log("");
 
     // Always show sheet and scan to allow selection
+    console.log("🔵 Step 2: Opening Ledger connection sheet...");
     ledgerSheetRef.current?.present();
+    console.log("✓ Ledger sheet opened");
+
+    console.log("");
+    console.log("🔍 Step 3: Starting BLE scan for Ledger devices...");
     scanForLedger();
+    console.log("==============================================");
   };
 
   // Bluetooth Power Cycle - Reset Bluetooth adapter to clear stale connections

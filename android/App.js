@@ -3073,7 +3073,6 @@ function AppContent() {
         const granted = await PermissionsAndroid.requestMultiple([
           PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
           PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
         ]);
 
         console.log("Permission results:", granted);
@@ -3081,8 +3080,6 @@ function AppContent() {
           granted["android.permission.BLUETOOTH_SCAN"] ===
             PermissionsAndroid.RESULTS.GRANTED &&
           granted["android.permission.BLUETOOTH_CONNECT"] ===
-            PermissionsAndroid.RESULTS.GRANTED &&
-          granted["android.permission.ACCESS_FINE_LOCATION"] ===
             PermissionsAndroid.RESULTS.GRANTED;
 
         console.log("All permissions granted:", allGranted);

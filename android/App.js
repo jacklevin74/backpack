@@ -1582,6 +1582,30 @@ function AppContent() {
     receiveSheetRef.current?.present();
   };
 
+  // Singleton BLE transport getter - reuses existing connection
+  const getLedgerTransport = async (deviceId) => {
+    // If we have a stored transport, check if it's still valid
+    if (ledgerTransportRef.current) {
+      try {
+        // Test if transport is still connected by checking if it has device property
+        if (ledgerTransportRef.current.device) {
+          console.log("Reusing existing BLE transport (singleton)");
+          return ledgerTransportRef.current;
+        }
+      } catch (err) {
+        console.log("Stored transport is no longer valid:", err.message);
+        ledgerTransportRef.current = null;
+      }
+    }
+
+    // No valid transport exists, create a new one
+    console.log("Creating new BLE transport connection...");
+    const transport = await TransportBLE.open(deviceId);
+    ledgerTransportRef.current = transport;
+    console.log("New BLE transport created and stored (singleton)");
+    return transport;
+  };
+
   const handleSend = () => {
     sendSheetRef.current?.present();
   };
@@ -1803,8 +1827,8 @@ function AppContent() {
           );
         }
 
-        // Connect to Ledger via BLE
-        const transport = await TransportBLE.open(deviceId);
+        // Get or reuse BLE transport (singleton pattern)
+        const transport = await getLedgerTransport(deviceId);
         const solana = new AppSolana(transport);
 
         // Get the derivation path for this wallet
@@ -1825,9 +1849,9 @@ function AppContent() {
         // Add the signature to the transaction (legacy format)
         transaction.addSignature(fromPubkey, Buffer.from(signature.signature));
 
-        // Disconnect from Ledger
-        await transport.close();
-        console.log("Ledger disconnected");
+        // Keep transport alive for future transactions (singleton pattern)
+        // Transport will be closed only during explicit cleanup
+        console.log("Ledger transaction signed (keeping connection alive)");
       } else {
         // Sign with keypair for regular wallets
         if (!selectedWalletData || !selectedWalletData.keypair) {
@@ -2248,8 +2272,8 @@ function AppContent() {
               }
 
               try {
-                // Connect to Ledger via BLE
-                const transport = await TransportBLE.open(deviceId);
+                // Get or reuse BLE transport (singleton pattern)
+                const transport = await getLedgerTransport(deviceId);
                 const solana = new AppSolana(transport);
 
                 // Get the derivation path for this wallet
@@ -2271,9 +2295,11 @@ function AppContent() {
                   Buffer.from(signature.signature)
                 );
 
-                // Disconnect from Ledger
-                await transport.close();
-                console.log("Ledger disconnected");
+                // Keep transport alive for future transactions (singleton pattern)
+                // Transport will be closed only during explicit cleanup
+                console.log(
+                  "Ledger swap transaction signed (keeping connection alive)"
+                );
               } catch (ledgerError) {
                 console.error("Ledger transaction signing error:", ledgerError);
 

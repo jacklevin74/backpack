@@ -697,6 +697,47 @@ function AppContent() {
     checkAuth();
   }, []);
 
+  // Clean up any stale BLE connections on app startup
+  useEffect(() => {
+    const cleanupStartupBLE = async () => {
+      console.log("🔵 App startup: Cleaning up any stale BLE connections...");
+
+      try {
+        // Unsubscribe from any existing scans
+        if (ledgerScanSubscriptionRef.current) {
+          try {
+            ledgerScanSubscriptionRef.current.unsubscribe();
+            ledgerScanSubscriptionRef.current = null;
+            console.log("  ✓ Cleared scan subscription");
+          } catch (e) {
+            console.log("  ⚠ Error clearing scan subscription:", e.message);
+          }
+        }
+
+        // Close any existing transport connection
+        if (ledgerTransportRef.current) {
+          try {
+            await ledgerTransportRef.current.close();
+            console.log("  ✓ Closed existing transport");
+          } catch (e) {
+            console.log("  ⚠ Error closing transport:", e.message);
+          }
+          ledgerTransportRef.current = null;
+        }
+
+        // Reset cleanup flags
+        ledgerCleaningRef.current = false;
+        ledgerCleanedUpRef.current = false;
+
+        console.log("🔵 Startup BLE cleanup complete (no delay on startup)");
+      } catch (error) {
+        console.error("Error during startup BLE cleanup:", error);
+      }
+    };
+
+    cleanupStartupBLE();
+  }, []);
+
   // Check biometric availability
   useEffect(() => {
     const checkBiometric = async () => {

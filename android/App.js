@@ -71,6 +71,7 @@ import TokenIcon, { clearImageCache } from "./src/components/TokenIcon";
 import QRCode from "react-native-qrcode-svg";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import TransportBLE from "@ledgerhq/react-native-hw-transport-ble";
+import { BleManager } from "react-native-ble-plx";
 import AppSolana from "@ledgerhq/hw-app-solana";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
@@ -392,6 +393,7 @@ function AppContent() {
   const ledgerScanSubscriptionRef = useRef(null); // Store scan subscription for cleanup
   const ledgerCleaningRef = useRef(false); // Prevent concurrent cleanup
   const ledgerCleanedUpRef = useRef(false); // Track if cleanup has already been completed
+  const bleManagerRef = useRef(null); // BLE Manager instance for Bluetooth control
   const sendAddressInputRef = useRef(null); // Ref for send address TextInput
 
   // Send and Receive states
@@ -3188,6 +3190,78 @@ function AppContent() {
     scanForLedger();
   };
 
+  // Bluetooth Power Cycle - Reset Bluetooth adapter to clear stale connections
+  const powerCycleBluetooth = async () => {
+    console.log("🔄 Attempting to power cycle Bluetooth adapter...");
+
+    try {
+      // Initialize BLE Manager if not already done
+      if (!bleManagerRef.current) {
+        bleManagerRef.current = new BleManager();
+        console.log("  ✓ BLE Manager initialized");
+      }
+
+      const manager = bleManagerRef.current;
+
+      // Check current Bluetooth state
+      const state = await manager.state();
+      console.log(`  📡 Current Bluetooth state: ${state}`);
+
+      if (state === "PoweredOn") {
+        // Try to disable Bluetooth (only works on Android <13)
+        try {
+          console.log("  ⏸ Disabling Bluetooth...");
+          await manager.disable();
+          console.log("  ✓ Bluetooth disabled");
+
+          // Wait for it to fully power down
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          // Re-enable Bluetooth
+          console.log("  ▶ Re-enabling Bluetooth...");
+          await manager.enable();
+          console.log("  ✓ Bluetooth re-enabled");
+
+          // Wait for it to fully power up
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+
+          console.log("✅ Bluetooth power cycle complete!");
+          return true;
+        } catch (error) {
+          // Disable/enable not supported (Android 13+)
+          if (error.message && error.message.includes("not supported")) {
+            console.log(
+              "  ⚠ Bluetooth disable/enable not supported on this Android version"
+            );
+            console.log(
+              "  💡 User must manually toggle Bluetooth in system settings"
+            );
+
+            Toast.show({
+              type: "info",
+              text1: "Bluetooth Reset Required",
+              text2:
+                "Please toggle Bluetooth OFF then ON in your phone settings to clear stale connections",
+              position: "bottom",
+              visibilityTime: 5000,
+            });
+            return false;
+          }
+          throw error;
+        }
+      } else {
+        console.log(
+          `  ⚠ Bluetooth is not powered on (state: ${state}), skipping power cycle`
+        );
+        return false;
+      }
+    } catch (error) {
+      console.error("❌ Error during Bluetooth power cycle:", error);
+      console.error("  Error message:", error.message);
+      return false;
+    }
+  };
+
   // Proper BLE cleanup function following best practices
   const cleanupLedgerBLE = async () => {
     // Prevent double cleanup - check if already cleaned up OR currently cleaning
@@ -3536,7 +3610,21 @@ function AppContent() {
         ledgerCleaningRef.current = false;
         ledgerCleanedUpRef.current = false;
 
-        // 4. Attempt to disconnect using device ID if supported
+        // 4. Power cycle Bluetooth on second retry to clear stale connections
+        //    (Skip on first attempt to avoid unnecessary delay)
+        if (retryCount === 1) {
+          console.log("  🔄 Second retry attempt - power cycling Bluetooth...");
+          const cycled = await powerCycleBluetooth();
+          if (cycled) {
+            console.log("  ✓ Bluetooth power cycle succeeded");
+          } else {
+            console.log(
+              "  ⚠ Bluetooth power cycle not available (Android 13+)"
+            );
+          }
+        }
+
+        // 5. Attempt to disconnect using device ID if supported
         if (TransportBLE.disconnectDevice) {
           await TransportBLE.disconnectDevice(deviceId);
           console.log("  ✓ TransportBLE.disconnectDevice succeeded");

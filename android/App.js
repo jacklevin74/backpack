@@ -3504,26 +3504,59 @@ function AppContent() {
         isDeviceDescriptor ? "device descriptor" : "device ID"
       );
 
-      // Disconnect any existing connection to this device before attempting new connection
+      // Perform comprehensive BLE cleanup before attempting new connection
       try {
-        console.log("Disconnecting any existing connection to device...");
-        // Attempt to disconnect using the device ID if supported
-        if (TransportBLE.disconnect) {
-          await TransportBLE.disconnect(deviceId);
-          console.log("Previous connection disconnected");
-        } else {
-          console.log(
-            "TransportBLE.disconnect not supported in this version, skipping"
-          );
-        }
-        // Wait for BLE stack to settle after disconnect
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      } catch (disconnectError) {
         console.log(
-          "No active connection to disconnect (or error disconnecting):",
-          disconnectError.message
+          "⚠️ Performing comprehensive BLE cleanup before connection..."
         );
-        // Brief wait even if disconnect failed
+
+        // 1. Close any existing transport
+        if (ledgerTransportRef.current) {
+          try {
+            await ledgerTransportRef.current.close();
+            console.log("  ✓ Closed existing transport");
+          } catch (e) {
+            console.log("  ⚠ Error closing transport:", e.message);
+          }
+          ledgerTransportRef.current = null;
+        }
+
+        // 2. Unsubscribe from any existing scans
+        if (ledgerScanSubscriptionRef.current) {
+          try {
+            ledgerScanSubscriptionRef.current.unsubscribe();
+            console.log("  ✓ Cleared scan subscription");
+          } catch (e) {
+            console.log("  ⚠ Error clearing scan subscription:", e.message);
+          }
+          ledgerScanSubscriptionRef.current = null;
+        }
+
+        // 3. Reset cleanup flags
+        ledgerCleaningRef.current = false;
+        ledgerCleanedUpRef.current = false;
+
+        // 4. Attempt to disconnect using device ID if supported
+        if (TransportBLE.disconnectDevice) {
+          await TransportBLE.disconnectDevice(deviceId);
+          console.log("  ✓ TransportBLE.disconnectDevice succeeded");
+        } else if (TransportBLE.disconnect) {
+          await TransportBLE.disconnect(deviceId);
+          console.log("  ✓ TransportBLE.disconnect succeeded");
+        } else {
+          console.log("  ⚠ TransportBLE disconnect methods not supported");
+        }
+
+        // Wait for BLE stack to settle after comprehensive cleanup
+        console.log("  ⏳ Waiting for BLE stack to settle...");
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        console.log("✅ BLE cleanup complete, proceeding with connection");
+      } catch (cleanupError) {
+        console.log(
+          "⚠️ Error during BLE cleanup (continuing anyway):",
+          cleanupError.message
+        );
+        // Brief wait even if cleanup failed
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
 
@@ -3621,20 +3654,42 @@ function AppContent() {
       if (isCancelledError && retryCount < MAX_RETRIES) {
         // Calculate exponential backoff delay: 1s, 2s, 4s
         const delayMs = 1000 * Math.pow(2, retryCount);
-        console.log(`Connection cancelled, retrying in ${delayMs}ms...`);
+        console.log(
+          `⚠️ Connection cancelled, performing complete cleanup before retry in ${delayMs}ms...`
+        );
 
-        // Clean up transport if it exists
-        if (transport) {
-          try {
-            await transport.close();
-            ledgerTransportRef.current = null;
-          } catch (closeError) {
-            console.log(
-              "Error closing transport (ignoring):",
-              closeError.message
-            );
-            ledgerTransportRef.current = null;
+        // Perform comprehensive BLE cleanup before retry
+        try {
+          // 1. Close transport if it exists
+          if (transport) {
+            try {
+              await transport.close();
+              console.log("  ✓ Closed transport");
+            } catch (e) {
+              console.log("  ⚠ Error closing transport:", e.message);
+            }
           }
+          ledgerTransportRef.current = null;
+
+          // 2. Clear scan subscription
+          if (ledgerScanSubscriptionRef.current) {
+            try {
+              ledgerScanSubscriptionRef.current.unsubscribe();
+              console.log("  ✓ Cleared scan subscription");
+            } catch (e) {
+              console.log("  ⚠ Error clearing subscription:", e.message);
+            }
+            ledgerScanSubscriptionRef.current = null;
+          }
+
+          // 3. Reset cleanup flags
+          ledgerCleaningRef.current = false;
+          ledgerCleanedUpRef.current = false;
+
+          console.log("✅ Complete cleanup done before retry");
+        } catch (cleanupError) {
+          console.log("⚠️ Error during cleanup:", cleanupError.message);
+          ledgerTransportRef.current = null;
         }
 
         // Wait for exponential backoff delay
@@ -3647,20 +3702,42 @@ function AppContent() {
       // If we've exhausted retries or it's a different error, handle it
       setLedgerConnecting(false);
 
-      // Try to clean up transport if it was created
-      if (transport) {
-        try {
-          await transport.close();
-          ledgerTransportRef.current = null;
-          console.log("Transport cleaned up after error");
-        } catch (closeError) {
-          console.log(
-            "Error closing transport after error (ignoring):",
-            closeError.message
-          );
-          // Store in ref for cleanup attempt next time
-          ledgerTransportRef.current = transport;
+      // Perform comprehensive BLE cleanup after exhausting retries
+      console.log("⚠️ Performing comprehensive BLE cleanup after error...");
+      try {
+        // 1. Close transport if it exists
+        if (transport) {
+          try {
+            await transport.close();
+            console.log("  ✓ Transport closed");
+          } catch (e) {
+            console.log("  ⚠ Error closing transport:", e.message);
+          }
         }
+        ledgerTransportRef.current = null;
+
+        // 2. Clear scan subscription
+        if (ledgerScanSubscriptionRef.current) {
+          try {
+            ledgerScanSubscriptionRef.current.unsubscribe();
+            console.log("  ✓ Scan subscription cleared");
+          } catch (e) {
+            console.log("  ⚠ Error clearing subscription:", e.message);
+          }
+          ledgerScanSubscriptionRef.current = null;
+        }
+
+        // 3. Reset cleanup flags
+        ledgerCleaningRef.current = false;
+        ledgerCleanedUpRef.current = false;
+
+        console.log("✅ Comprehensive cleanup complete after error");
+      } catch (finalCleanupError) {
+        console.log(
+          "⚠️ Error during final cleanup:",
+          finalCleanupError.message
+        );
+        ledgerTransportRef.current = null;
       }
 
       let errorMessage = "Failed to connect to Ledger device. ";

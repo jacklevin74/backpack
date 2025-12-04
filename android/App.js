@@ -338,6 +338,7 @@ function AppContent() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMoreTransactions, setHasMoreTransactions] = useState(true);
   const [oldestSignature, setOldestSignature] = useState(null);
+  const [activityTapTimes, setActivityTapTimes] = useState([]); // Track Activity tab taps for triple-tap auto-load
   const [balanceCache, setBalanceCache] = useState({});
   const [gainLossCache, setGainLossCache] = useState({});
   const [currentNetwork, setCurrentNetwork] = useState(NETWORKS[0]);
@@ -461,12 +462,8 @@ function AppContent() {
   const [swapSignature, setSwapSignature] = useState("");
 
   // Browser/WebView states
-  const [browserUrl, setBrowserUrl] = useState(
-    "https://mobile-api.x1.xyz/test"
-  );
-  const [browserInputUrl, setBrowserInputUrl] = useState(
-    "https://mobile-api.x1.xyz/test"
-  );
+  const [browserUrl, setBrowserUrl] = useState("https://vero.x1.xyz");
+  const [browserInputUrl, setBrowserInputUrl] = useState("https://vero.x1.xyz");
   const [showTestBrowser, setShowTestBrowser] = useState(false);
   const webViewRef = useRef(null);
 
@@ -1327,26 +1324,9 @@ function AppContent() {
               }
 
               // Get token symbol and mint address
-              console.log(`[Token Debug] 🔎 Raw transaction data:`, {
-                tokenSymbol: tx.tokenSymbol,
-                symbol: tx.symbol,
-                tokenMint: tx.tokenMint,
-                mint: tx.mint,
-                type: tx.type,
-                hash: tx.hash?.substring(0, 8),
-              });
-
               const tokenSymbol =
                 tx.tokenSymbol || tx.symbol || getNativeTokenInfo().symbol;
               const tokenMint = tx.tokenMint || tx.mint; // Full mint address for lookup
-
-              console.log(
-                `[Token Debug] 📝 Using tokenSymbol: "${tokenSymbol}"`
-              );
-              console.log(
-                `[Token Debug] 🏷️  Token mint: "${tokenMint || "N/A"}"`
-              );
-              console.log(`[Token Debug] 🌐 Network: ${activeNetwork.id}`);
 
               // Fetch token metadata from REST API (only for non-native tokens on Solana)
               let tokenMetadata = null;
@@ -1356,32 +1336,14 @@ function AppContent() {
               const isNativeToken =
                 tokenSymbol === "SOL" || tokenSymbol === "XNT";
 
-              console.log(
-                `[Token Debug] ✓ isSolanaNetwork: ${isSolanaNetwork}, isNativeToken: ${isNativeToken}`
-              );
-
               if (isSolanaNetwork && !isNativeToken && tokenMint) {
-                console.log(
-                  `[Token Debug] 🚀 Will fetch metadata using mint: "${tokenMint}"`
-                );
                 tokenMetadata = await fetchTokenMetadata(tokenMint, true); // true = use mint address
-              } else {
-                console.log(
-                  `[Token Debug] ⏭️  Skipping metadata fetch (native token, non-Solana, or no mint)`
-                );
               }
 
               // Calculate USD value if we have token price
               const valueUSD = tokenMetadata?.price
                 ? (amountNum * tokenMetadata.price).toFixed(2)
                 : null;
-
-              console.log(`[Token Debug] 💰 Final metadata:`, {
-                tokenName: tokenMetadata?.name || "N/A",
-                tokenIcon: tokenMetadata?.icon ? "✅ Has icon" : "❌ No icon",
-                tokenPrice: tokenMetadata?.price || "N/A",
-                valueUSD: valueUSD || "N/A",
-              });
 
               // Hide tokens not in database (likely scam/spam tokens)
               // Only filter Solana non-native tokens that have a mint but no metadata
@@ -1391,9 +1353,6 @@ function AppContent() {
                 tokenMint &&
                 !tokenMetadata
               ) {
-                console.log(
-                  `[Token Debug] 🚫 Hiding unverified token: ${tokenSymbol} (${tokenMint})`
-                );
                 return null; // This transaction will be filtered out
               }
 
@@ -2837,6 +2796,19 @@ function AppContent() {
   const handleWebViewMessage = async (event) => {
     try {
       const message = JSON.parse(event.nativeEvent.data);
+
+      // Handle console messages from WebView
+      if (message.type === "console") {
+        const prefix =
+          message.level === "error"
+            ? "❌"
+            : message.level === "warn"
+              ? "⚠️"
+              : "📝";
+        console.log(`${prefix} [WebView ${message.level}] ${message.message}`);
+        return;
+      }
+
       console.log("WebView message received:", message);
 
       const { id, method, params } = message;
@@ -3162,6 +3134,98 @@ function AppContent() {
                 signature: Buffer.from(signature).toString("base64"),
               };
             }
+            break;
+
+          case "signTransaction":
+            // Sign a transaction without sending (for multi-sig flows like session wallet)
+            if (!selectedWallet) {
+              throw new Error("No wallet selected");
+            }
+
+            const { transaction: signTxData } = params;
+
+            // Deserialize the transaction
+            const signTxBuffer = Buffer.from(signTxData, "base64");
+            const transactionToSign = Transaction.from(signTxBuffer);
+
+            // Get the wallet's data
+            const signWalletData = wallets.find(
+              (w) => w.id === selectedWallet.id
+            );
+
+            // Get the from public key
+            const signFromPubkey = new PublicKey(selectedWallet.publicKey);
+
+            // Sign the transaction
+            if (signWalletData && signWalletData.isLedger) {
+              // Sign with Ledger
+              console.log("Signing transaction with Ledger (no send)...");
+
+              const signDeviceId = signWalletData.ledgerDeviceId;
+              if (!signDeviceId) {
+                throw new Error(
+                  "Ledger device ID not found. Please reconnect your Ledger."
+                );
+              }
+
+              try {
+                // Get or reuse BLE transport (singleton pattern)
+                const signTransport = await getLedgerTransport(signDeviceId);
+                const signSolana = new AppSolana(signTransport);
+
+                // Get the derivation path for this wallet
+                const signDerivationPath = signWalletData.derivationPath;
+                console.log("Using derivation path:", signDerivationPath);
+
+                // Sign the transaction with Ledger
+                const signSerializedTx = transactionToSign.serializeMessage();
+                const signLedgerSig = await signSolana.signTransaction(
+                  signDerivationPath,
+                  signSerializedTx
+                );
+
+                console.log("Ledger signature obtained (signTransaction)");
+
+                // Add the signature to the transaction
+                transactionToSign.addSignature(
+                  signFromPubkey,
+                  Buffer.from(signLedgerSig.signature)
+                );
+
+                console.log(
+                  "Transaction signed with Ledger (keeping connection alive)"
+                );
+              } catch (ledgerError) {
+                console.error("Ledger signTransaction error:", ledgerError);
+                throw new Error(
+                  "Ledger transaction signing failed: " +
+                    (ledgerError.message || "Unknown error")
+                );
+              }
+            } else {
+              // Sign with keypair for regular wallets
+              if (!signWalletData || !signWalletData.keypair) {
+                throw new Error(
+                  "Wallet keypair not found. Please make sure you created or imported this wallet."
+                );
+              }
+
+              const signKeypair = signWalletData.keypair;
+              console.log("Signing transaction with keypair (no send)...");
+              // Use partialSign to preserve any existing signatures (e.g., from session wallet)
+              transactionToSign.partialSign(signKeypair);
+            }
+
+            // Return the signed transaction as base64
+            // Use requireAllSignatures: false in case this is a multi-sig flow
+            result = {
+              signedTransaction: transactionToSign
+                .serialize({
+                  requireAllSignatures: false,
+                  verifySignatures: false,
+                })
+                .toString("base64"),
+            };
             break;
 
           case "testSignMemo":
@@ -5312,6 +5376,104 @@ function AppContent() {
             onError={(e) => console.error("WebView error:", e.nativeEvent)}
             injectedJavaScriptBeforeContentLoaded={`
               (function() {
+                // Buffer polyfill for Solana SDK compatibility
+                if (typeof window.Buffer === 'undefined') {
+                  window.Buffer = {
+                    from: function(data, encoding) {
+                      if (typeof data === 'string') {
+                        if (encoding === 'base64') {
+                          const binary = atob(data);
+                          const bytes = new Uint8Array(binary.length);
+                          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                          return bytes;
+                        } else if (encoding === 'hex') {
+                          const bytes = new Uint8Array(data.length / 2);
+                          for (let i = 0; i < data.length; i += 2) bytes[i / 2] = parseInt(data.substr(i, 2), 16);
+                          return bytes;
+                        }
+                        // Default: UTF-8
+                        const encoder = new TextEncoder();
+                        return encoder.encode(data);
+                      }
+                      if (Array.isArray(data) || data instanceof Uint8Array) {
+                        return new Uint8Array(data);
+                      }
+                      return new Uint8Array(0);
+                    },
+                    alloc: function(size) {
+                      return new Uint8Array(size);
+                    },
+                    allocUnsafe: function(size) {
+                      return new Uint8Array(size);
+                    },
+                    isBuffer: function(obj) {
+                      return obj instanceof Uint8Array;
+                    },
+                    concat: function(list, totalLength) {
+                      if (totalLength === undefined) {
+                        totalLength = list.reduce((acc, arr) => acc + arr.length, 0);
+                      }
+                      const result = new Uint8Array(totalLength);
+                      let offset = 0;
+                      for (const arr of list) {
+                        result.set(arr, offset);
+                        offset += arr.length;
+                      }
+                      return result;
+                    }
+                  };
+                  console.log('[WebView] Buffer polyfill installed');
+                }
+
+                // Intercept console.log/error and send to React Native
+                const originalLog = console.log;
+                const originalError = console.error;
+                const originalWarn = console.warn;
+
+                function sendToRN(type, args) {
+                  try {
+                    if (window.ReactNativeWebView) {
+                      window.ReactNativeWebView.postMessage(JSON.stringify({
+                        type: 'console',
+                        level: type,
+                        message: Array.from(args).map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')
+                      }));
+                    }
+                  } catch(e) {}
+                }
+
+                console.log = function() { sendToRN('log', arguments); originalLog.apply(console, arguments); };
+                console.error = function() { sendToRN('error', arguments); originalError.apply(console, arguments); };
+                console.warn = function() { sendToRN('warn', arguments); originalWarn.apply(console, arguments); };
+
+                // Global error handler
+                window.onerror = function(msg, url, line, col, error) {
+                  sendToRN('error', ['UNCAUGHT ERROR:', msg, 'at', url, line, col, error ? error.stack : '']);
+                  return false;
+                };
+
+                window.addEventListener('unhandledrejection', function(event) {
+                  sendToRN('error', ['UNHANDLED PROMISE:', event.reason]);
+                });
+
+                console.log('[WebView] Console interceptor initialized');
+
+                // Debug: Log all touch events to see if they're reaching the WebView
+                document.addEventListener('touchstart', function(e) {
+                  const target = e.target;
+                  console.log('[TOUCH] touchstart on:', target.tagName, target.className, target.id || '(no id)');
+                }, true);
+
+                document.addEventListener('touchend', function(e) {
+                  const target = e.target;
+                  console.log('[TOUCH] touchend on:', target.tagName, target.className, target.id || '(no id)');
+                }, true);
+
+                document.addEventListener('click', function(e) {
+                  const target = e.target;
+                  console.log('[CLICK] click on:', target.tagName, target.className, target.id || '(no id)');
+                }, true);
+
                 // Create a promise-based request system
                 let requestId = 0;
                 const pendingRequests = {};
@@ -5360,15 +5522,148 @@ function AppContent() {
 
                 // Create the window.x1 API
                 window.x1 = {
+                  isConnected: false,
+                  publicKey: null,
+
                   // Connect to the wallet and get public key
                   connect: async function() {
                     try {
                       const result = await sendRequest('connect');
-                      return result.publicKey;
+                      const pubKeyStr = result.publicKey;
+
+                      // Helper to decode base58 to bytes
+                      function decodeBase58(str) {
+                        const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+                        const ALPHABET_MAP = {};
+                        for (let i = 0; i < ALPHABET.length; i++) ALPHABET_MAP[ALPHABET[i]] = i;
+                        const bytes = [];
+                        for (let i = 0; i < str.length; i++) {
+                          let carry = ALPHABET_MAP[str[i]];
+                          for (let j = 0; j < bytes.length; j++) {
+                            carry += bytes[j] * 58;
+                            bytes[j] = carry & 0xff;
+                            carry >>= 8;
+                          }
+                          while (carry > 0) {
+                            bytes.push(carry & 0xff);
+                            carry >>= 8;
+                          }
+                        }
+                        for (let i = 0; i < str.length && str[i] === '1'; i++) bytes.push(0);
+                        return new Uint8Array(bytes.reverse());
+                      }
+
+                      // Create a BN-like object from bytes (for publicKey._bn compatibility)
+                      function createBNFromBytes(bytes) {
+                        // Convert bytes to array of 26-bit words (BN.js internal format)
+                        const words = [];
+                        let acc = 0;
+                        let accBits = 0;
+                        for (let i = bytes.length - 1; i >= 0; i--) {
+                          acc |= bytes[i] << accBits;
+                          accBits += 8;
+                          while (accBits >= 26) {
+                            words.push(acc & 0x3ffffff);
+                            acc >>>= 26;
+                            accBits -= 26;
+                          }
+                        }
+                        if (accBits > 0 || words.length === 0) {
+                          words.push(acc);
+                        }
+                        // Trim leading zeros
+                        while (words.length > 1 && words[words.length - 1] === 0) {
+                          words.pop();
+                        }
+                        return {
+                          negative: 0,
+                          words: words,
+                          length: words.length,
+                          red: null,
+                          toArray: function(endian, length) {
+                            const arr = Array.from(bytes);
+                            if (endian === 'le') arr.reverse();
+                            if (length && arr.length < length) {
+                              const pad = new Array(length - arr.length).fill(0);
+                              return endian === 'le' ? arr.concat(pad) : pad.concat(arr);
+                            }
+                            return arr;
+                          },
+                          toArrayLike: function(ArrayType, endian, length) {
+                            const arr = this.toArray(endian, length);
+                            return new ArrayType(arr);
+                          },
+                          toString: function(base) {
+                            if (base === 16 || base === 'hex') {
+                              return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+                            }
+                            return pubKeyStr;
+                          },
+                          toNumber: function() {
+                            let n = 0;
+                            for (let i = 0; i < bytes.length && i < 6; i++) {
+                              n = n * 256 + bytes[i];
+                            }
+                            return n;
+                          },
+                          cmp: function(other) {
+                            const otherBytes = other.toArrayLike ? other.toArrayLike(Uint8Array, 'be', 32) : other;
+                            for (let i = 0; i < 32; i++) {
+                              if (bytes[i] < otherBytes[i]) return -1;
+                              if (bytes[i] > otherBytes[i]) return 1;
+                            }
+                            return 0;
+                          },
+                          eq: function(other) { return this.cmp(other) === 0; },
+                          lt: function(other) { return this.cmp(other) < 0; },
+                          lte: function(other) { return this.cmp(other) <= 0; },
+                          gt: function(other) { return this.cmp(other) > 0; },
+                          gte: function(other) { return this.cmp(other) >= 0; },
+                          isZero: function() { return bytes.every(b => b === 0); },
+                          clone: function() { return createBNFromBytes(bytes); }
+                        };
+                      }
+
+                      const pubKeyBytes = decodeBase58(pubKeyStr);
+                      const pubKeyBN = createBNFromBytes(pubKeyBytes);
+
+                      // Create a PublicKey-like object (compatible with Backpack/Phantom/Solana web3.js)
+                      this.publicKey = {
+                        _key: pubKeyStr,
+                        _bn: pubKeyBN,
+                        toString: function() { return this._key; },
+                        toBase58: function() { return this._key; },
+                        toJSON: function() { return this._key; },
+                        toBytes: function() {
+                          return decodeBase58(this._key);
+                        },
+                        toBuffer: function() {
+                          // Return Uint8Array which is Buffer-compatible in browser
+                          return decodeBase58(this._key);
+                        },
+                        equals: function(other) {
+                          if (!other) return false;
+                          const otherKey = typeof other === 'string' ? other :
+                                          (other.toBase58 ? other.toBase58() :
+                                          (other.toString ? other.toString() : String(other)));
+                          return this._key === otherKey;
+                        }
+                      };
+                      this.isConnected = true;
+
+                      // Return in same format as Backpack/Phantom
+                      return { publicKey: this.publicKey };
                     } catch (err) {
                       console.error('x1.connect error:', err);
                       throw err;
                     }
+                  },
+
+                  // Disconnect wallet
+                  disconnect: async function() {
+                    this.isConnected = false;
+                    this.publicKey = null;
+                    return true;
                   },
 
                   // Sign and send a transaction
@@ -5378,10 +5673,12 @@ function AppContent() {
                       let txData;
                       if (transaction.serialize) {
                         // If it's a Transaction object
-                        txData = transaction.serialize({
+                        const serialized = transaction.serialize({
                           requireAllSignatures: false,
                           verifySignatures: false
-                        }).toString('base64');
+                        });
+                        // Use btoa for browser environment (not Buffer.toString('base64'))
+                        txData = btoa(String.fromCharCode.apply(null, serialized));
                       } else if (transaction instanceof Uint8Array) {
                         // If it's already serialized
                         txData = btoa(String.fromCharCode.apply(null, transaction));
@@ -5397,6 +5694,49 @@ function AppContent() {
                       return result;
                     } catch (err) {
                       console.error('x1.signAndSendTransaction error:', err);
+                      throw err;
+                    }
+                  },
+
+                  // Sign a transaction (without sending) - for multi-sig flows
+                  signTransaction: async function(transaction) {
+                    try {
+                      console.log('[x1.signTransaction] Signing transaction...');
+                      // Serialize the transaction to base64
+                      let txData;
+                      if (transaction.serialize) {
+                        const serialized = transaction.serialize({
+                          requireAllSignatures: false,
+                          verifySignatures: false
+                        });
+                        // Use btoa for browser environment (not Buffer.toString('base64'))
+                        txData = btoa(String.fromCharCode.apply(null, serialized));
+                      } else if (transaction instanceof Uint8Array) {
+                        txData = btoa(String.fromCharCode.apply(null, transaction));
+                      } else {
+                        throw new Error('Invalid transaction format');
+                      }
+
+                      const result = await sendRequest('signTransaction', {
+                        transaction: txData
+                      });
+
+                      // Decode the signed transaction from base64
+                      if (result.signedTransaction) {
+                        const binary = atob(result.signedTransaction);
+                        const bytes = new Uint8Array(binary.length);
+                        for (let i = 0; i < binary.length; i++) {
+                          bytes[i] = binary.charCodeAt(i);
+                        }
+                        // Return a transaction-like object that can be serialized
+                        return {
+                          serialize: function() { return bytes; },
+                          _signedBytes: bytes
+                        };
+                      }
+                      throw new Error('No signed transaction returned');
+                    } catch (err) {
+                      console.error('x1.signTransaction error:', err);
                       throw err;
                     }
                   },
@@ -5456,6 +5796,10 @@ function AppContent() {
                 };
 
                 console.log('window.x1 API initialized');
+
+                // Also expose as window.x1_wallet for webapp compatibility
+                window.x1_wallet = window.x1;
+                console.log('window.x1_wallet alias initialized');
               })();
             `}
           />
@@ -5693,6 +6037,32 @@ function AppContent() {
                     triggerHaptic();
                     checkTransactions();
                     activitySheetRef.current?.present();
+
+                    // Triple-tap detection for auto-loading more transactions
+                    const now = Date.now();
+                    const recentTaps = activityTapTimes.filter(
+                      (time) => now - time < 2000
+                    );
+                    const newTapTimes = [...recentTaps, now];
+                    setActivityTapTimes(newTapTimes);
+
+                    // If 3 taps within 2 seconds, auto-load more transactions
+                    if (newTapTimes.length >= 3) {
+                      if (hasMoreTransactions && !isLoadingMore) {
+                        console.log(
+                          "🎯 Triple-tap detected! Auto-loading more transactions..."
+                        );
+                        loadMoreTransactions();
+                        if (Platform.OS === "android") {
+                          ToastAndroid.show(
+                            "Loading more transactions...",
+                            ToastAndroid.SHORT
+                          );
+                        }
+                      }
+                      // Reset tap times after triggering
+                      setActivityTapTimes([]);
+                    }
                   }}
                 >
                   <Image
@@ -6621,6 +6991,22 @@ function AppContent() {
                   : styles.sheetScrollContent
               }
               showsVerticalScrollIndicator={false}
+              onScroll={({ nativeEvent }) => {
+                if (!hasMoreTransactions || isLoadingMore) return;
+
+                const { layoutMeasurement, contentOffset, contentSize } =
+                  nativeEvent;
+                // Trigger auto-load when user scrolls to bottom 600px (roughly when Load More button becomes visible)
+                const paddingToBottom = 600;
+                const isNearBottom =
+                  layoutMeasurement.height + contentOffset.y >=
+                  contentSize.height - paddingToBottom;
+
+                if (isNearBottom) {
+                  loadMoreTransactions();
+                }
+              }}
+              scrollEventThrottle={500}
             >
               {/* Header */}
               <View style={styles.activitySheetHeader}>
@@ -6672,15 +7058,17 @@ function AppContent() {
                         onPress={() => openExplorer(tx.signature)}
                       >
                         {/* Token logo */}
-                        <Image
-                          source={
-                            tx.tokenIcon
-                              ? { uri: tx.tokenIcon }
-                              : tx.token === "XNT"
-                                ? require("./assets/x1.png")
-                                : require("./assets/solana.png")
+                        <TokenIcon
+                          symbol={tx.token}
+                          logo={
+                            tx.token === "XNT"
+                              ? require("./assets/x1.png")
+                              : tx.token === "SOL"
+                                ? require("./assets/solana.png")
+                                : null
                           }
-                          style={styles.activityCardLogo}
+                          logoUrl={tx.tokenIcon}
+                          size={40}
                         />
 
                         <View style={styles.activityCardContent}>
@@ -6757,10 +7145,35 @@ function AppContent() {
               {isLoadingMore &&
                 hasMoreTransactions &&
                 transactions.length > 0 && (
-                  <View style={{ padding: 20, alignItems: "center" }}>
-                    <ActivityIndicator size="small" color="#4A90E2" />
-                    <Text style={styles.emptyStateSubtext}>
-                      Loading more...
+                  <View
+                    style={{
+                      padding: 20,
+                      marginVertical: 10,
+                      alignItems: "center",
+                      backgroundColor: "rgba(74, 144, 226, 0.1)",
+                      borderRadius: 12,
+                      marginHorizontal: 20,
+                    }}
+                  >
+                    <ActivityIndicator size="large" color="#4A90E2" />
+                    <Text
+                      style={{
+                        marginTop: 12,
+                        color: "#4A90E2",
+                        fontSize: 15,
+                        fontWeight: "600",
+                      }}
+                    >
+                      Loading more transactions...
+                    </Text>
+                    <Text
+                      style={{
+                        marginTop: 4,
+                        color: "#888888",
+                        fontSize: 13,
+                      }}
+                    >
+                      Checking database and blockchain
                     </Text>
                   </View>
                 )}
@@ -7724,6 +8137,39 @@ function AppContent() {
                   onMessage={handleWebViewMessage}
                   injectedJavaScriptBeforeContentLoaded={`
                 (function() {
+                  // Intercept console.log/error and send to React Native
+                  const originalLog = console.log;
+                  const originalError = console.error;
+                  const originalWarn = console.warn;
+
+                  function sendToRN(type, args) {
+                    try {
+                      if (window.ReactNativeWebView) {
+                        window.ReactNativeWebView.postMessage(JSON.stringify({
+                          type: 'console',
+                          level: type,
+                          message: Array.from(args).map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')
+                        }));
+                      }
+                    } catch(e) {}
+                  }
+
+                  console.log = function() { sendToRN('log', arguments); originalLog.apply(console, arguments); };
+                  console.error = function() { sendToRN('error', arguments); originalError.apply(console, arguments); };
+                  console.warn = function() { sendToRN('warn', arguments); originalWarn.apply(console, arguments); };
+
+                  // Global error handler
+                  window.onerror = function(msg, url, line, col, error) {
+                    sendToRN('error', ['UNCAUGHT ERROR:', msg, 'at', url, line, col, error ? error.stack : '']);
+                    return false;
+                  };
+
+                  window.addEventListener('unhandledrejection', function(event) {
+                    sendToRN('error', ['UNHANDLED PROMISE:', event.reason]);
+                  });
+
+                  console.log('[WebView] Console interceptor initialized');
+
                   // Create a promise-based request system
                   let requestId = 0;
                   const pendingRequests = {};
@@ -7772,15 +8218,36 @@ function AppContent() {
 
                   // Create the window.x1 API
                   window.x1 = {
+                    isConnected: false,
+                    publicKey: null,
+
                     // Connect to the wallet and get public key
                     connect: async function() {
                       try {
                         const result = await sendRequest('connect');
-                        return result.publicKey;
+                        const pubKeyStr = result.publicKey;
+
+                        // Create a PublicKey-like object (compatible with Backpack/Phantom)
+                        this.publicKey = {
+                          _key: pubKeyStr,
+                          toString: function() { return this._key; },
+                          toBase58: function() { return this._key; }
+                        };
+                        this.isConnected = true;
+
+                        // Return in same format as Backpack/Phantom
+                        return { publicKey: this.publicKey };
                       } catch (err) {
                         console.error('x1.connect error:', err);
                         throw err;
                       }
+                    },
+
+                    // Disconnect wallet
+                    disconnect: async function() {
+                      this.isConnected = false;
+                      this.publicKey = null;
+                      return true;
                     },
 
                     // Sign and send a transaction
@@ -7790,10 +8257,12 @@ function AppContent() {
                         let txData;
                         if (transaction.serialize) {
                           // If it's a Transaction object
-                          txData = transaction.serialize({
+                          const serialized = transaction.serialize({
                             requireAllSignatures: false,
                             verifySignatures: false
-                          }).toString('base64');
+                          });
+                          // Use btoa for browser environment (not Buffer.toString('base64'))
+                          txData = btoa(String.fromCharCode.apply(null, serialized));
                         } else if (transaction instanceof Uint8Array) {
                           // If it's already serialized
                           txData = btoa(String.fromCharCode.apply(null, transaction));
@@ -7835,10 +8304,57 @@ function AppContent() {
                         console.error('x1.signMessage error:', err);
                         throw err;
                       }
+                    },
+
+                    // Sign a transaction (without sending) - for multi-sig flows
+                    signTransaction: async function(transaction) {
+                      try {
+                        console.log('[x1.signTransaction] Signing transaction...');
+                        // Serialize the transaction to base64
+                        let txData;
+                        if (transaction.serialize) {
+                          const serialized = transaction.serialize({
+                            requireAllSignatures: false,
+                            verifySignatures: false
+                          });
+                          // Use btoa for browser environment (not Buffer.toString('base64'))
+                          txData = btoa(String.fromCharCode.apply(null, serialized));
+                        } else if (transaction instanceof Uint8Array) {
+                          txData = btoa(String.fromCharCode.apply(null, transaction));
+                        } else {
+                          throw new Error('Invalid transaction format');
+                        }
+
+                        const result = await sendRequest('signTransaction', {
+                          transaction: txData
+                        });
+
+                        // Decode the signed transaction from base64
+                        if (result.signedTransaction) {
+                          const binary = atob(result.signedTransaction);
+                          const bytes = new Uint8Array(binary.length);
+                          for (let i = 0; i < binary.length; i++) {
+                            bytes[i] = binary.charCodeAt(i);
+                          }
+                          // Return a transaction-like object that can be serialized
+                          return {
+                            serialize: function() { return bytes; },
+                            _signedBytes: bytes
+                          };
+                        }
+                        throw new Error('No signed transaction returned');
+                      } catch (err) {
+                        console.error('x1.signTransaction error:', err);
+                        throw err;
+                      }
                     }
                   };
 
                   console.log('window.x1 API initialized');
+
+                  // Also expose as window.x1_wallet for webapp compatibility
+                  window.x1_wallet = window.x1;
+                  console.log('window.x1_wallet alias initialized');
                 })();
               `}
                 />

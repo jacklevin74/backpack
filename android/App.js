@@ -409,6 +409,7 @@ function AppContent() {
   const ledgerTransportRef = useRef(null); // Store transport reference for cleanup
   const ledgerScanSubscriptionRef = useRef(null); // Store scan subscription for cleanup
   const ledgerCleaningRef = useRef(false); // Prevent concurrent cleanup
+  const ledgerOperationInProgressRef = useRef(false); // Mutex to prevent concurrent BLE operations
   const ledgerCleanedUpRef = useRef(false); // Track if cleanup has already been completed
   const bleManagerRef = useRef(null); // BLE Manager instance for Bluetooth control
   const sendAddressInputRef = useRef(null); // Ref for send address TextInput
@@ -2177,13 +2178,25 @@ function AppContent() {
     // If we have a stored transport, check if it's still valid
     if (ledgerTransportRef.current) {
       try {
-        // Test if transport is still connected by checking if it has device property
+        // Test if transport is still connected by sending a ping (get app info)
         if (ledgerTransportRef.current.device) {
-          console.log("Reusing existing BLE transport (singleton)");
+          // Try to actually communicate with the device to verify connection
+          const Solana = (await import("@ledgerhq/hw-app-solana")).default;
+          const solana = new Solana(ledgerTransportRef.current);
+          await solana.getAppConfiguration(); // This will throw if disconnected
+          console.log(
+            "Reusing existing BLE transport (singleton) - verified connected"
+          );
           return ledgerTransportRef.current;
         }
       } catch (err) {
         console.log("Stored transport is no longer valid:", err.message);
+        // Close the stale transport
+        try {
+          await ledgerTransportRef.current.close();
+        } catch (closeErr) {
+          console.log("Error closing stale transport:", closeErr.message);
+        }
         ledgerTransportRef.current = null;
       }
     }
@@ -3161,6 +3174,16 @@ function AppContent() {
               // Sign with Ledger
               console.log("Signing transaction with Ledger (no send)...");
 
+              // Prevent concurrent BLE operations
+              if (ledgerOperationInProgressRef.current) {
+                console.log(
+                  "Ledger operation already in progress, skipping duplicate request"
+                );
+                throw new Error(
+                  "Ledger operation in progress. Please wait and try again."
+                );
+              }
+
               const signDeviceId = signWalletData.ledgerDeviceId;
               if (!signDeviceId) {
                 throw new Error(
@@ -3169,6 +3192,9 @@ function AppContent() {
               }
 
               try {
+                // Set mutex to prevent concurrent operations
+                ledgerOperationInProgressRef.current = true;
+
                 // Get or reuse BLE transport (singleton pattern)
                 const signTransport = await getLedgerTransport(signDeviceId);
                 const signSolana = new AppSolana(signTransport);
@@ -3197,10 +3223,23 @@ function AppContent() {
                 );
               } catch (ledgerError) {
                 console.error("Ledger signTransaction error:", ledgerError);
+                // Clear the stale transport reference so next attempt will reconnect
+                if (
+                  ledgerError.name === "DisconnectedDevice" ||
+                  ledgerError.message?.includes("DisconnectedDevice")
+                ) {
+                  ledgerTransportRef.current = null;
+                  throw new Error(
+                    "Ledger disconnected. Please unlock your Ledger, open the Solana app, and try again."
+                  );
+                }
                 throw new Error(
                   "Ledger transaction signing failed: " +
                     (ledgerError.message || "Unknown error")
                 );
+              } finally {
+                // Always release the mutex
+                ledgerOperationInProgressRef.current = false;
               }
             } else {
               // Sign with keypair for regular wallets

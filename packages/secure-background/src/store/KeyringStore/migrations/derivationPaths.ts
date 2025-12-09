@@ -27,7 +27,7 @@ export const legacyBip44ChangeIndexed = (
 /**
  * m/44'/60'/0'/0/x
  */
-const ethereumIndexed = (index: number) => {
+export const ethereumIndexed = (index: number) => {
   const coinType = 60 + HARDENING;
   const path = [44 + HARDENING, coinType, 0 + HARDENING, 0, index];
   return new BIPPath.fromPathArray(path).toString();
@@ -66,6 +66,18 @@ export const legacySolletIndexed = (index: number) => {
   const coinType = 501 + HARDENING;
   const path = [coinType, index + HARDENING, 0, 0];
   return new BIPPath.fromPathArray(path).toString();
+};
+
+/**
+ * Get the standard Backpack derivation path for a given index
+ * m/44'/coinType'/0'/0'/index' (for index > 0)
+ * m/44'/coinType'/0'/0' (for index = 0)
+ */
+export const getStandardDerivationPath = (
+  bip44CoinType: number,
+  index: number
+): string => {
+  return getIndexedPath(bip44CoinType, 0, index);
 };
 
 // Get the nth index account according to the Backpack derivation path scheme

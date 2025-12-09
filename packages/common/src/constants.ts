@@ -587,6 +587,13 @@ export const LOCKABLE_COLLECTIONS = [
 // searching mnemonics
 export const LOAD_PUBLIC_KEY_AMOUNT = 20;
 
+// Gap limit for activity-based wallet discovery (BIP-44 standard)
+// Number of consecutive empty addresses before stopping discovery
+export const GAP_LIMIT = 20;
+
+// Maximum number of addresses to check during discovery (safety limit)
+export const MAX_DISCOVERY_ADDRESSES = 1000;
+
 export const DEFAULT_PUBKEY_STR = "11111111111111111111111111111111";
 
 export const MOBILE_CHANNEL_LOGS = "mobile-logs";
